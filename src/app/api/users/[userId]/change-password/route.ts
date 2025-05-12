@@ -36,16 +36,16 @@ export async function PUT(
 
     // Si no es su propia contraseña, verificar permisos
     if (!isOwnPassword) {
-      const canChangePassword = (() => {
-        if (currentUser.role === 'SUPER_ADMIN') return true
-        if (currentUser.role === 'ADMIN') {
-          const targetUser = await prisma.user.findUnique({
-            where: { id: params.userId }
-          })
-          return targetUser?.role !== 'SUPER_ADMIN'
-        }
-        return false
-      })()
+      let canChangePassword = false
+
+      if (currentUser.role === 'SUPER_ADMIN') {
+        canChangePassword = true
+      } else if (currentUser.role === 'ADMIN') {
+        const targetUser = await prisma.user.findUnique({
+          where: { id: params.userId }
+        })
+        canChangePassword = targetUser?.role !== 'SUPER_ADMIN'
+      }
 
       if (!canChangePassword) {
         return NextResponse.json({ error: 'No autorizado para cambiar esta contraseña' }, { status: 403 })
@@ -80,4 +80,4 @@ export async function PUT(
     console.error('Error:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
-} 
+}
