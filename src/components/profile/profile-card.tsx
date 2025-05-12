@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-hot-toast'
-import { FiUser, FiMail, FiShield, FiLock, FiCalendar, FiEdit2, FiKey } from 'react-icons/fi'
+import { FiUser, FiMail, FiShield, FiLock, FiCalendar, FiEdit2, FiKey, FiEye, FiEyeOff } from 'react-icons/fi'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +18,9 @@ export default function ProfileCard() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -123,36 +126,75 @@ export default function ProfileCard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="current-password">Contraseña Actual</Label>
-                    <Input
-                      type="password"
-                      id="current-password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      required
-                      className="mt-1"
-                    />
+                    <div className="relative mt-1">
+                      <Input
+                        type={showCurrentPassword ? "text" : "password"}
+                        id="current-password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        required
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      >
+                        {showCurrentPassword ? (
+                          <FiEyeOff className="h-5 w-5" />
+                        ) : (
+                          <FiEye className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="new-password">Nueva Contraseña</Label>
-                    <Input
-                      type="password"
-                      id="new-password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                      className="mt-1"
-                    />
+                    <div className="relative mt-1">
+                      <Input
+                        type={showNewPassword ? "text" : "password"}
+                        id="new-password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      >
+                        {showNewPassword ? (
+                          <FiEyeOff className="h-5 w-5" />
+                        ) : (
+                          <FiEye className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="confirm-password">Confirmar Nueva Contraseña</Label>
-                    <Input
-                      type="password"
-                      id="confirm-password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      className="mt-1"
-                    />
+                    <div className="relative mt-1">
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        id="confirm-password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      >
+                        {showConfirmPassword ? (
+                          <FiEyeOff className="h-5 w-5" />
+                        ) : (
+                          <FiEye className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="flex justify-end space-x-4">
