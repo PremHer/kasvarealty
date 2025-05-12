@@ -177,7 +177,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
                     </td>
                     <td className="px-6 py-4">
                       <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
-                        {user.rol.replace(/_/g, ' ')}
+                        {user.rol ? user.rol.replace(/_/g, ' ') : 'Sin rol'}
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
@@ -247,7 +247,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
                     </div>
                     <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
                       <FiShield className="h-5 w-5 text-blue-500" />
-                      <span className="text-base text-gray-700">{selectedUserDetails.rol.replace(/_/g, ' ')}</span>
+                      <span className="text-base text-gray-700">{selectedUserDetails.rol ? selectedUserDetails.rol.replace(/_/g, ' ') : 'Sin rol'}</span>
                     </div>
                     <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
                       <Badge variant={selectedUserDetails.isActive ? "success" : "destructive"}>
