@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model EmpresaDesarrolladora {
+  id                   String   @id @default(cuid())
+  nombre               String   @unique
+  ruc                  String   @unique
+  representanteLegalId String
+  direccion            String
+  telefono             String
+  email                String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Nuevos campos
+  bancos              TipoBanco[]
+  billeterasVirtuales TipoBilleteraVirtual[]
+  numeroProyectos     Int                    @default(0)
+
+  // Relaciones
+  representanteLegal Usuario @relation("RepresentanteLegal", fields: [representanteLegalId], references: [id])
+  proyectos          Proyecto[]
+}
+
+model Usuario {
+  id                     String     @id @default(cuid())
+  nombre                 String
+  email                  String     @unique
+  password               String
+  rol                    Rol        @default(GUEST)
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+  resetToken             String?    @unique
+  resetTokenExpiry       DateTime?
+  isActive               Boolean    @default(true)
+  lastLogin              DateTime?
+  profile                Json?
+  permissions            Json?
+  createdBy              String?
+
+  // Relaciones
+  proyectosGestionados   Proyecto[]  @relation("ProjectManager")
+  proyectosCreados       Proyecto[]  @relation("ProjectCreator")
+  proyectosAprobados     Proyecto[]  @relation("ProjectApprover")
+  proyectosMiembro       Proyecto[]  @relation("ProjectMembers")
+  actividades            Actividad[]
+  documentos             Documento[]
+  comentarios            Comentario[]
+  // Solo usuarios con rol GERENTE_GENERAL pueden ser representantes legales
+  empresasRepresentante  EmpresaDesarrolladora[] @relation("RepresentanteLegal")
+}
+
+model Proyecto {
+  id                      String         @id @default(cuid())
+  nombre                  String
+  tipo                    TipoProyecto
+  descripcion             String
+  direccion               String
+  empresaDesarrolladoraId String
+  fechaInicio             DateTime
+  fechaFin                DateTime?
+  presupuesto             Float
+  estado                  EstadoProyecto @default(DRAFT)
+  gerenteId               String
+  creadoPorId             String
+  aprobadoPorId           String?
+  fechaAprobacion         DateTime?
+  razonRechazo            String?
+  areaTotal               Float?
+  areaUtil                Float?
+  cantidadUnidades        Int?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  // Relaciones
+  empresaDesarrolladora EmpresaDesarrolladora @relation(fields: [empresaDesarrolladoraId], references: [id])
+  gerente               Usuario               @relation("ProjectManager", fields: [gerenteId], references: [id])
+  creadoPor             Usuario               @relation("ProjectCreator", fields: [creadoPorId], references: [id])
+  aprobadoPor           Usuario?              @relation("ProjectApprover", fields: [aprobadoPorId], references: [id])
+  unidades              UnidadInmobiliaria[]
+  miembros              Usuario[]             @relation("ProjectMembers")
+  actividades           Actividad[]
+  documentos            Documento[]
+  comentarios           Comentario[]
+}
+
+model UnidadInmobiliaria {
+  id         String       @id @default(cuid())
+  codigo     String       @unique
+  tipo       String
+  estado     EstadoUnidad
+  precio     Float
+  area       Float
+  proyectoId String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  // Relaciones
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
+  ventas   Venta[]
+}
+
+model Venta {
+  id                   String      @id @default(cuid())
+  unidadInmobiliariaId String
+  clienteId            String
+  fechaVenta           DateTime
+  precioVenta          Float
+  estado               EstadoVenta
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  // Relaciones
+  unidadInmobiliaria UnidadInmobiliaria @relation(fields: [unidadInmobiliariaId], references: [id])
+  cliente            Cliente            @relation(fields: [clienteId], references: [id])
+}
+
+model Cliente {
+  id        String   @id @default(cuid())
+  nombre    String
+  dni       String   @unique
+  telefono  String
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  ventas Venta[]
+}
+
+model Actividad {
+  id          String   @id @default(cuid())
+  tipo        String
+  descripcion String
+  proyectoId  String
+  usuarioId   String
+  createdAt   DateTime @default(now())
+
+  // Relaciones
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id])
+}
+
+model Comentario {
+  id         String   @id @default(cuid())
+  contenido  String
+  proyectoId String
+  usuarioId  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relaciones
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id])
+}
+
+model Documento {
+  id         String   @id @default(cuid())
+  nombre     String
+  url        String
+  tipo       String
+  proyectoId String
+  usuarioId  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relaciones
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id])
+}
+
+enum Rol {
+  SUPER_ADMIN
+  ADMIN
+  GERENTE_GENERAL
+  DEVELOPER
+  SALES_MANAGER
+  SALES_REP
+  SALES_ASSISTANT
+  SALES_COORDINATOR
+  PROJECT_MANAGER
+  CONSTRUCTION_SUPERVISOR
+  QUALITY_CONTROL
+  PROJECT_ASSISTANT
+  FINANCE_MANAGER
+  ACCOUNTANT
+  FINANCE_ASSISTANT
+  INVESTOR
+  GUEST
+}
+
+enum EstadoProyecto {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TipoProyecto {
+  CASA_INDIVIDUAL
+  CONDOMINIO_CASAS
+  DEPARTAMENTO
+  CONDOMINIO_DEPARTAMENTOS
+  DUPLEX
+  PENTHOUSE
+  TOWNHOUSE
+  CENTRO_COMERCIAL
+  MODULO_COMERCIAL
+  GALERIA_COMERCIAL
+  PLAZA_COMERCIAL
+  OFICINAS
+  BODEGA
+  SHOWROOM
+  MIXTO_RESIDENCIAL_COMERCIAL
+  MIXTO_OFICINAS_COMERCIAL
+  LOTIZACION
+  CEMENTERIO
+  HOTEL
+  HOSPITAL
+  CLINICA
+  COLEGIO
+  UNIVERSIDAD
+  ESTADIO
+  COMPLEJO_DEPORTIVO
+  PARQUE_INDUSTRIAL
+}
+
+enum EstadoUnidad {
+  DISPONIBLE
+  RESERVADO
+  VENDIDO
+  ENTREGADO
+}
+
+enum EstadoVenta {
+  PENDIENTE
+  APROBADA
+  CANCELADA
+  ENTREGADA
+}
+
+enum TipoBanco {
+  BCP
+  BBVA
+  INTERBANK
+  SCOTIABANK
+  BANBIF
+  MIBANCO
+  BANCO_PICHINCHA
+  BANCO_GNB
+  BANCO_FALABELLA
+  BANCO_RIPLEY
+}
+
+enum TipoBilleteraVirtual {
+  YAPE
+  PLIN
+  TUNKI
+  AGRARIO
+  BIM
+}
