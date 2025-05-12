@@ -73,11 +73,17 @@ export default function NewUserModal({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          name: values.nombre,
+          email: values.email,
+          password: values.password,
+          role: values.rol
+        }),
       })
 
       if (!response.ok) {
-        throw new Error('Error al crear usuario')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al crear usuario')
       }
 
       toast.success('Usuario creado correctamente')
@@ -85,7 +91,7 @@ export default function NewUserModal({
       onClose()
     } catch (error) {
       console.error('Error al crear usuario:', error)
-      toast.error('Error al crear usuario')
+      toast.error(error instanceof Error ? error.message : 'Error al crear usuario')
     } finally {
       setIsSubmitting(false)
     }

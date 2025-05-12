@@ -1,59 +1,55 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth/config'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import UsersTable from '@/components/users/users-table'
 import type { Rol } from '@prisma/client'
 
-export default async function UsersPage() {
-  const session = await getServerSession(authOptions)
+export default function UsersPage() {
+  const { data: session } = useSession()
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  if (!session?.user?.email) {
-    redirect('/login')
-  }
-
-  // Obtener el usuario actual
-  const currentUser = await prisma.usuario.findUnique({
-    where: { email: session.user.email }
-  })
-
-  if (!currentUser) {
-    redirect('/login')
-  }
-
-  // Verificar si el usuario tiene permiso para ver usuarios
-  const canViewUsers = [
-    'SUPER_ADMIN',
-    'ADMIN',
-    'GERENTE_GENERAL'
-  ].includes(currentUser.rol)
-
-  if (!canViewUsers) {
-    redirect('/dashboard')
-  }
-
-  // Obtener la lista de usuarios
-  const usuarios = await prisma.usuario.findMany({
-    select: {
-      id: true,
-      nombre: true,
-      email: true,
-      rol: true,
-      isActive: true,
-      lastLogin: true,
-      createdAt: true
-    },
-    orderBy: {
-      createdAt: 'desc'
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/users')
+      if (!response.ok) {
+        throw new Error('Error al cargar usuarios')
+      }
+      const data = await response.json()
+      setUsers(data)
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setLoading(false)
     }
-  })
+  }
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  const handleUserCreated = () => {
+    fetchUsers()
+  }
+
+  const handleUserUpdated = () => {
+    fetchUsers()
+  }
+
+  if (loading) {
+    return <div>Cargando...</div>
+  }
 
   return (
     <div className="container mx-auto py-10">
       <h1 className="text-2xl font-bold mb-6">Usuarios</h1>
       <UsersTable 
-        users={usuarios} 
-        currentUserRole={currentUser.rol}
+        users={users} 
+        onUserCreated={handleUserCreated}
+        onUserUpdated={handleUserUpdated}
       />
     </div>
   )

@@ -56,13 +56,10 @@ export async function GET() {
         rol: true,
         isActive: true,
         lastLogin: true,
-        createdAt: true,
-        empresaDesarrolladora: {
-          select: {
-            id: true,
-            nombre: true
-          }
-        }
+        createdAt: true
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     })
 
@@ -70,14 +67,13 @@ export async function GET() {
       id: user.id,
       name: user.nombre,
       email: user.email,
-      role: user.rol,
+      rol: user.rol,
       isActive: user.isActive,
       lastLogin: user.lastLogin,
-      createdAt: user.createdAt,
-      company: user.empresaDesarrolladora
+      createdAt: user.createdAt
     })))
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error al cargar usuarios:', error)
     return new NextResponse('Error interno del servidor', { status: 500 })
   }
 }
@@ -163,6 +159,42 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('Error:', error)
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+  }
+}
+
+// DELETE /api/users/[id] - Eliminar usuario
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const currentUser = await prisma.usuario.findUnique({
+      where: { email: session.user?.email! }
+    })
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    }
+
+    // Verificar permisos para eliminar usuarios
+    const canDeleteUsers = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.rol)
+    if (!canDeleteUsers) {
+      return NextResponse.json({ error: 'No autorizado para eliminar usuarios' }, { status: 403 })
+    }
+
+    const { id } = params
+
+    // Eliminar usuario
+    await prisma.usuario.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({ message: 'Usuario eliminado exitosamente' })
+  } catch (error) {
+    console.error('Error al eliminar usuario:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 } 
