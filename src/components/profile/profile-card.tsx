@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { toast } from 'react-hot-toast'
-import { FiUser, FiMail, FiShield, FiLock, FiCalendar, FiEdit2 } from 'react-icons/fi'
+import { FiUser, FiMail, FiShield, FiLock, FiCalendar, FiEdit2, FiKey } from 'react-icons/fi'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 export default function ProfileCard() {
   const { data: session } = useSession()
   const [isEditing, setIsEditing] = useState(false)
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -47,6 +48,7 @@ export default function ProfileCard() {
         setCurrentPassword('')
         setNewPassword('')
         setConfirmPassword('')
+        setShowPasswordForm(false)
       } else {
         toast.error(data.error || 'Error al cambiar la contraseña')
       }
@@ -99,56 +101,83 @@ export default function ProfileCard() {
 
           {/* Sección de cambio de contraseña */}
           <div className="mt-8 border-t border-gray-200 pt-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-              <FiLock className="h-5 w-5 mr-2 text-primary-600" />
-              Cambiar Contraseña
-            </h2>
-            <form onSubmit={handleChangePassword} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="current-password">Contraseña Actual</Label>
-                  <Input
-                    type="password"
-                    id="current-password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    required
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="new-password">Nueva Contraseña</Label>
-                  <Input
-                    type="password"
-                    id="new-password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="confirm-password">Confirmar Nueva Contraseña</Label>
-                  <Input
-                    type="password"
-                    id="confirm-password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                <FiLock className="h-5 w-5 mr-2 text-primary-600" />
+                Seguridad
+              </h2>
+              {!showPasswordForm && (
                 <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="bg-primary-600 hover:bg-primary-700 text-white"
+                  variant="outline"
+                  onClick={() => setShowPasswordForm(true)}
+                  className="flex items-center space-x-2"
                 >
-                  {isLoading ? 'Actualizando...' : 'Cambiar Contraseña'}
+                  <FiKey className="h-4 w-4" />
+                  <span>Cambiar Contraseña</span>
                 </Button>
-              </div>
-            </form>
+              )}
+            </div>
+            
+            {showPasswordForm && (
+              <form onSubmit={handleChangePassword} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="current-password">Contraseña Actual</Label>
+                    <Input
+                      type="password"
+                      id="current-password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-password">Nueva Contraseña</Label>
+                    <Input
+                      type="password"
+                      id="new-password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="confirm-password">Confirmar Nueva Contraseña</Label>
+                    <Input
+                      type="password"
+                      id="confirm-password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowPasswordForm(false)
+                      setCurrentPassword('')
+                      setNewPassword('')
+                      setConfirmPassword('')
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="bg-primary-600 hover:bg-primary-700 text-white"
+                  >
+                    {isLoading ? 'Actualizando...' : 'Cambiar Contraseña'}
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
 
           {/* Información adicional */}
