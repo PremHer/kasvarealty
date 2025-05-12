@@ -1,3 +1,6 @@
+
+git init
+
 # Flujo de Trabajo con Git
 
 ## 1. Flujo de Trabajo para Nuevos Cambios

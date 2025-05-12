@@ -1,0 +1,92 @@
+warning: in the working copy of 'src/app/auth/login/page.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mindex 7b5f046..3345799 100644[m
+[1m--- a/.gitignore[m
+[1m+++ b/.gitignore[m
+[36m@@ -35,4 +35,6 @@[m [mnext-env.d.ts[m
+ [m
+ # IDE[m
+ .vscode/[m
+[31m-.idea/[m
+\ No newline at end of file[m
+[32m+[m[32m.idea/[m
+[32m+[m
+[32m+[m[32m.READMEGIT.md[m
+\ No newline at end of file[m
+[1mdiff --git a/READMEGIT.md b/READMEGIT.md[m
+[1mindex 79d5494..9c0bc1b 100644[m
+[1m--- a/READMEGIT.md[m
+[1m+++ b/READMEGIT.md[m
+[36m@@ -1,3 +1,6 @@[m
+[32m+[m
+[32m+[m[32mgit init[m
+[32m+[m
+ # Flujo de Trabajo con Git[m
+ [m
+ ## 1. Flujo de Trabajo para Nuevos Cambios[m
+[1mdiff --git a/src/app/auth/login/page.tsx b/src/app/auth/login/page.tsx[m
+[1mindex 84d3fcc..9096df9 100644[m
+[1m--- a/src/app/auth/login/page.tsx[m
+[1m+++ b/src/app/auth/login/page.tsx[m
+[36m@@ -4,6 +4,7 @@[m [mimport { useState } from 'react'[m
+ import { signIn } from 'next-auth/react'[m
+ import { useRouter } from 'next/navigation'[m
+ import { toast } from 'react-hot-toast'[m
+[32m+[m[32mimport { FiEye, FiEyeOff } from 'react-icons/fi'[m
+ import Image from 'next/image'[m
+ import Logo from '@/components/ui/logo'[m
+ import Link from 'next/link'[m
+[36m@@ -11,6 +12,7 @@[m [mimport Link from 'next/link'[m
+ export default function LoginPage() {[m
+   const router = useRouter()[m
+   const [loading, setLoading] = useState(false)[m
+[32m+[m[32m  const [showPassword, setShowPassword] = useState(false)[m
+   const [formData, setFormData] = useState({[m
+     email: '',[m
+     password: ''[m
+[36m@@ -70,7 +72,7 @@[m [mexport default function LoginPage() {[m
+           <p className="text-xl text-gray-600 mb-12">[m
+             Sistema Integral de Gestión Inmobiliaria[m
+           </p>[m
+[31m-          [m
+[32m+[m
+           <div className="space-y-8">[m
+             <div className="flex items-start space-x-4">[m
+               <div className="flex-shrink-0 w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">[m
+[36m@@ -146,17 +148,30 @@[m [mexport default function LoginPage() {[m
+                 <label htmlFor="password" className="sr-only">[m
+                   Contraseña[m
+                 </label>[m
+[31m-                <input[m
+[31m-                  id="password"[m
+[31m-                  name="password"[m
+[31m-                  type="password"[m
+[31m-                  autoComplete="current-password"[m
+[31m-                  required[m
+[32m+[m[32m                <div className="relative mt-1">[m
+[32m+[m[32m                  <input[m
+[32m+[m[32m                    id="password"[m
+[32m+[m[32m                    name="password"[m
+[32m+[m[32m                    type={showPassword ? "text" : "password"}[m
+[32m+[m[32m                    autoComplete="current-password"[m
+[32m+[m[32m                    required[m
+                   value={formData.password}[m
+                   onChange={handleChange}[m
+                   className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"[m
+                   placeholder="Contraseña"[m
+                 />[m
+[32m+[m[32m                <button[m
+[32m+[m[32m                  type="button"[m
+[32m+[m[32m                  onClick={() => setShowPassword(!showPassword)}[m
+[32m+[m[32m                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 z-20"[m
+[32m+[m[32m                >[m
+[32m+[m[32m                  {showPassword ? ([m
+[32m+[m[32m                    <FiEyeOff className="h-5 w-5" />[m
+[32m+[m[32m                  ) : ([m
+[32m+[m[32m                    <FiEye className="h-5 w-5" />[m
+[32m+[m[32m                  )}[m
+[32m+[m[32m                </button>[m
+[32m+[m[32m                </div>[m
+               </div>[m
+             </div>[m
+ [m
