@@ -180,7 +180,6 @@ export default function EditEmpresaModal({
                     placeholder="Ingrese los 11 dígitos del RUC"
                     maxLength={11}
                   />
-                  <p className="text-sm text-gray-500">El RUC debe tener exactamente 11 dígitos</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
