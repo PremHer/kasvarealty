@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { FiUser, FiMail, FiLock, FiShield } from 'react-icons/fi'
+import { useSession } from 'next-auth/react'
 
 import {
   Dialog,
@@ -12,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -53,7 +55,53 @@ export default function NewUserModal({
   onClose,
   onUserCreated,
 }: NewUserModalProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { data: session } = useSession()
+  const currentUserRole = session?.user?.role as Rol
+
+  const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
+    SUPER_ADMIN: ['ADMIN', 'GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
+    ADMIN: ['GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
+    GERENTE_GENERAL: ['SALES_MANAGER', 'PROJECT_MANAGER', 'FINANCE_MANAGER', 'INVESTOR', 'GUEST'],
+    SALES_MANAGER: ['SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'GUEST'],
+    PROJECT_MANAGER: ['CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'GUEST'],
+    FINANCE_MANAGER: ['ACCOUNTANT', 'FINANCE_ASSISTANT', 'GUEST'],
+    DEVELOPER: ['GUEST'],
+    SALES_REP: ['GUEST'],
+    SALES_ASSISTANT: ['GUEST'],
+    SALES_COORDINATOR: ['GUEST'],
+    CONSTRUCTION_SUPERVISOR: ['GUEST'],
+    QUALITY_CONTROL: ['GUEST'],
+    PROJECT_ASSISTANT: ['GUEST'],
+    ACCOUNTANT: ['GUEST'],
+    FINANCE_ASSISTANT: ['GUEST'],
+    INVESTOR: ['GUEST'],
+    GUEST: []
+  }
+
+  const ROLE_LABELS: Record<Rol, string> = {
+    SUPER_ADMIN: 'Super Administrador',
+    ADMIN: 'Administrador',
+    GERENTE_GENERAL: 'Gerente General',
+    DEVELOPER: 'Desarrollador',
+    SALES_MANAGER: 'Gerente de Ventas',
+    SALES_REP: 'Representante de Ventas',
+    SALES_ASSISTANT: 'Asistente de Ventas',
+    SALES_COORDINATOR: 'Coordinador de Ventas',
+    PROJECT_MANAGER: 'Gerente de Proyectos',
+    CONSTRUCTION_SUPERVISOR: 'Supervisor de Construcción',
+    QUALITY_CONTROL: 'Control de Calidad',
+    PROJECT_ASSISTANT: 'Asistente de Proyectos',
+    FINANCE_MANAGER: 'Gerente Financiero',
+    ACCOUNTANT: 'Contador',
+    FINANCE_ASSISTANT: 'Asistente Financiero',
+    INVESTOR: 'Inversionista',
+    GUEST: 'Invitado'
+  }
+
+  const getAvailableRoles = () => {
+    if (!currentUserRole) return []
+    return ROLE_HIERARCHY[currentUserRole] || []
+  }
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -61,167 +109,135 @@ export default function NewUserModal({
       nombre: '',
       email: '',
       password: '',
-      rol: 'USER',
-    },
+      rol: ''
+    }
   })
 
-  async function onSubmit(values: FormValues) {
+  const onSubmit = async (data: FormValues) => {
     try {
-      setIsSubmitting(true)
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          name: values.nombre,
-          email: values.email,
-          password: values.password,
-          role: values.rol
-        }),
+        body: JSON.stringify(data)
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Error al crear usuario')
+        const error = await response.json()
+        throw new Error(error.message || 'Error al crear usuario')
       }
 
-      toast.success('Usuario creado correctamente')
-      onUserCreated()
+      toast.success('Usuario creado exitosamente')
       onClose()
+      onUserCreated()
     } catch (error) {
-      console.error('Error al crear usuario:', error)
       toast.error(error instanceof Error ? error.message : 'Error al crear usuario')
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2 text-xl">
-            <FiUser className="h-6 w-6 text-primary-600" />
-            <span>Nuevo Usuario</span>
-          </DialogTitle>
+          <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+          <DialogDescription>
+            Complete el formulario para crear un nuevo usuario en el sistema.
+          </DialogDescription>
         </DialogHeader>
-
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 overflow-y-auto pr-2">
-            <div className="space-y-6">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center space-x-2 mb-4">
-                  <FiUser className="h-5 w-5 text-blue-600" />
-                  <h3 className="font-semibold text-gray-900">Información Personal</h3>
-                </div>
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="nombre"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nombre</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nombre del usuario" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input placeholder="email@ejemplo.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center space-x-2 mb-4">
-                  <FiLock className="h-5 w-5 text-red-600" />
-                  <h3 className="font-semibold text-gray-900">Seguridad</h3>
-                </div>
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Contraseña</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center space-x-2 mb-4">
-                  <FiShield className="h-5 w-5 text-purple-600" />
-                  <h3 className="font-semibold text-gray-900">Permisos</h3>
-                </div>
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="rol"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Rol</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccione un rol" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                            <SelectItem value="ADMIN">Admin</SelectItem>
-                            <SelectItem value="GERENTE_GENERAL">Gerente General</SelectItem>
-                            <SelectItem value="PROJECT_MANAGER">Project Manager</SelectItem>
-                            <SelectItem value="SALES_MANAGER">Sales Manager</SelectItem>
-                            <SelectItem value="FINANCE_MANAGER">Finance Manager</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-            </div>
-
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="nombre"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nombre</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <FiUser className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        {...field}
+                        placeholder="Nombre completo"
+                        className="pl-10"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <FiMail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        {...field}
+                        type="email"
+                        placeholder="correo@ejemplo.com"
+                        className="pl-10"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contraseña</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <FiLock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        {...field}
+                        type="password"
+                        placeholder="••••••••"
+                        className="pl-10"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="rol"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Rol</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione un rol" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {getAvailableRoles().map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {ROLE_LABELS[role]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                className="mr-2"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-primary-600 hover:bg-primary-700 text-white"
-              >
-                {isSubmitting ? 'Creando...' : 'Crear Usuario'}
-              </Button>
+              <Button type="submit">Crear Usuario</Button>
             </DialogFooter>
           </form>
         </Form>

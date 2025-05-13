@@ -16,9 +16,17 @@ interface Proyecto {
   nombre: string
   descripcion: string
   direccion: string
+  departamento: string | null
+  provincia: string | null
+  distrito: string | null
+  latitud: number | null
+  longitud: number | null
   fechaInicio: Date
   fechaFin: Date | null
-  presupuesto: number
+  precioTerreno: number | null
+  inversionInicial: number | null
+  inversionTotal: number | null
+  inversionActual: number | null
   estado: string
   empresaDesarrolladoraId: string
   gerenteId: string
@@ -35,110 +43,88 @@ interface Proyecto {
   gerente: Usuario
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const usuario = await prisma.usuario.findUnique({
-      where: { email: session.user.email! },
-      select: { id: true, rol: true }
+    const proyectos = await prisma.proyecto.findMany({
+      include: {
+        creadoPor: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        },
+        aprobadoPor: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        },
+        gerente: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        },
+        empresaDesarrolladora: {
+          select: {
+            id: true,
+            nombre: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
     })
 
-    if (!usuario) {
-      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
-    }
-
-    // Filtrar proyectos según el rol del usuario
-    let proyectos
-    switch (usuario.rol) {
-      case 'SUPER_ADMIN':
-      case 'ADMIN':
-      case 'GERENTE_GENERAL':
-        // Pueden ver todos los proyectos
-        proyectos = await prisma.proyecto.findMany({
-          include: {
-            creadoPor: {
-              select: {
-                id: true,
-                nombre: true,
-                email: true
-              }
-            },
-            aprobadoPor: {
-              select: {
-                id: true,
-                nombre: true,
-                email: true
-              }
-            },
-            gerente: {
-              select: {
-                id: true,
-                nombre: true,
-                email: true
-              }
-            }
-          }
-        })
-        break
-      case 'PROJECT_MANAGER':
-        // Solo ve los proyectos que maneja
-        proyectos = await prisma.proyecto.findMany({
-          where: {
-            gerenteId: usuario.id
-          },
-          include: {
-            creadoPor: {
-              select: {
-                id: true,
-                nombre: true,
-                email: true
-              }
-            },
-            aprobadoPor: {
-              select: {
-                id: true,
-                nombre: true,
-                email: true
-              }
-            },
-            gerente: {
-              select: {
-                id: true,
-                nombre: true,
-                email: true
-              }
-            }
-          }
-        })
-        break
-      default:
-        return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
-    }
-
-    // Transformar los nombres de los campos al formato en inglés para mantener la compatibilidad
-    const projects = proyectos.map((proyecto: Proyecto) => ({
+    const projects = proyectos.map((proyecto) => ({
       id: proyecto.id,
       name: proyecto.nombre,
       description: proyecto.descripcion,
       location: proyecto.direccion,
+      departamento: proyecto.departamento,
+      provincia: proyecto.provincia,
+      distrito: proyecto.distrito,
+      latitud: proyecto.latitud,
+      longitud: proyecto.longitud,
       startDate: proyecto.fechaInicio,
       endDate: proyecto.fechaFin,
-      budget: proyecto.presupuesto,
+      precioTerreno: proyecto.precioTerreno,
+      inversionInicial: proyecto.inversionInicial,
+      inversionTotal: proyecto.inversionTotal,
+      inversionActual: proyecto.inversionActual,
       status: proyecto.estado,
+      developerCompanyId: proyecto.empresaDesarrolladoraId,
+      developerCompany: proyecto.empresaDesarrolladora ? {
+        id: proyecto.empresaDesarrolladora.id,
+        name: proyecto.empresaDesarrolladora.nombre
+      } : null,
+      managerId: proyecto.gerenteId,
+      createdById: proyecto.creadoPorId,
+      type: proyecto.tipo,
+      totalArea: proyecto.areaTotal,
+      usableArea: proyecto.areaUtil,
+      totalUnits: proyecto.cantidadUnidades,
       createdBy: {
         id: proyecto.creadoPor.id,
         name: proyecto.creadoPor.nombre,
         email: proyecto.creadoPor.email
       },
-      approvedBy: proyecto.aprobadoPor ? {
-        id: proyecto.aprobadoPor.id,
-        name: proyecto.aprobadoPor.nombre,
-        email: proyecto.aprobadoPor.email
-      } : null,
+      approvedBy: proyecto.aprobadoPor
+        ? {
+            id: proyecto.aprobadoPor.id,
+            name: proyecto.aprobadoPor.nombre,
+            email: proyecto.aprobadoPor.email
+          }
+        : null,
       manager: {
         id: proyecto.gerente.id,
         name: proyecto.gerente.nombre,
@@ -172,39 +158,70 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
-    // Solo PROJECT_MANAGER puede crear proyectos
-    if (usuario.rol !== 'PROJECT_MANAGER') {
+    // Solo los roles autorizados pueden crear proyectos
+    if (!['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER'].includes(usuario.rol)) {
       return NextResponse.json(
-        { error: 'Solo los gerentes de proyecto pueden crear proyectos' },
+        { error: 'No tienes permiso para crear proyectos' },
         { status: 403 }
       )
     }
 
     const data = await request.json()
-    const { name, description, location, startDate, endDate, budget, developerCompanyId, type } = data
+    const {
+      name,
+      description,
+      location,
+      departamento,
+      provincia,
+      distrito,
+      latitud,
+      longitud,
+      startDate,
+      endDate,
+      precioTerreno,
+      inversionInicial,
+      inversionTotal,
+      inversionActual,
+      developerCompanyId,
+      type,
+      totalArea,
+      usableArea,
+      totalUnits
+    } = data
 
     // Validar datos requeridos
-    if (!name || !description || !location || !startDate || !budget || !developerCompanyId || !type) {
+    if (!name || !description || !location || !startDate || !developerCompanyId || !type) {
       return NextResponse.json(
         { error: 'Faltan campos requeridos' },
         { status: 400 }
       )
     }
 
-    // Crear el proyecto
+    // Crear el proyecto con estado PENDING_APPROVAL
     const proyecto = await prisma.proyecto.create({
       data: {
         nombre: name,
         descripcion: description,
         direccion: location,
+        departamento: departamento || null,
+        provincia: provincia || null,
+        distrito: distrito || null,
+        latitud: latitud ? parseFloat(latitud) : null,
+        longitud: longitud ? parseFloat(longitud) : null,
         fechaInicio: new Date(startDate),
         fechaFin: endDate ? new Date(endDate) : null,
-        presupuesto: parseFloat(budget),
-        estado: 'PENDING_APPROVAL',
-        creadoPorId: usuario.id,
-        gerenteId: usuario.id,
+        precioTerreno: precioTerreno ? parseFloat(precioTerreno) : null,
+        inversionInicial: inversionInicial ? parseFloat(inversionInicial) : null,
+        inversionTotal: inversionTotal ? parseFloat(inversionTotal) : null,
+        inversionActual: inversionActual ? parseFloat(inversionActual) : null,
         empresaDesarrolladoraId: developerCompanyId,
-        tipo: type
+        tipo: type,
+        areaTotal: totalArea ? parseFloat(totalArea) : null,
+        areaUtil: usableArea ? parseFloat(usableArea) : null,
+        cantidadUnidades: totalUnits ? parseInt(totalUnits) : null,
+        estado: 'PENDING_APPROVAL',
+        gerenteId: usuario.id,
+        creadoPorId: usuario.id
       }
     })
 
@@ -214,14 +231,29 @@ export async function POST(request: Request) {
       name: proyecto.nombre,
       description: proyecto.descripcion,
       location: proyecto.direccion,
+      departamento: proyecto.departamento,
+      provincia: proyecto.provincia,
+      distrito: proyecto.distrito,
+      latitud: proyecto.latitud,
+      longitud: proyecto.longitud,
       startDate: proyecto.fechaInicio,
       endDate: proyecto.fechaFin,
-      budget: proyecto.presupuesto,
+      precioTerreno: proyecto.precioTerreno,
+      inversionInicial: proyecto.inversionInicial,
+      inversionTotal: proyecto.inversionTotal,
+      inversionActual: proyecto.inversionActual,
       status: proyecto.estado,
       developerCompanyId: proyecto.empresaDesarrolladoraId,
+      developerCompany: proyecto.empresaDesarrolladora ? {
+        id: proyecto.empresaDesarrolladora.id,
+        name: proyecto.empresaDesarrolladora.nombre
+      } : null,
       managerId: proyecto.gerenteId,
       createdById: proyecto.creadoPorId,
-      type: proyecto.tipo
+      type: proyecto.tipo,
+      totalArea: proyecto.areaTotal,
+      usableArea: proyecto.areaUtil,
+      totalUnits: proyecto.cantidadUnidades
     }
 
     return NextResponse.json(project)

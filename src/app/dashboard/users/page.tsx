@@ -39,6 +39,21 @@ export default function UsersPage() {
     fetchUsers()
   }
 
+  const canCreateUsers = [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'GERENTE_GENERAL',
+    'SALES_MANAGER',
+    'PROJECT_MANAGER',
+    'FINANCE_MANAGER'
+  ].includes(session?.user?.role as Rol)
+
+  const canManageEmpresas = [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'GERENTE_GENERAL'
+  ].includes(session?.user?.role as Rol)
+
   if (loading) {
     return <div>Cargando...</div>
   }

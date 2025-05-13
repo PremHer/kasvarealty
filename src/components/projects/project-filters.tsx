@@ -1,17 +1,16 @@
 import { FiX } from 'react-icons/fi'
-
-type ProjectStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+import { EstadoProyecto } from '@/types/project'
 
 interface ProjectFiltersProps {
   filters: {
-    status: string
+    status: 'ALL' | EstadoProyecto
     search: string
   }
-  onFilterChange: (filters: { status: string; search: string }) => void
+  onFilterChange: (filters: { status: 'ALL' | EstadoProyecto; search: string }) => void
   onClose: () => void
 }
 
-const statusOptions: { value: 'ALL' | ProjectStatus; label: string }[] = [
+const statusOptions: { value: 'ALL' | EstadoProyecto; label: string }[] = [
   { value: 'ALL', label: 'Todos los estados' },
   { value: 'DRAFT', label: 'Borrador' },
   { value: 'PENDING_APPROVAL', label: 'Pendiente de Aprobación' },

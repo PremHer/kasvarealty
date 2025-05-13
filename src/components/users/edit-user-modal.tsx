@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { FiUser, FiMail, FiShield } from 'react-icons/fi'
+import { useSession } from 'next-auth/react'
 
 import {
   Dialog,
@@ -12,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -67,39 +69,82 @@ export default function EditUserModal({
   onUserUpdated,
 }: EditUserModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { data: session } = useSession()
+
+  const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
+    SUPER_ADMIN: ['ADMIN', 'GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
+    ADMIN: ['GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
+    GERENTE_GENERAL: ['SALES_MANAGER', 'PROJECT_MANAGER', 'FINANCE_MANAGER', 'INVESTOR', 'GUEST'],
+    SALES_MANAGER: ['SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'GUEST'],
+    PROJECT_MANAGER: ['CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'GUEST'],
+    FINANCE_MANAGER: ['ACCOUNTANT', 'FINANCE_ASSISTANT', 'GUEST'],
+    DEVELOPER: ['GUEST'],
+    SALES_REP: ['GUEST'],
+    SALES_ASSISTANT: ['GUEST'],
+    SALES_COORDINATOR: ['GUEST'],
+    CONSTRUCTION_SUPERVISOR: ['GUEST'],
+    QUALITY_CONTROL: ['GUEST'],
+    PROJECT_ASSISTANT: ['GUEST'],
+    ACCOUNTANT: ['GUEST'],
+    FINANCE_ASSISTANT: ['GUEST'],
+    INVESTOR: ['GUEST'],
+    GUEST: []
+  }
+
+  const ROLE_LABELS: Record<Rol, string> = {
+    SUPER_ADMIN: 'Super Administrador',
+    ADMIN: 'Administrador',
+    GERENTE_GENERAL: 'Gerente General',
+    DEVELOPER: 'Desarrollador',
+    SALES_MANAGER: 'Gerente de Ventas',
+    SALES_REP: 'Representante de Ventas',
+    SALES_ASSISTANT: 'Asistente de Ventas',
+    SALES_COORDINATOR: 'Coordinador de Ventas',
+    PROJECT_MANAGER: 'Gerente de Proyectos',
+    CONSTRUCTION_SUPERVISOR: 'Supervisor de Construcción',
+    QUALITY_CONTROL: 'Control de Calidad',
+    PROJECT_ASSISTANT: 'Asistente de Proyectos',
+    FINANCE_MANAGER: 'Gerente Financiero',
+    ACCOUNTANT: 'Contador',
+    FINANCE_ASSISTANT: 'Asistente Financiero',
+    INVESTOR: 'Inversionista',
+    GUEST: 'Invitado'
+  }
+
+  const getAvailableRoles = () => {
+    if (!currentUserRole) return []
+    return ROLE_HIERARCHY[currentUserRole] || []
+  }
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      nombre: user.nombre,
-      email: user.email,
-      rol: user.rol,
-    },
+      nombre: user?.nombre || '',
+      email: user?.email || '',
+      rol: user?.rol || ''
+    }
   })
 
-  async function onSubmit(values: FormValues) {
+  const onSubmit = async (data: FormValues) => {
     try {
-      setIsSubmitting(true)
-      const response = await fetch(`/api/users/${user.id}`, {
+      const response = await fetch(`/api/users/${user?.id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(data)
       })
 
       if (!response.ok) {
-        throw new Error('Error al actualizar usuario')
+        const error = await response.json()
+        throw new Error(error.message || 'Error al actualizar usuario')
       }
 
-      toast.success('Usuario actualizado correctamente')
-      onUserUpdated()
+      toast.success('Usuario actualizado exitosamente')
       onClose()
+      onUserUpdated()
     } catch (error) {
-      console.error('Error al actualizar usuario:', error)
-      toast.error('Error al actualizar usuario')
-    } finally {
-      setIsSubmitting(false)
+      toast.error(error instanceof Error ? error.message : 'Error al actualizar usuario')
     }
   }
 
@@ -111,6 +156,9 @@ export default function EditUserModal({
             <FiUser className="h-6 w-6 text-primary-600" />
             <span>Editar Usuario</span>
           </DialogTitle>
+          <DialogDescription>
+            Modifique la información del usuario según sea necesario.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -129,7 +177,14 @@ export default function EditUserModal({
                       <FormItem>
                         <FormLabel>Nombre</FormLabel>
                         <FormControl>
-                          <Input placeholder="Nombre del usuario" {...field} />
+                          <div className="relative">
+                            <FiUser className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input
+                              {...field}
+                              placeholder="Nombre completo"
+                              className="pl-10"
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -143,7 +198,15 @@ export default function EditUserModal({
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input placeholder="email@ejemplo.com" {...field} />
+                          <div className="relative">
+                            <FiMail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Input
+                              {...field}
+                              type="email"
+                              placeholder="correo@ejemplo.com"
+                              className="pl-10"
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -174,12 +237,11 @@ export default function EditUserModal({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                            <SelectItem value="ADMIN">Admin</SelectItem>
-                            <SelectItem value="GERENTE_GENERAL">Gerente General</SelectItem>
-                            <SelectItem value="PROJECT_MANAGER">Project Manager</SelectItem>
-                            <SelectItem value="SALES_MANAGER">Sales Manager</SelectItem>
-                            <SelectItem value="FINANCE_MANAGER">Finance Manager</SelectItem>
+                            {getAvailableRoles().map((role) => (
+                              <SelectItem key={role} value={role}>
+                                {ROLE_LABELS[role]}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />

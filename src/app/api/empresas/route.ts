@@ -31,7 +31,13 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json(empresas)
+    // Transformar la respuesta para incluir el número de proyectos
+    const empresasFormateadas = empresas.map(empresa => ({
+      ...empresa,
+      numeroProyectos: empresa._count.proyectos
+    }))
+
+    return NextResponse.json(empresasFormateadas)
   } catch (error) {
     console.error('Error al obtener empresas:', error)
     return new NextResponse('Error interno del servidor', { status: 500 })

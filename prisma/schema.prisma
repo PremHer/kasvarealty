@@ -8,15 +8,23 @@ datasource db {
 }
 
 model EmpresaDesarrolladora {
-  id                   String   @id @default(cuid())
-  nombre               String   @unique
-  ruc                  String   @unique
-  representanteLegalId String
+  id                   String    @id @default(cuid())
+  nombre               String
+  ruc                  String    @unique
   direccion            String
-  telefono             String
-  email                String
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  telefono             String?
+  email                String?
+  website              String?
+  logo                 String?
+  descripcion          String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  isActive             Boolean   @default(true)
+  createdBy            String?
+  updatedBy            String?
+  representanteLegalId String?
+  representanteLegal   Usuario?  @relation("RepresentanteLegal", fields: [representanteLegalId], references: [id])
+  usuarios             Usuario[] @relation("EmpresaUsuario")
 
   // Nuevos campos
   bancos              TipoBanco[]
@@ -24,36 +32,40 @@ model EmpresaDesarrolladora {
   numeroProyectos     Int                    @default(0)
 
   // Relaciones
-  representanteLegal Usuario @relation("RepresentanteLegal", fields: [representanteLegalId], references: [id])
-  proyectos          Proyecto[]
+  proyectos Proyecto[]
+
+  @@map("empresas_desarrolladoras")
 }
 
 model Usuario {
-  id                     String     @id @default(cuid())
-  nombre                 String
-  email                  String     @unique
-  password               String
-  rol                    Rol        @default(GUEST)
-  createdAt              DateTime   @default(now())
-  updatedAt              DateTime   @updatedAt
-  resetToken             String?    @unique
-  resetTokenExpiry       DateTime?
-  isActive               Boolean    @default(true)
-  lastLogin              DateTime?
-  profile                Json?
-  permissions            Json?
-  createdBy              String?
+  id                      String                  @id @default(cuid())
+  email                   String                  @unique
+  password                String
+  nombre                  String
+  rol                     Rol                     @default(GUEST)
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  resetToken              String?
+  resetTokenExpiry        DateTime?
+  isActive                Boolean                 @default(true)
+  lastLogin               DateTime?
+  empresaDesarrolladoraId String?
+  empresaDesarrolladora   EmpresaDesarrolladora?  @relation("EmpresaUsuario", fields: [empresaDesarrolladoraId], references: [id])
+  createdBy               String?
+  updatedBy               String?
+  // Relación opuesta para representante legal
+  empresasRepresentante   EmpresaDesarrolladora[] @relation("RepresentanteLegal")
 
   // Relaciones
-  proyectosGestionados   Proyecto[]  @relation("ProjectManager")
-  proyectosCreados       Proyecto[]  @relation("ProjectCreator")
-  proyectosAprobados     Proyecto[]  @relation("ProjectApprover")
-  proyectosMiembro       Proyecto[]  @relation("ProjectMembers")
-  actividades            Actividad[]
-  documentos             Documento[]
-  comentarios            Comentario[]
-  // Solo usuarios con rol GERENTE_GENERAL pueden ser representantes legales
-  empresasRepresentante  EmpresaDesarrolladora[] @relation("RepresentanteLegal")
+  proyectosGestionados Proyecto[]   @relation("ProjectManager")
+  proyectosCreados     Proyecto[]   @relation("ProjectCreator")
+  proyectosAprobados   Proyecto[]   @relation("ProjectApprover")
+  proyectosMiembro     Proyecto[]   @relation("ProjectMembers")
+  actividades          Actividad[]
+  documentos           Documento[]
+  comentarios          Comentario[]
+
+  @@map("usuarios")
 }
 
 model Proyecto {
@@ -62,10 +74,18 @@ model Proyecto {
   tipo                    TipoProyecto
   descripcion             String
   direccion               String
+  departamento            String?
+  provincia               String?
+  distrito                String?
+  latitud                 Float?
+  longitud                Float?
   empresaDesarrolladoraId String
   fechaInicio             DateTime
   fechaFin                DateTime?
-  presupuesto             Float
+  precioTerreno           Float?         @map("precio_terreno")
+  inversionInicial        Float?         @map("inversion_inicial")
+  inversionTotal          Float?         @map("inversion_total")
+  inversionActual         Float?         @map("inversion_actual")
   estado                  EstadoProyecto @default(DRAFT)
   gerenteId               String
   creadoPorId             String
@@ -88,6 +108,8 @@ model Proyecto {
   actividades           Actividad[]
   documentos            Documento[]
   comentarios           Comentario[]
+
+  @@index([latitud, longitud])
 }
 
 model UnidadInmobiliaria {
