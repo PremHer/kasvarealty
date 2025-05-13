@@ -15,6 +15,14 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // No permitir editar el propio registro
+    if (session.user.id === params.userId) {
+      return NextResponse.json(
+        { error: 'No puedes editar tu propio registro' },
+        { status: 403 }
+      )
+    }
+
     const userRole = session.user.role as Rol
     const canEditUsers = [
       'SUPER_ADMIN',
@@ -115,6 +123,14 @@ export async function DELETE(
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // No permitir eliminar el propio registro
+    if (session.user.id === params.userId) {
+      return NextResponse.json(
+        { error: 'No puedes eliminar tu propio registro' },
+        { status: 403 }
+      )
     }
 
     const userRole = session.user.role as Rol
