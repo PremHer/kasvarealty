@@ -17,25 +17,7 @@ import {
 } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
 import Logo from '@/components/ui/logo'
-
-type Rol = 
-  | 'SUPER_ADMIN'
-  | 'ADMIN'
-  | 'GERENTE_GENERAL'
-  | 'DEVELOPER'
-  | 'SALES_MANAGER'
-  | 'SALES_REP'
-  | 'SALES_ASSISTANT'
-  | 'SALES_COORDINATOR'
-  | 'PROJECT_MANAGER'
-  | 'CONSTRUCTION_SUPERVISOR'
-  | 'QUALITY_CONTROL'
-  | 'PROJECT_ASSISTANT'
-  | 'FINANCE_MANAGER'
-  | 'ACCOUNTANT'
-  | 'FINANCE_ASSISTANT'
-  | 'INVESTOR'
-  | 'GUEST'
+import type { Rol } from '@prisma/client'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: FiHome },
@@ -53,12 +35,24 @@ export default function Navbar() {
 
   useEffect(() => {
     if (session?.user?.role) {
-      setUserRole(session.user.role)
+      setUserRole(session.user.role as Rol)
     }
   }, [session])
 
-  const canManageUsers = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'GERENTE_GENERAL'
-  const canManageEmpresas = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'GERENTE_GENERAL'
+  const canManageUsers = [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'GERENTE_GENERAL',
+    'SALES_MANAGER',
+    'PROJECT_MANAGER',
+    'FINANCE_MANAGER'
+  ].includes(userRole as Rol)
+
+  const canManageEmpresas = [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'GERENTE_GENERAL'
+  ].includes(userRole as Rol)
 
   return (
     <nav className="bg-white border-b border-gray-100">

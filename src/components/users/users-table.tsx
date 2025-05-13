@@ -39,13 +39,72 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
   const { toast, currentToast } = useToast()
   const { data: session } = useSession()
 
-  const canEditUsers = ['SUPER_ADMIN', 'ADMIN'].includes(session?.user?.role || '')
+  const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
+    SUPER_ADMIN: ['ADMIN', 'GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
+    ADMIN: ['GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
+    GERENTE_GENERAL: ['SALES_MANAGER', 'PROJECT_MANAGER', 'FINANCE_MANAGER', 'INVESTOR', 'GUEST'],
+    SALES_MANAGER: ['SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'GUEST'],
+    PROJECT_MANAGER: ['CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'GUEST'],
+    FINANCE_MANAGER: ['ACCOUNTANT', 'FINANCE_ASSISTANT', 'GUEST'],
+    DEVELOPER: ['GUEST'],
+    SALES_REP: ['GUEST'],
+    SALES_ASSISTANT: ['GUEST'],
+    SALES_COORDINATOR: ['GUEST'],
+    CONSTRUCTION_SUPERVISOR: ['GUEST'],
+    QUALITY_CONTROL: ['GUEST'],
+    PROJECT_ASSISTANT: ['GUEST'],
+    ACCOUNTANT: ['GUEST'],
+    FINANCE_ASSISTANT: ['GUEST'],
+    INVESTOR: ['GUEST'],
+    GUEST: []
+  }
+
+  const canCreateUsers = [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'GERENTE_GENERAL',
+    'SALES_MANAGER',
+    'PROJECT_MANAGER',
+    'FINANCE_MANAGER'
+  ].includes(session?.user?.role as Rol)
+
+  const canEditUsers = (userRole: Rol) => {
+    const currentUserRole = session?.user?.role as Rol
+    if (!currentUserRole) return false
+
+    // SUPER_ADMIN puede editar a cualquiera
+    if (currentUserRole === 'SUPER_ADMIN') return true
+
+    // ADMIN puede editar a cualquiera excepto SUPER_ADMIN
+    if (currentUserRole === 'ADMIN') return userRole !== 'SUPER_ADMIN'
+
+    // Los gerentes solo pueden editar usuarios de su área
+    const allowedRoles = ROLE_HIERARCHY[currentUserRole] || []
+    return allowedRoles.includes(userRole)
+  }
+
+  const canDeleteUsers = (userRole: Rol) => {
+    const currentUserRole = session?.user?.role as Rol
+    if (!currentUserRole) return false
+
+    // SUPER_ADMIN puede eliminar a cualquiera excepto a sí mismo
+    if (currentUserRole === 'SUPER_ADMIN') return true
+
+    // ADMIN puede eliminar a cualquiera excepto SUPER_ADMIN, ADMIN y a sí mismo
+    if (currentUserRole === 'ADMIN') {
+      return userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN'
+    }
+
+    // Los gerentes solo pueden eliminar usuarios de su área
+    const allowedRoles = ROLE_HIERARCHY[currentUserRole] || []
+    return allowedRoles.includes(userRole)
+  }
 
   const handleEdit = (user: User) => {
-    if (!canEditUsers) {
+    if (!canEditUsers(user.rol)) {
       toast({
         title: 'Error',
-        description: 'No tienes permisos para editar usuarios',
+        description: 'No tienes permisos para editar este usuario',
         variant: 'destructive'
       })
       return
@@ -55,10 +114,10 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
   }
 
   const handleDelete = async (user: User) => {
-    if (!canEditUsers) {
+    if (!canDeleteUsers(user.rol)) {
       toast({
         title: 'Error',
-        description: 'No tienes permisos para eliminar usuarios',
+        description: 'No tienes permisos para eliminar este usuario',
         variant: 'destructive'
       })
       return
@@ -124,7 +183,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
           <h2 className="text-2xl font-bold text-gray-900">Usuarios del Sistema</h2>
           <p className="mt-1 text-sm text-gray-500">Gestiona los usuarios y sus permisos</p>
         </div>
-        {canEditUsers && (
+        {canCreateUsers && (
           <Button 
             onClick={() => setIsNewModalOpen(true)}
             className="bg-primary-600 hover:bg-primary-700 text-white shadow-sm"
@@ -196,29 +255,29 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
                         >
                           <FiEye className="h-4 w-4" />
                         </Button>
-                        {canEditUsers && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(user)}
-                              disabled={isDeleting}
-                              title="Editar"
-                              className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                            >
-                              <FiEdit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(user)}
-                              disabled={isDeleting}
-                              title="Eliminar"
-                              className="text-gray-600 hover:text-red-600 hover:bg-red-50"
-                            >
-                              <FiTrash2 className="h-4 w-4" />
-                            </Button>
-                          </>
+                        {canEditUsers(user.rol) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(user)}
+                            disabled={isDeleting}
+                            title="Editar"
+                            className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                          >
+                            <FiEdit2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDeleteUsers(user.rol) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(user)}
+                            disabled={isDeleting}
+                            title="Eliminar"
+                            className="text-gray-600 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <FiTrash2 className="h-4 w-4" />
+                          </Button>
                         )}
                       </div>
                     </td>
@@ -307,7 +366,6 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
       )}
 
       <NewUserModal
-        currentUserRole={session?.user?.role as Rol}
         isOpen={isNewModalOpen}
         onClose={() => setIsNewModalOpen(false)}
         onUserCreated={onUserCreated}
@@ -319,7 +377,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
           setDeleteDialogOpen(false)
           setUserToDelete(null)
         }}
-        onUserDeleted={handleDeleteConfirm}
+        onConfirm={handleDeleteConfirm}
         userId={userToDelete?.id || ''}
         userName={userToDelete?.nombre || ''}
       />

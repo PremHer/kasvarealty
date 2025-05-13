@@ -4,6 +4,17 @@ import { FiX } from 'react-icons/fi'
 import { useProjectForm } from '@/hooks/useProjectForm'
 import ProjectTypeSelect from './components/ProjectTypeSelect'
 import DeveloperCompanySelect from './components/DeveloperCompanySelect'
+import dynamic from 'next/dynamic'
+import { ProjectFormData } from '@/types/project'
+
+const MapPicker = dynamic(() => import('../MapPicker'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[400px] w-full rounded-lg overflow-hidden border border-gray-300 flex items-center justify-center bg-gray-50">
+      <p className="text-gray-500">Cargando mapa...</p>
+    </div>
+  )
+})
 
 interface NewProjectModalProps {
   onClose: () => void
@@ -15,7 +26,7 @@ export default function NewProjectModal({
   onProjectCreated
 }: NewProjectModalProps) {
   const { formData, handleChange, handleSubmit, isSubmitting, error } = useProjectForm({
-    onSubmit: async (data) => {
+    onSubmit: async (data: ProjectFormData) => {
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: {
@@ -23,16 +34,13 @@ export default function NewProjectModal({
         },
         body: JSON.stringify({
           ...data,
-          totalArea: parseFloat(data.totalArea),
-          usableArea: parseFloat(data.usableArea),
-          totalUnits: parseInt(data.totalUnits),
-          budget: parseFloat(data.budget)
+          status: 'PENDING_APPROVAL'
         })
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Error al crear el proyecto')
+        const error = await response.json()
+        throw new Error(error.message || 'Error al crear el proyecto')
       }
 
       onProjectCreated()
@@ -112,6 +120,136 @@ export default function NewProjectModal({
               </div>
             </div>
 
+            {/* Ubicación */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Ubicación</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Seleccione la ubicación en el mapa
+                  </label>
+                  <MapPicker 
+                    onLocationSelect={(location) => {
+                      const changes = [
+                        { name: 'location', value: location.direccion },
+                        { name: 'departamento', value: location.departamento || '' },
+                        { name: 'provincia', value: location.provincia || '' },
+                        { name: 'distrito', value: location.distrito || '' },
+                        { name: 'latitud', value: location.latitud.toString() },
+                        { name: 'longitud', value: location.longitud.toString() }
+                      ]
+                      changes.forEach(change => {
+                        handleChange({
+                          target: {
+                            name: change.name,
+                            value: change.value
+                          }
+                        } as React.ChangeEvent<HTMLInputElement>)
+                      })
+                    }}
+                    initialLocation={
+                      formData.latitud && formData.longitud
+                        ? {
+                            latitud: parseFloat(formData.latitud),
+                            longitud: parseFloat(formData.longitud)
+                          }
+                        : undefined
+                    }
+                  />
+                  <div className="mt-2 text-sm text-gray-500">
+                    Haz clic en el mapa para seleccionar la ubicación exacta del proyecto
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="departamento" className="block text-sm font-medium text-gray-700">
+                    Departamento
+                  </label>
+                  <input
+                    type="text"
+                    id="departamento"
+                    name="departamento"
+                    value={formData.departamento}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+                    placeholder="Ej: Lima"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="provincia" className="block text-sm font-medium text-gray-700">
+                    Provincia
+                  </label>
+                  <input
+                    type="text"
+                    id="provincia"
+                    name="provincia"
+                    value={formData.provincia}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+                    placeholder="Ej: Lima"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="distrito" className="block text-sm font-medium text-gray-700">
+                    Distrito
+                  </label>
+                  <input
+                    type="text"
+                    id="distrito"
+                    name="distrito"
+                    value={formData.distrito}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+                    placeholder="Ej: San Isidro"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+                    Dirección
+                  </label>
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+                    placeholder="Ej: Av. Primavera 123"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="latitud" className="block text-sm font-medium text-gray-700">
+                    Latitud
+                  </label>
+                  <input
+                    type="number"
+                    id="latitud"
+                    name="latitud"
+                    value={formData.latitud}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+                    step="any"
+                    readOnly
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="longitud" className="block text-sm font-medium text-gray-700">
+                    Longitud
+                  </label>
+                  <input
+                    type="number"
+                    id="longitud"
+                    name="longitud"
+                    value={formData.longitud}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+                    step="any"
+                    readOnly
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Empresa Desarrolladora */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Empresa Desarrolladora</h3>
@@ -132,18 +270,33 @@ export default function NewProjectModal({
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Información Financiera</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label htmlFor="budget" className="block text-sm font-medium text-gray-700">
-                    Presupuesto
+                  <label htmlFor="precioTerreno" className="block text-sm font-medium text-gray-700">
+                    Precio del Terreno
                   </label>
                   <input
                     type="number"
-                    id="budget"
-                    name="budget"
-                    value={formData.budget}
+                    id="precioTerreno"
+                    name="precioTerreno"
+                    value={formData.precioTerreno}
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
                     placeholder="0.00"
-                    required
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="inversionInicial" className="block text-sm font-medium text-gray-700">
+                    Inversión Inicial
+                  </label>
+                  <input
+                    type="number"
+                    id="inversionInicial"
+                    name="inversionInicial"
+                    value={formData.inversionInicial}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+                    placeholder="0.00"
                     min="0"
                     step="0.01"
                   />
@@ -159,51 +312,17 @@ export default function NewProjectModal({
                     value={formData.totalArea}
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
-                    placeholder="0"
-                    required
+                    placeholder="0.00"
                     min="0"
                     step="0.01"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="usableArea" className="block text-sm font-medium text-gray-700">
-                    Área Útil (m²)
-                  </label>
-                  <input
-                    type="number"
-                    id="usableArea"
-                    name="usableArea"
-                    value={formData.usableArea}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
-                    placeholder="0"
-                    required
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="totalUnits" className="block text-sm font-medium text-gray-700">
-                    Total de Unidades
-                  </label>
-                  <input
-                    type="number"
-                    id="totalUnits"
-                    name="totalUnits"
-                    value={formData.totalUnits}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
-                    placeholder="0"
-                    required
-                    min="0"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Fechas */}
+            {/* Información del Proyecto */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Fechas</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Información del Proyecto</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
@@ -219,24 +338,11 @@ export default function NewProjectModal({
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">
-                    Fecha de Finalización
-                  </label>
-                  <input
-                    type="date"
-                    id="endDate"
-                    name="endDate"
-                    value={formData.endDate}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
-                  />
-                </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end space-x-4">
+          <div className="flex justify-end space-x-4 mt-6 p-6 border-t border-gray-200">
             <button
               type="button"
               onClick={onClose}

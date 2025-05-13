@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ProjectFormData } from '@/types/project'
 
 interface UseProjectFormProps {
-  initialData?: ProjectFormData
+  initialData: ProjectFormData
   onSubmit: (data: ProjectFormData) => Promise<void>
 }
 
@@ -16,17 +16,8 @@ interface FormErrors {
 }
 
 export function useProjectForm({ initialData, onSubmit }: UseProjectFormProps) {
-  const [formData, setFormData] = useState<ProjectFormData>(initialData || {
-    name: '',
-    description: '',
-    location: '',
-    startDate: '',
-    type: 'CASA_INDIVIDUAL',
-    developerCompanyId: ''
-  })
+  const [formData, setFormData] = useState<ProjectFormData>(initialData)
   const [errors, setErrors] = useState<FormErrors>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string>('')
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
@@ -77,28 +68,21 @@ export function useProjectForm({ initialData, onSubmit }: UseProjectFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
     if (!validateForm()) {
       return
     }
 
     try {
-      setIsSubmitting(true)
       await onSubmit(formData)
     } catch (error) {
       console.error('Error al enviar el formulario:', error)
-      setError(error instanceof Error ? error.message : 'Error al enviar el formulario')
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
   return {
     formData,
     errors,
-    isSubmitting,
-    error,
     handleChange,
     handleSubmit
   }

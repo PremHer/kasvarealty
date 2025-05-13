@@ -18,7 +18,14 @@ export const authOptions: NextAuthOptions = {
           }
 
           const user = await prisma.usuario.findUnique({
-            where: { email: credentials.email }
+            where: { email: credentials.email },
+            include: {
+              empresaDesarrolladora: {
+                select: {
+                  id: true
+                }
+              }
+            }
           })
 
           if (!user) {
@@ -45,7 +52,8 @@ export const authOptions: NextAuthOptions = {
             id: user.id,
             name: user.nombre,
             email: user.email,
-            role: user.rol
+            role: user.rol,
+            empresaId: user.empresaDesarrolladora?.id
           }
         } catch (error) {
           console.error('Error en authorize:', error)
@@ -59,6 +67,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id
         token.role = user.role
+        token.empresaId = user.empresaId
       }
       return token
     },
@@ -66,6 +75,7 @@ export const authOptions: NextAuthOptions = {
       if (session?.user) {
         session.user.id = token.id
         session.user.role = token.role
+        session.user.empresaId = token.empresaId
       }
       return session
     }

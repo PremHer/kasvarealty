@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
+import type { Rol } from '@prisma/client'
 
 // PUT /api/users/[userId] - Actualizar usuario
 export async function PUT(
@@ -10,88 +11,98 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session) {
-      return new NextResponse('No autorizado', { status: 401 })
+    if (!session?.user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Obtener el usuario actual
-    const currentUser = await prisma.user.findUnique({
-      where: { email: session.user?.email! }
-    })
+    const userRole = session.user.role as Rol
+    const canEditUsers = [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'GERENTE_GENERAL',
+      'SALES_MANAGER',
+      'PROJECT_MANAGER',
+      'FINANCE_MANAGER'
+    ].includes(userRole)
 
-    if (!currentUser) {
-      return new NextResponse('Usuario no encontrado', { status: 404 })
+    if (!canEditUsers) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
     // Obtener el usuario a actualizar
-    const userToUpdate = await prisma.user.findUnique({
+    const userToUpdate = await prisma.usuario.findUnique({
       where: { id: params.userId }
     })
 
     if (!userToUpdate) {
-      return new NextResponse('Usuario no encontrado', { status: 404 })
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
     const body = await request.json()
-    const { name, email, role } = body
+    const { nombre, email, rol } = body
 
-    // Validar datos
-    if (!name || !email || !role) {
-      return new NextResponse('Faltan datos requeridos', { status: 400 })
+    // Verificar que el rol que se está asignando está permitido según la jerarquía
+    const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
+      SUPER_ADMIN: ['ADMIN', 'GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
+      ADMIN: ['GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
+      GERENTE_GENERAL: ['SALES_MANAGER', 'PROJECT_MANAGER', 'FINANCE_MANAGER', 'INVESTOR', 'GUEST'],
+      SALES_MANAGER: ['SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'GUEST'],
+      PROJECT_MANAGER: ['CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'GUEST'],
+      FINANCE_MANAGER: ['ACCOUNTANT', 'FINANCE_ASSISTANT', 'GUEST'],
+      DEVELOPER: ['GUEST'],
+      SALES_REP: ['GUEST'],
+      SALES_ASSISTANT: ['GUEST'],
+      SALES_COORDINATOR: ['GUEST'],
+      CONSTRUCTION_SUPERVISOR: ['GUEST'],
+      QUALITY_CONTROL: ['GUEST'],
+      PROJECT_ASSISTANT: ['GUEST'],
+      ACCOUNTANT: ['GUEST'],
+      FINANCE_ASSISTANT: ['GUEST'],
+      INVESTOR: ['GUEST'],
+      GUEST: []
     }
 
-    // Verificar permisos para editar
-    const canEdit = (() => {
-      if (currentUser.role === 'SUPER_ADMIN') return true
-      if (currentUser.role === 'ADMIN') return userToUpdate.role !== 'SUPER_ADMIN'
-      
-      // Permisos para gerentes
-      if (currentUser.role === 'SALES_MANAGER') {
-        return ['SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'GUEST'].includes(userToUpdate.role)
-      }
-      if (currentUser.role === 'PROJECT_MANAGER') {
-        return ['CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'GUEST'].includes(userToUpdate.role)
-      }
-      if (currentUser.role === 'FINANCE_MANAGER') {
-        return ['ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'].includes(userToUpdate.role)
-      }
-      return false
-    })()
-
-    if (!canEdit) {
-      return new NextResponse('No autorizado para editar este usuario', { status: 403 })
+    const allowedRoles = ROLE_HIERARCHY[userRole] || []
+    if (!allowedRoles.includes(rol)) {
+      return NextResponse.json(
+        { error: 'No tienes permisos para asignar este rol' },
+        { status: 403 }
+      )
     }
 
     // Verificar si el nuevo email ya existe (si se está cambiando)
     if (email !== userToUpdate.email) {
-      const existingUser = await prisma.user.findUnique({
+      const existingUser = await prisma.usuario.findUnique({
         where: { email }
       })
 
       if (existingUser) {
-        return new NextResponse('El email ya está registrado', { status: 400 })
+        return NextResponse.json(
+          { error: 'El email ya está registrado' },
+          { status: 400 }
+        )
       }
     }
 
     // Actualizar usuario
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.usuario.update({
       where: { id: params.userId },
       data: {
-        name,
+        nombre,
         email,
-        role
+        rol
       }
     })
 
-    return NextResponse.json({
-      id: updatedUser.id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      role: updatedUser.role
-    })
+    // No devolver la contraseña en la respuesta
+    const { password: _, ...userWithoutPassword } = updatedUser
+    return NextResponse.json(userWithoutPassword)
   } catch (error) {
-    console.error('Error:', error)
-    return new NextResponse('Error interno del servidor', { status: 500 })
+    console.error('Error al actualizar usuario:', error)
+    return NextResponse.json(
+      { error: 'Error al actualizar usuario' },
+      { status: 500 }
+    )
   }
 }
 
@@ -102,70 +113,76 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session) {
-      return new NextResponse('No autorizado', { status: 401 })
+    if (!session?.user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Obtener el usuario actual
-    const currentUser = await prisma.user.findUnique({
-      where: { email: session.user?.email! }
-    })
+    const userRole = session.user.role as Rol
+    const canDeleteUsers = [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'GERENTE_GENERAL',
+      'SALES_MANAGER',
+      'PROJECT_MANAGER',
+      'FINANCE_MANAGER'
+    ].includes(userRole)
 
-    if (!currentUser) {
-      return new NextResponse('Usuario no encontrado', { status: 404 })
+    if (!canDeleteUsers) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
     // Obtener el usuario a eliminar
-    const userToDelete = await prisma.user.findUnique({
+    const userToDelete = await prisma.usuario.findUnique({
       where: { id: params.userId }
     })
 
     if (!userToDelete) {
-      return new NextResponse('Usuario no encontrado', { status: 404 })
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      )
     }
 
-    // Verificar permisos para eliminar
-    const canDelete = (() => {
-      // SUPER_ADMIN puede eliminar a cualquiera excepto a sí mismo
-      if (currentUser.role === 'SUPER_ADMIN') {
-        return userToDelete.id !== currentUser.id
-      }
+    // Verificar que el usuario que se está eliminando tiene un rol permitido según la jerarquía
+    const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
+      SUPER_ADMIN: ['ADMIN', 'GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
+      ADMIN: ['GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
+      GERENTE_GENERAL: ['SALES_MANAGER', 'PROJECT_MANAGER', 'FINANCE_MANAGER', 'INVESTOR', 'GUEST'],
+      SALES_MANAGER: ['SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'GUEST'],
+      PROJECT_MANAGER: ['CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'GUEST'],
+      FINANCE_MANAGER: ['ACCOUNTANT', 'FINANCE_ASSISTANT', 'GUEST'],
+      DEVELOPER: ['GUEST'],
+      SALES_REP: ['GUEST'],
+      SALES_ASSISTANT: ['GUEST'],
+      SALES_COORDINATOR: ['GUEST'],
+      CONSTRUCTION_SUPERVISOR: ['GUEST'],
+      QUALITY_CONTROL: ['GUEST'],
+      PROJECT_ASSISTANT: ['GUEST'],
+      ACCOUNTANT: ['GUEST'],
+      FINANCE_ASSISTANT: ['GUEST'],
+      INVESTOR: ['GUEST'],
+      GUEST: []
+    }
 
-      // ADMIN puede eliminar a cualquiera excepto SUPER_ADMIN, ADMIN y a sí mismo
-      if (currentUser.role === 'ADMIN') {
-        return userToDelete.role !== 'SUPER_ADMIN' && 
-               userToDelete.role !== 'ADMIN' && 
-               userToDelete.id !== currentUser.id
-      }
-
-      // Los gerentes solo pueden eliminar usuarios de su área
-      if (currentUser.role === 'SALES_MANAGER') {
-        return ['SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'GUEST'].includes(userToDelete.role)
-      }
-
-      if (currentUser.role === 'PROJECT_MANAGER') {
-        return ['CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'GUEST'].includes(userToDelete.role)
-      }
-
-      if (currentUser.role === 'FINANCE_MANAGER') {
-        return ['ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'].includes(userToDelete.role)
-      }
-
-      return false
-    })()
-
-    if (!canDelete) {
-      return new NextResponse('No autorizado para eliminar este usuario', { status: 403 })
+    const allowedRoles = ROLE_HIERARCHY[userRole] || []
+    if (!allowedRoles.includes(userToDelete.rol)) {
+      return NextResponse.json(
+        { error: 'No tienes permisos para eliminar este usuario' },
+        { status: 403 }
+      )
     }
 
     // Eliminar usuario
-    await prisma.user.delete({
+    await prisma.usuario.delete({
       where: { id: params.userId }
     })
 
-    return new NextResponse(null, { status: 204 })
+    return NextResponse.json({ message: 'Usuario eliminado exitosamente' })
   } catch (error) {
-    console.error('Error:', error)
-    return new NextResponse('Error interno del servidor', { status: 500 })
+    console.error('Error al eliminar usuario:', error)
+    return NextResponse.json(
+      { error: 'Error al eliminar usuario' },
+      { status: 500 }
+    )
   }
 } 

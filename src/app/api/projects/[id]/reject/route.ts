@@ -22,11 +22,21 @@ export async function POST(
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
-    // Solo los gerentes generales y administradores pueden aprobar proyectos
+    // Solo los gerentes generales y administradores pueden rechazar proyectos
     if (!['GERENTE_GENERAL', 'ADMIN', 'SUPER_ADMIN'].includes(usuario.rol)) {
       return NextResponse.json(
-        { error: 'No tienes permiso para aprobar proyectos' },
+        { error: 'No tienes permiso para rechazar proyectos' },
         { status: 403 }
+      )
+    }
+
+    const data = await request.json()
+    const { rejectionReason } = data
+
+    if (!rejectionReason) {
+      return NextResponse.json(
+        { error: 'Se requiere una razón para rechazar el proyecto' },
+        { status: 400 }
       )
     }
 
@@ -50,13 +60,14 @@ export async function POST(
       )
     }
 
-    // Actualizar el estado del proyecto a APPROVED
+    // Actualizar el estado del proyecto a REJECTED
     const proyecto = await prisma.proyecto.update({
       where: { id: params.id },
       data: {
-        estado: 'APPROVED',
+        estado: 'REJECTED',
         aprobadoPorId: usuario.id,
-        fechaAprobacion: new Date()
+        fechaAprobacion: new Date(),
+        razonRechazo: rejectionReason
       }
     })
 
@@ -83,6 +94,7 @@ export async function POST(
       createdById: proyecto.creadoPorId,
       approvedById: proyecto.aprobadoPorId,
       approvedAt: proyecto.fechaAprobacion,
+      rejectionReason: proyecto.razonRechazo,
       type: proyecto.tipo,
       totalArea: proyecto.areaTotal,
       usableArea: proyecto.areaUtil,
@@ -91,9 +103,9 @@ export async function POST(
 
     return NextResponse.json(project)
   } catch (error) {
-    console.error('Error al aprobar proyecto:', error)
+    console.error('Error al rechazar proyecto:', error)
     return NextResponse.json(
-      { error: 'Error al aprobar proyecto' },
+      { error: 'Error al rechazar proyecto' },
       { status: 500 }
     )
   }
