@@ -5,7 +5,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiEye, FiX, FiUser, FiMail, FiShield, FiCale
 import { Button } from '@/components/ui/button'
 import EditUserModal from './edit-user-modal'
 import NewUserModal from './new-user-modal'
-import DeleteUserAlert from './delete-user-alert'
+import { DeleteUserAlert } from './delete-user-alert'
 import { useToast } from '@/components/ui/use-toast'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -28,15 +28,42 @@ interface UsersTableProps {
   onUserCreated: () => void
 }
 
+const ROLE_TRANSLATIONS: Record<Rol, string> = {
+  SUPER_ADMIN: 'Super Administrador',
+  ADMIN: 'Administrador',
+  GERENTE_GENERAL: 'Gerente General',
+  SALES_MANAGER: 'Gerente de Ventas',
+  SALES_REP: 'Representante de Ventas',
+  SALES_ASSISTANT: 'Asistente de Ventas',
+  SALES_COORDINATOR: 'Coordinador de Ventas',
+  PROJECT_MANAGER: 'Gerente de Proyectos',
+  CONSTRUCTION_SUPERVISOR: 'Supervisor de Construcción',
+  QUALITY_CONTROL: 'Control de Calidad',
+  PROJECT_ASSISTANT: 'Asistente de Proyectos',
+  FINANCE_MANAGER: 'Gerente Financiero',
+  ACCOUNTANT: 'Contador',
+  FINANCE_ASSISTANT: 'Asistente Financiero',
+  INVESTOR: 'Inversionista',
+  GUEST: 'Invitado',
+  DEVELOPER: 'Desarrollador'
+}
+
 export default function UsersTable({ users, onUserUpdated, onUserCreated }: UsersTableProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [selectedUserDetails, setSelectedUserDetails] = useState<User | null>(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
-  const { toast, currentToast } = useToast()
+  const [associatedData, setAssociatedData] = useState<{
+    proyectos: number
+    proyectosList: string[]
+    ventas: number
+    ventasList: string[]
+    actividades: number
+    actividadesList: string[]
+  } | null>(null)
+  const { toast } = useToast()
   const { data: session } = useSession()
 
   const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
@@ -68,24 +95,34 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
     'FINANCE_MANAGER'
   ].includes(session?.user?.role as Rol)
 
-  const canEditUsers = (userRole: Rol) => {
+  const canEditUsers = (userRole: Rol, userId: string) => {
     const currentUserRole = session?.user?.role as Rol
+    const currentUserId = session?.user?.id
     if (!currentUserRole) return false
 
-    // SUPER_ADMIN puede editar a cualquiera
+    // No permitir editar el propio registro
+    if (currentUserId === userId) return false
+
+    // SUPER_ADMIN puede editar a cualquiera excepto a sí mismo
     if (currentUserRole === 'SUPER_ADMIN') return true
 
-    // ADMIN puede editar a cualquiera excepto SUPER_ADMIN
-    if (currentUserRole === 'ADMIN') return userRole !== 'SUPER_ADMIN'
+    // ADMIN puede editar a cualquiera excepto SUPER_ADMIN, ADMIN y a sí mismo
+    if (currentUserRole === 'ADMIN') {
+      return userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN'
+    }
 
     // Los gerentes solo pueden editar usuarios de su área
     const allowedRoles = ROLE_HIERARCHY[currentUserRole] || []
     return allowedRoles.includes(userRole)
   }
 
-  const canDeleteUsers = (userRole: Rol) => {
+  const canDeleteUsers = (userRole: Rol, userId: string) => {
     const currentUserRole = session?.user?.role as Rol
+    const currentUserId = session?.user?.id
     if (!currentUserRole) return false
+
+    // No permitir eliminar el propio registro
+    if (currentUserId === userId) return false
 
     // SUPER_ADMIN puede eliminar a cualquiera excepto a sí mismo
     if (currentUserRole === 'SUPER_ADMIN') return true
@@ -101,7 +138,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
   }
 
   const handleEdit = (user: User) => {
-    if (!canEditUsers(user.rol)) {
+    if (!canEditUsers(user.rol, user.id)) {
       toast({
         title: 'Error',
         description: 'No tienes permisos para editar este usuario',
@@ -114,7 +151,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
   }
 
   const handleDelete = async (user: User) => {
-    if (!canDeleteUsers(user.rol)) {
+    if (!canDeleteUsers(user.rol, user.id)) {
       toast({
         title: 'Error',
         description: 'No tienes permisos para eliminar este usuario',
@@ -122,8 +159,23 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
       })
       return
     }
-    setUserToDelete(user)
-    setDeleteDialogOpen(true)
+
+    try {
+      // Obtener datos asociados antes de mostrar el diálogo
+      const response = await fetch(`/api/users/${user.id}/associated-data`)
+      if (response.ok) {
+        const data = await response.json()
+        setAssociatedData(data)
+      }
+      setUserToDelete(user)
+    } catch (error) {
+      console.error('Error al obtener datos asociados:', error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al obtener datos asociados"
+      })
+    }
   }
 
   const handleDeleteConfirm = async () => {
@@ -154,8 +206,8 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
       })
     } finally {
       setIsDeleting(false)
-      setDeleteDialogOpen(false)
       setUserToDelete(null)
+      setAssociatedData(null)
     }
   }
 
@@ -167,17 +219,47 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
     setSelectedUserDetails(null)
   }
 
+  const handleToggleStatus = async (user: User) => {
+    if (!canEditUsers(user.rol, user.id)) {
+      toast({
+        title: 'Error',
+        description: 'No tienes permisos para modificar este usuario',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/users/${user.id}/toggle-status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isActive: !user.isActive }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar el estado del usuario')
+      }
+
+      toast({
+        title: 'Estado actualizado',
+        description: `El usuario ha sido ${user.isActive ? 'desactivado' : 'activado'} exitosamente`,
+      })
+
+      onUserUpdated()
+    } catch (error) {
+      console.error('Error al actualizar estado:', error)
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar el estado del usuario',
+        variant: 'destructive',
+      })
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {currentToast && (
-        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg ${
-          currentToast.variant === 'destructive' ? 'bg-red-500' : 'bg-green-500'
-        } text-white z-50`}>
-          <h3 className="font-bold">{currentToast.title}</h3>
-          <p>{currentToast.description}</p>
-        </div>
-      )}
-
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Usuarios del Sistema</h2>
@@ -236,7 +318,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
                     </td>
                     <td className="px-6 py-4">
                       <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
-                        {user.rol ? user.rol.replace(/_/g, ' ') : 'Sin rol'}
+                        {ROLE_TRANSLATIONS[user.rol] || 'Sin rol'}
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
@@ -255,19 +337,34 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
                         >
                           <FiEye className="h-4 w-4" />
                         </Button>
-                        {canEditUsers(user.rol) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(user)}
-                            disabled={isDeleting}
-                            title="Editar"
-                            className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                          >
-                            <FiEdit2 className="h-4 w-4" />
-                          </Button>
+                        {canEditUsers(user.rol, user.id) && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleStatus(user)}
+                              title={user.isActive ? "Desactivar usuario" : "Activar usuario"}
+                              className={`text-gray-600 hover:${user.isActive ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
+                            >
+                              {user.isActive ? (
+                                <FiX className="h-4 w-4" />
+                              ) : (
+                                <FiUser className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(user)}
+                              disabled={isDeleting}
+                              title="Editar"
+                              className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                            >
+                              <FiEdit2 className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
-                        {canDeleteUsers(user.rol) && (
+                        {canDeleteUsers(user.rol, user.id) && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -306,7 +403,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
                     </div>
                     <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
                       <FiShield className="h-5 w-5 text-blue-500" />
-                      <span className="text-base text-gray-700">{selectedUserDetails.rol ? selectedUserDetails.rol.replace(/_/g, ' ') : 'Sin rol'}</span>
+                      <span className="text-base text-gray-700">{ROLE_TRANSLATIONS[selectedUserDetails.rol] || 'Sin rol'}</span>
                     </div>
                     <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
                       <Badge variant={selectedUserDetails.isActive ? "success" : "destructive"}>
@@ -371,16 +468,44 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
         onUserCreated={onUserCreated}
       />
 
-      <DeleteUserAlert
-        isOpen={deleteDialogOpen}
-        onClose={() => {
-          setDeleteDialogOpen(false)
-          setUserToDelete(null)
-        }}
-        onConfirm={handleDeleteConfirm}
-        userId={userToDelete?.id || ''}
-        userName={userToDelete?.nombre || ''}
-      />
+      {userToDelete && (
+        <DeleteUserAlert
+          isOpen={!!userToDelete}
+          onClose={() => {
+            setUserToDelete(null)
+            setAssociatedData(null)
+          }}
+          onConfirm={async () => {
+            try {
+              const response = await fetch(`/api/users/${userToDelete.id}`, {
+                method: 'DELETE',
+              })
+
+              if (!response.ok) {
+                const error = await response.json()
+                throw new Error(error.message || 'Error al eliminar usuario')
+              }
+
+              toast({
+                title: "Éxito",
+                description: "Usuario eliminado correctamente"
+              })
+              setUserToDelete(null)
+              setAssociatedData(null)
+              onUserUpdated()
+            } catch (error) {
+              console.error('Error al eliminar usuario:', error)
+              toast({
+                variant: "destructive",
+                title: "Error",
+                description: error instanceof Error ? error.message : 'Error al eliminar usuario'
+              })
+            }
+          }}
+          userName={userToDelete.nombre}
+          associatedData={associatedData || undefined}
+        />
+      )}
     </div>
   )
 } 
