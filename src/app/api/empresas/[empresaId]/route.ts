@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { empresaId: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -44,7 +44,7 @@ export async function GET(
     }
 
     const empresa = await prisma.empresaDesarrolladora.findUnique({
-      where: { id: params.id },
+      where: { id: params.empresaId },
       include: {
         representanteLegal: {
           select: {
@@ -83,7 +83,7 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { empresaId: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -133,7 +133,7 @@ export async function PUT(
 
     const empresa = await prisma.empresaDesarrolladora.update({
       where: {
-        id: params.id
+        id: params.empresaId
       },
       data: {
         nombre,
@@ -165,7 +165,7 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { empresaId: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -174,9 +174,30 @@ export async function DELETE(
       return new NextResponse('No autorizado', { status: 401 })
     }
 
+    // Verificar si hay proyectos asociados
+    const proyectosAsociados = await prisma.proyecto.findMany({
+      where: {
+        empresaDesarrolladoraId: params.empresaId
+      },
+      select: {
+        id: true,
+        nombre: true
+      }
+    })
+
+    if (proyectosAsociados.length > 0) {
+      return new NextResponse(
+        JSON.stringify({
+          message: 'No se puede eliminar la empresa porque tiene proyectos asociados',
+          proyectos: proyectosAsociados
+        }),
+        { status: 400 }
+      )
+    }
+
     await prisma.empresaDesarrolladora.delete({
       where: {
-        id: params.id
+        id: params.empresaId
       }
     })
 

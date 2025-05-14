@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { FiAlertTriangle, FiTrash2, FiX } from 'react-icons/fi'
@@ -14,6 +14,11 @@ interface DeleteEmpresaAlertProps {
   onEmpresaDeleted: () => void
 }
 
+interface AssociatedData {
+  proyectos: number
+  proyectosList: string[]
+}
+
 export default function DeleteEmpresaAlert({
   empresaId,
   empresaNombre,
@@ -22,9 +27,40 @@ export default function DeleteEmpresaAlert({
   onEmpresaDeleted
 }: DeleteEmpresaAlertProps) {
   const [isDeleting, setIsDeleting] = useState(false)
+  const [associatedData, setAssociatedData] = useState<AssociatedData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
+  useEffect(() => {
+    const fetchAssociatedData = async () => {
+      if (isOpen && empresaId) {
+        try {
+          const response = await fetch(`/api/empresas/${empresaId}/associated-data`)
+          if (response.ok) {
+            const data = await response.json()
+            setAssociatedData(data)
+          }
+        } catch (error) {
+          console.error('Error al obtener datos asociados:', error)
+        } finally {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    fetchAssociatedData()
+  }, [isOpen, empresaId])
+
   const handleDelete = async () => {
+    if (associatedData?.proyectos && associatedData.proyectos > 0) {
+      toast({
+        title: 'No se puede eliminar',
+        description: 'La empresa tiene proyectos asociados que deben ser eliminados primero',
+        variant: 'destructive'
+      })
+      return
+    }
+
     setIsDeleting(true)
 
     try {
@@ -55,6 +91,8 @@ export default function DeleteEmpresaAlert({
     }
   }
 
+  const hasAssociatedProjects = associatedData?.proyectos && associatedData.proyectos > 0
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
@@ -65,25 +103,53 @@ export default function DeleteEmpresaAlert({
           </DialogTitle>
           <DialogDescription className="pt-4">
             <div className="space-y-4">
-              <p className="text-gray-600">
-                ¿Estás seguro que deseas eliminar la empresa <span className="font-semibold text-gray-900">{empresaNombre}</span>?
-              </p>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <FiAlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-red-800">Esta acción no se puede deshacer</p>
-                    <p className="text-sm text-red-600">
-                      Se eliminarán todos los datos asociados a esta empresa, incluyendo proyectos y registros relacionados.
-                    </p>
+              {isLoading ? (
+                <p>Cargando información...</p>
+              ) : hasAssociatedProjects ? (
+                <div className="space-y-4">
+                  <p className="text-gray-600">
+                    No se puede eliminar la empresa <span className="font-semibold text-gray-900">{empresaNombre}</span> porque tiene proyectos asociados.
+                  </p>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <FiAlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-red-800">Proyectos asociados ({associatedData.proyectos}):</p>
+                        <ul className="list-disc list-inside text-sm text-red-600">
+                          {associatedData.proyectosList.map((proyecto, index) => (
+                            <li key={index}>{proyecto}</li>
+                          ))}
+                        </ul>
+                        <p className="text-sm text-red-600 mt-2">
+                          Debes eliminar o reasignar estos proyectos antes de eliminar la empresa.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <p className="text-gray-600">
+                    ¿Estás seguro que deseas eliminar la empresa <span className="font-semibold text-gray-900">{empresaNombre}</span>?
+                  </p>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <FiAlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-red-800">Esta acción no se puede deshacer</p>
+                        <p className="text-sm text-red-600">
+                          Se eliminarán todos los datos asociados a esta empresa.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="flex space-x-2 sm:space-x-0">
+        <DialogFooter>
           <Button
             type="button"
             variant="outline"
@@ -92,25 +158,27 @@ export default function DeleteEmpresaAlert({
           >
             Cancelar
           </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="bg-red-600 hover:bg-red-700 text-white"
-          >
-            {isDeleting ? (
-              <>
-                <FiTrash2 className="mr-2 h-4 w-4 animate-pulse" />
-                Eliminando...
-              </>
-            ) : (
-              <>
-                <FiTrash2 className="mr-2 h-4 w-4" />
-                Eliminar Empresa
-              </>
-            )}
-          </Button>
+          {!hasAssociatedProjects && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? (
+                <>
+                  <FiTrash2 className="mr-2 h-4 w-4 animate-pulse" />
+                  Eliminando...
+                </>
+              ) : (
+                <>
+                  <FiTrash2 className="mr-2 h-4 w-4" />
+                  Eliminar Empresa
+                </>
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
