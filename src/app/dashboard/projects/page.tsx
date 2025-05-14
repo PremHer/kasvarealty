@@ -7,6 +7,7 @@ import { Project, EstadoProyecto } from '@/types/project'
 import ProjectList from '@/components/projects/ProjectList'
 import ProjectFilters from '@/components/projects/project-filters'
 import NewProjectModal from '@/components/projects/new-project-modal'
+import { useRouter } from 'next/navigation'
 
 interface Filters {
   status: 'ALL' | EstadoProyecto
@@ -23,6 +24,7 @@ interface Session {
 
 export default function ProjectsPage() {
   const { data: session } = useSession() as { data: Session | null }
+  const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
@@ -32,11 +34,24 @@ export default function ProjectsPage() {
     search: ''
   })
 
-  const canCreateProject = ['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER'].includes(session?.user?.role || '')
-
   useEffect(() => {
+    if (!session?.user) {
+      router.push('/auth/signin')
+      return
+    }
+
+    // Verificar si el usuario tiene permiso para ver proyectos
+    const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER']
+    if (!allowedRoles.includes(session.user.role || '')) {
+      router.push('/dashboard')
+      return
+    }
+
     fetchProjects()
-  }, [])
+  }, [session, router])
+
+  // Permitir crear proyectos a todos los roles que pueden ver proyectos
+  const canCreateProject = ['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER'].includes(session?.user?.role || '')
 
   const fetchProjects = async () => {
     try {

@@ -26,7 +26,20 @@ export type TipoProyecto =
   | 'COMPLEJO_DEPORTIVO'
   | 'PARQUE_INDUSTRIAL'
 
-export type EstadoProyecto = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+export type EstadoProyecto = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'EN_PROGRESO' | 'COMPLETADO' | 'CANCELADO'
+
+export interface DeveloperCompany {
+  id: string
+  name: string
+  ruc: string
+  representanteLegalId: string
+}
+
+export interface User {
+  id: string
+  name: string
+  email: string
+}
 
 export interface Project {
   id: string
@@ -38,39 +51,24 @@ export interface Project {
   distrito: string | null
   latitud: number | null
   longitud: number | null
-  startDate: string
-  endDate: string | null
+  startDate: Date
+  endDate: Date | null
   precioTerreno: number | null
   inversionInicial: number | null
   inversionTotal: number | null
   inversionActual: number | null
-  status: string
+  status: EstadoProyecto
   developerCompanyId: string
-  developerCompany: {
-    id: string
-    name: string
-  } | null
+  developerCompany: DeveloperCompany | null
   managerId: string
   createdById: string
   type: string
   totalArea: number | null
   usableArea: number | null
   totalUnits: number | null
-  createdBy: {
-    id: string
-    name: string
-    email: string
-  }
-  approvedBy: {
-    id: string
-    name: string
-    email: string
-  } | null
-  manager: {
-    id: string
-    name: string
-    email: string
-  }
+  createdBy: User
+  approvedBy: User | null
+  manager: User
 }
 
 export interface ProjectFormData {
@@ -88,10 +86,4 @@ export interface ProjectFormData {
   precioTerreno?: string
   inversionInicial?: string
   totalArea?: string
-}
-
-export interface DeveloperCompany {
-  id: string
-  name: string
-  ruc: string
 } 

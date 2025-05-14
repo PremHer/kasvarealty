@@ -50,7 +50,41 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Obtener el usuario y su rol
+    const usuario = await prisma.usuario.findUnique({
+      where: { email: session.user.email! },
+      select: { rol: true, id: true }
+    })
+
+    if (!usuario) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    }
+
+    // Verificar si el usuario tiene permiso para ver proyectos
+    if (!['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER'].includes(usuario.rol)) {
+      return NextResponse.json([], { status: 200 })
+    }
+
+    // Construir la condición where según el rol
+    let whereClause = {}
+    
+    if (usuario.rol === 'PROJECT_MANAGER') {
+      // Project Manager solo ve sus proyectos asignados
+      whereClause = {
+        gerenteId: usuario.id
+      }
+    } else if (usuario.rol === 'GERENTE_GENERAL') {
+      // Gerente General solo ve proyectos de su empresa donde es representante legal
+      whereClause = {
+        empresaDesarrolladora: {
+          representanteLegalId: usuario.id
+        }
+      }
+    }
+    // SUPER_ADMIN y ADMIN ven todos los proyectos (whereClause vacío)
+
     const proyectos = await prisma.proyecto.findMany({
+      where: whereClause,
       include: {
         creadoPor: {
           select: {
@@ -76,7 +110,8 @@ export async function GET(request: Request) {
         empresaDesarrolladora: {
           select: {
             id: true,
-            nombre: true
+            nombre: true,
+            representanteLegalId: true
           }
         }
       },
