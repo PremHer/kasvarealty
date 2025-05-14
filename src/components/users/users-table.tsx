@@ -166,8 +166,8 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
       if (response.ok) {
         const data = await response.json()
         setAssociatedData(data)
-      }
-      setUserToDelete(user)
+    }
+    setUserToDelete(user)
     } catch (error) {
       console.error('Error al obtener datos asociados:', error)
       toast({
@@ -352,16 +352,16 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
                                 <FiUser className="h-4 w-4" />
                               )}
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(user)}
-                              disabled={isDeleting}
-                              title="Editar"
-                              className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                            >
-                              <FiEdit2 className="h-4 w-4" />
-                            </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(user)}
+                            disabled={isDeleting}
+                            title="Editar"
+                            className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                          >
+                            <FiEdit2 className="h-4 w-4" />
+                          </Button>
                           </>
                         )}
                         {canDeleteUsers(user.rol, user.id) && (
@@ -469,9 +469,9 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
       />
 
       {userToDelete && (
-        <DeleteUserAlert
+      <DeleteUserAlert
           isOpen={!!userToDelete}
-          onClose={() => {
+        onClose={() => {
             setUserToDelete(null)
             setAssociatedData(null)
           }}
@@ -490,7 +490,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
                 title: "Éxito",
                 description: "Usuario eliminado correctamente"
               })
-              setUserToDelete(null)
+          setUserToDelete(null)
               setAssociatedData(null)
               onUserUpdated()
             } catch (error) {
@@ -504,7 +504,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
           }}
           userName={userToDelete.nombre}
           associatedData={associatedData || undefined}
-        />
+      />
       )}
     </div>
   )

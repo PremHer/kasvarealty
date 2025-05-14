@@ -122,12 +122,12 @@ export function DeleteUserAlert({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
           {!hasAssociatedProjects && (
-            <AlertDialogAction
-              onClick={onConfirm}
+          <AlertDialogAction
+            onClick={onConfirm}
               className="bg-red-600 hover:bg-red-700"
-            >
-              Eliminar
-            </AlertDialogAction>
+          >
+            Eliminar
+          </AlertDialogAction>
           )}
         </AlertDialogFooter>
       </AlertDialogContent>
