@@ -86,7 +86,14 @@ export async function GET(
         name: proyecto.creadoPor.nombre,
         email: proyecto.creadoPor.email
       },
-      approvedBy: proyecto.aprobadoPor
+      approvedBy: proyecto.estado === 'APPROVED' && proyecto.aprobadoPor
+        ? {
+            id: proyecto.aprobadoPor.id,
+            name: proyecto.aprobadoPor.nombre,
+            email: proyecto.aprobadoPor.email
+          }
+        : null,
+      rejectedBy: proyecto.estado === 'REJECTED' && proyecto.aprobadoPor
         ? {
             id: proyecto.aprobadoPor.id,
             name: proyecto.aprobadoPor.nombre,
@@ -97,7 +104,8 @@ export async function GET(
         id: proyecto.gerente.id,
         name: proyecto.gerente.nombre,
         email: proyecto.gerente.email
-      }
+      },
+      razonRechazo: proyecto.razonRechazo
     }
 
     return NextResponse.json(project)

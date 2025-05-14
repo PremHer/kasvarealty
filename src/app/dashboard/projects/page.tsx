@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { FiPlus, FiFilter } from 'react-icons/fi'
+import { FiPlus, FiFilter, FiAlertCircle } from 'react-icons/fi'
 import { Project, EstadoProyecto } from '@/types/project'
 import ProjectList from '@/components/projects/ProjectList'
 import ProjectFilters from '@/components/projects/project-filters'
 import NewProjectModal from '@/components/projects/new-project-modal'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface Filters {
   status: 'ALL' | EstadoProyecto
@@ -104,6 +105,15 @@ export default function ProjectsPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Proyectos</h1>
         <div className="flex space-x-4">
+          {session?.user?.role === 'GERENTE_GENERAL' && (
+            <Link
+              href="/dashboard/projects/pending"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+            >
+              <FiAlertCircle className="mr-2 h-5 w-5" />
+              Pendientes de Aprobación
+            </Link>
+          )}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
