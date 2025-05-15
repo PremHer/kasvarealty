@@ -14,6 +14,7 @@ const statusOptions: { value: 'ALL' | EstadoProyecto; label: string }[] = [
   { value: 'ALL', label: 'Todos los estados' },
   { value: 'DRAFT', label: 'Borrador' },
   { value: 'PENDING_APPROVAL', label: 'Pendiente de Aprobación' },
+  { value: 'PENDING_ASSIGNMENT', label: 'Pendiente de Asignación' },
   { value: 'APPROVED', label: 'Aprobado' },
   { value: 'REJECTED', label: 'Rechazado' },
   { value: 'IN_PROGRESS', label: 'En Progreso' },

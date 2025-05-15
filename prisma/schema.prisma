@@ -87,7 +87,7 @@ model Proyecto {
   inversionTotal          Float?         @map("inversion_total")
   inversionActual         Float?         @map("inversion_actual")
   estado                  EstadoProyecto @default(DRAFT)
-  gerenteId               String
+  gerenteId               String?
   creadoPorId             String
   aprobadoPorId           String?
   fechaAprobacion         DateTime?
@@ -100,7 +100,7 @@ model Proyecto {
 
   // Relaciones
   empresaDesarrolladora EmpresaDesarrolladora @relation(fields: [empresaDesarrolladoraId], references: [id])
-  gerente               Usuario               @relation("ProjectManager", fields: [gerenteId], references: [id])
+  gerente               Usuario?              @relation("ProjectManager", fields: [gerenteId], references: [id])
   creadoPor             Usuario               @relation("ProjectCreator", fields: [creadoPorId], references: [id])
   aprobadoPor           Usuario?              @relation("ProjectApprover", fields: [aprobadoPorId], references: [id])
   unidades              UnidadInmobiliaria[]
@@ -220,6 +220,7 @@ enum Rol {
 enum EstadoProyecto {
   DRAFT
   PENDING_APPROVAL
+  PENDING_ASSIGNMENT
   APPROVED
   REJECTED
   IN_PROGRESS

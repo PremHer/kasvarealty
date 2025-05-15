@@ -6,6 +6,7 @@ import ProjectTypeSelect from './components/ProjectTypeSelect'
 import DeveloperCompanySelect from './components/DeveloperCompanySelect'
 import dynamic from 'next/dynamic'
 import { ProjectFormData } from '@/types/project'
+import { useSession } from 'next-auth/react'
 
 const MapPicker = dynamic(() => import('../MapPicker'), {
   ssr: false,
@@ -25,6 +26,7 @@ export default function NewProjectModal({
   onClose,
   onProjectCreated
 }: NewProjectModalProps) {
+  const { data: session } = useSession()
   const { formData, handleChange, handleSubmit, isSubmitting, error } = useProjectForm({
     onSubmit: async (data: ProjectFormData) => {
       const response = await fetch('/api/projects', {
@@ -32,10 +34,7 @@ export default function NewProjectModal({
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...data,
-          status: 'PENDING_APPROVAL'
-        })
+        body: JSON.stringify(data)
       })
 
       if (!response.ok) {
@@ -44,12 +43,13 @@ export default function NewProjectModal({
       }
 
       onProjectCreated()
+      onClose()
     }
   })
 
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-4xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div>
             <h3 className="text-xl font-semibold text-gray-900">Nuevo Proyecto</h3>
@@ -156,9 +156,9 @@ export default function NewProjectModal({
                         : undefined
                     }
                   />
-                  <div className="mt-2 text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 mt-2">
                     Haz clic en el mapa para seleccionar la ubicación exacta del proyecto
-                  </div>
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="departamento" className="block text-sm font-medium text-gray-700">
@@ -342,7 +342,7 @@ export default function NewProjectModal({
             </div>
           </div>
 
-          <div className="flex justify-end space-x-4 mt-6 p-6 border-t border-gray-200">
+          <div className="flex justify-end space-x-3 mt-6">
             <button
               type="button"
               onClick={onClose}

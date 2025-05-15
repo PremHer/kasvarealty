@@ -15,15 +15,25 @@ interface FormErrors {
   developerCompanyId?: string
 }
 
+const initialFormData: ProjectFormData = {
+  name: '',
+  description: '',
+  location: '',
+  startDate: '',
+  type: 'CASA_INDIVIDUAL',
+  developerCompanyId: '',
+  departamento: '',
+  provincia: '',
+  distrito: '',
+  latitud: '',
+  longitud: '',
+  precioTerreno: '',
+  inversionInicial: '',
+  totalArea: ''
+}
+
 export function useProjectForm({ initialData, onSubmit }: UseProjectFormProps) {
-  const [formData, setFormData] = useState<ProjectFormData>(initialData || {
-    name: '',
-    description: '',
-    location: '',
-    startDate: '',
-    type: 'CASA_INDIVIDUAL',
-    developerCompanyId: ''
-  })
+  const [formData, setFormData] = useState<ProjectFormData>(initialData || initialFormData)
   const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string>('')
