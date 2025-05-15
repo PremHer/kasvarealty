@@ -26,7 +26,7 @@ export type TipoProyecto =
   | 'COMPLEJO_DEPORTIVO'
   | 'PARQUE_INDUSTRIAL'
 
-export type EstadoProyecto = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'EN_PROGRESO' | 'COMPLETADO' | 'CANCELADO'
+export type EstadoProyecto = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 
 export interface DeveloperCompany {
   id: string
@@ -46,29 +46,50 @@ export interface Project {
   name: string
   description: string
   location: string
-  departamento: string | null
-  provincia: string | null
-  distrito: string | null
-  latitud: number | null
-  longitud: number | null
-  startDate: Date
-  endDate: Date | null
-  precioTerreno: number | null
-  inversionInicial: number | null
-  inversionTotal: number | null
-  inversionActual: number | null
-  status: EstadoProyecto
+  departamento?: string
+  provincia?: string
+  distrito?: string
+  latitud?: number
+  longitud?: number
+  startDate: string
+  endDate?: string
+  precioTerreno?: number
+  inversionInicial?: number
+  inversionTotal?: number
+  inversionActual?: number
+  status: string
   developerCompanyId: string
-  developerCompany: DeveloperCompany | null
+  developerCompany?: {
+    id: string
+    name: string
+  }
   managerId: string
   createdById: string
   type: string
-  totalArea: number | null
-  usableArea: number | null
-  totalUnits: number | null
-  createdBy: User
-  approvedBy: User | null
-  manager: User
+  totalArea?: number
+  usableArea?: number
+  totalUnits?: number
+  createdBy: {
+    id: string
+    name: string
+    email: string
+  }
+  approvedBy?: {
+    id: string
+    name: string
+    email: string
+  }
+  rejectedBy?: {
+    id: string
+    name: string
+    email: string
+  }
+  manager: {
+    id: string
+    name: string
+    email: string
+  }
+  razonRechazo?: string
 }
 
 export interface ProjectFormData {

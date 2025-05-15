@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast'
 import EditProjectModal from '@/components/projects/edit-project-modal'
 import dynamic from 'next/dynamic'
 import { useSession } from 'next-auth/react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
 const MapPicker = dynamic(() => import('@/components/MapPicker'), {
   ssr: false,
@@ -163,7 +164,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between">
         <button
           onClick={() => router.back()}
@@ -183,160 +184,186 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         )}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-6">
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{project.name}</h1>
-              <div className="flex items-center space-x-4">
-                <span className="text-lg text-gray-600">{getProjectTypeLabel(project.type)}</span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(project.status)} flex items-center space-x-1`}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-blue-700">{project.name}</CardTitle>
+              <div className="flex items-center mt-2">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  project.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                  project.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
                   {getStatusIcon(project.status)}
-                  <span>{project.status}</span>
+                  <span className="ml-1">
+                    {project.status === 'APPROVED' ? 'Aprobado' :
+                     project.status === 'REJECTED' ? 'Rechazado' :
+                     'Pendiente de Aprobación'}
+                  </span>
                 </span>
               </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-6">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Información Básica</h2>
-                <div className="space-y-4">
-                  <div className="flex items-start text-gray-600">
-                    <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
-                    <div>
-                      <p className="font-medium">Empresa Desarrolladora</p>
-                      <p className="text-sm">{project.developerCompany?.name || 'No especificada'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start text-gray-600">
-                    <FiMapPin className="w-5 h-5 mr-3 mt-1 text-primary-500" />
-                    <div>
-                      <p className="font-medium">Ubicación</p>
-                      <p className="text-sm">{project.location}</p>
-                      <p className="text-sm text-gray-500">
-                        {[project.departamento, project.provincia, project.distrito]
-                          .filter(Boolean)
-                          .join(', ')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start text-gray-600">
-                    <FiCalendar className="w-5 h-5 mr-3 mt-1 text-primary-500" />
-                    <div>
-                      <p className="font-medium">Fechas</p>
-                      <p className="text-sm">Inicio: {formatDate(project.startDate)}</p>
-                      {project.endDate && (
-                        <p className="text-sm">Fin: {formatDate(project.endDate)}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Información Financiera</h2>
-                <div className="space-y-4">
-                  <div className="flex items-start text-gray-600">
-                    <FiDollarSign className="w-5 h-5 mr-3 mt-1 text-primary-500" />
-                    <div>
-                      <p className="font-medium">Inversiones</p>
-                      <p className="text-sm">Inicial: {formatCurrency(project.inversionInicial)}</p>
-                      <p className="text-sm">Total: {formatCurrency(project.inversionTotal)}</p>
-                      <p className="text-sm">Actual: {formatCurrency(project.inversionActual)}</p>
-                    </div>
-                  </div>
-                  {project.precioTerreno && (
-                    <div className="flex items-start text-gray-600">
-                      <FiDollarSign className="w-5 h-5 mr-3 mt-1 text-primary-500" />
-                      <div>
-                        <p className="font-medium">Precio del Terreno</p>
-                        <p className="text-sm">{formatCurrency(project.precioTerreno)}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Información Técnica</h2>
-                <div className="space-y-4">
-                  <div className="flex items-start text-gray-600">
-                    <FiHome className="w-5 h-5 mr-3 mt-1 text-primary-500" />
-                    <div>
-                      <p className="font-medium">Áreas</p>
-                      <p className="text-sm">Total: {project.totalArea ? `${project.totalArea} m²` : 'No especificada'}</p>
-                      <p className="text-sm">Útil: {project.usableArea ? `${project.usableArea} m²` : 'No especificada'}</p>
-                    </div>
-                  </div>
-                  {project.totalUnits && (
-                    <div className="flex items-start text-gray-600">
-                      <FiHome className="w-5 h-5 mr-3 mt-1 text-primary-500" />
-                      <div>
-                        <p className="font-medium">Unidades</p>
-                        <p className="text-sm">Total: {project.totalUnits}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Descripción</h2>
-                <p className="text-gray-600 whitespace-pre-wrap">{project.description}</p>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Ubicación en el Mapa</h2>
-                <div className="relative z-0">
-                  <MapPicker
-                    initialLocation={
-                      project.latitud && project.longitud
-                        ? {
-                            latitud: project.latitud,
-                            longitud: project.longitud
-                          }
-                        : undefined
-                    }
-                    readOnly
-                  />
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Equipo del Proyecto</h2>
-                <div className="space-y-4">
-                  <div className="flex items-start text-gray-600">
-                    <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
-                    <div>
-                      <p className="font-medium">Gerente</p>
-                      <p className="text-sm">{project.manager.name}</p>
-                      <p className="text-sm text-gray-500">{project.manager.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start text-gray-600">
-                    <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
-                    <div>
-                      <p className="font-medium">Creado por</p>
-                      <p className="text-sm">{project.createdBy.name}</p>
-                      <p className="text-sm text-gray-500">{project.createdBy.email}</p>
-                    </div>
-                  </div>
-                  {project.approvedBy && (
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Información Básica</h2>
+                  <div className="space-y-4">
                     <div className="flex items-start text-gray-600">
                       <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
                       <div>
-                        <p className="font-medium">Aprobado por</p>
-                        <p className="text-sm">{project.approvedBy.name}</p>
-                        <p className="text-sm text-gray-500">{project.approvedBy.email}</p>
+                        <p className="font-medium">Empresa Desarrolladora</p>
+                        <p className="text-sm">{project.developerCompany?.name || 'No especificada'}</p>
                       </div>
                     </div>
-                  )}
+                    <div className="flex items-start text-gray-600">
+                      <FiMapPin className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                      <div>
+                        <p className="font-medium">Ubicación</p>
+                        <p className="text-sm">{project.location}</p>
+                        <p className="text-sm text-gray-500">
+                          {[project.departamento, project.provincia, project.distrito]
+                            .filter(Boolean)
+                            .join(', ')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start text-gray-600">
+                      <FiCalendar className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                      <div>
+                        <p className="font-medium">Fechas</p>
+                        <p className="text-sm">Inicio: {formatDate(project.startDate)}</p>
+                        {project.endDate && (
+                          <p className="text-sm">Fin: {formatDate(project.endDate)}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Información Financiera</h2>
+                  <div className="space-y-4">
+                    <div className="flex items-start text-gray-600">
+                      <FiDollarSign className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                      <div>
+                        <p className="font-medium">Inversiones</p>
+                        <p className="text-sm">Inicial: {formatCurrency(project.inversionInicial)}</p>
+                        <p className="text-sm">Total: {formatCurrency(project.inversionTotal)}</p>
+                        <p className="text-sm">Actual: {formatCurrency(project.inversionActual)}</p>
+                      </div>
+                    </div>
+                    {project.precioTerreno && (
+                      <div className="flex items-start text-gray-600">
+                        <FiDollarSign className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                        <div>
+                          <p className="font-medium">Precio del Terreno</p>
+                          <p className="text-sm">{formatCurrency(project.precioTerreno)}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Información Técnica</h2>
+                  <div className="space-y-4">
+                    <div className="flex items-start text-gray-600">
+                      <FiHome className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                      <div>
+                        <p className="font-medium">Áreas</p>
+                        <p className="text-sm">Total: {project.totalArea ? `${project.totalArea} m²` : 'No especificada'}</p>
+                        <p className="text-sm">Útil: {project.usableArea ? `${project.usableArea} m²` : 'No especificada'}</p>
+                      </div>
+                    </div>
+                    {project.totalUnits && (
+                      <div className="flex items-start text-gray-600">
+                        <FiHome className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                        <div>
+                          <p className="font-medium">Unidades</p>
+                          <p className="text-sm">Total: {project.totalUnits}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {project.status === 'REJECTED' && project.razonRechazo && (
+                  <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <h3 className="text-sm font-medium text-red-800 flex items-center">
+                      <FiAlertCircle className="mr-2 h-4 w-4" />
+                      Motivo del Rechazo
+                    </h3>
+                    <p className="mt-2 text-red-700">{project.razonRechazo}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Descripción</h2>
+            <p className="text-gray-600 whitespace-pre-wrap">{project.description}</p>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Ubicación en el Mapa</h2>
+            <div className="relative z-0">
+              <MapPicker
+                initialLocation={
+                  project.latitud && project.longitud
+                    ? {
+                        latitud: project.latitud,
+                        longitud: project.longitud
+                      }
+                    : undefined
+                }
+                readOnly
+              />
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Equipo del Proyecto</h2>
+            <div className="space-y-4">
+              <div className="flex items-start text-gray-600">
+                <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                <div>
+                  <p className="font-medium">Gerente</p>
+                  <p className="text-sm">{project.manager.name}</p>
+                  <p className="text-sm text-gray-500">{project.manager.email}</p>
                 </div>
               </div>
+              <div className="flex items-start text-gray-600">
+                <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                <div>
+                  <p className="font-medium">Creado por</p>
+                  <p className="text-sm">{project.createdBy.name}</p>
+                  <p className="text-sm text-gray-500">{project.createdBy.email}</p>
+                </div>
+              </div>
+              {project.approvedBy && (
+                <div className="flex items-start text-gray-600">
+                  <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                  <div>
+                    <p className="font-medium">Aprobado por</p>
+                    <p className="text-sm">{project.approvedBy.name}</p>
+                    <p className="text-sm text-gray-500">{project.approvedBy.email}</p>
+                  </div>
+                </div>
+              )}
+              {project.rejectedBy && (
+                <div className="flex items-start text-gray-600">
+                  <FiUser className="w-5 h-5 mr-3 mt-1 text-red-500" />
+                  <div>
+                    <p className="font-medium text-red-600">Rechazado por</p>
+                    <p className="text-sm">{project.rejectedBy.name}</p>
+                    <p className="text-sm text-gray-500">{project.rejectedBy.email}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
