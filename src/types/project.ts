@@ -26,7 +26,15 @@ export type TipoProyecto =
   | 'COMPLEJO_DEPORTIVO'
   | 'PARQUE_INDUSTRIAL'
 
-export type EstadoProyecto = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+export type EstadoProyecto = 
+  | 'DRAFT' 
+  | 'PENDING_APPROVAL' 
+  | 'PENDING_ASSIGNMENT'
+  | 'APPROVED' 
+  | 'REJECTED' 
+  | 'IN_PROGRESS' 
+  | 'COMPLETED' 
+  | 'CANCELLED'
 
 export interface DeveloperCompany {
   id: string

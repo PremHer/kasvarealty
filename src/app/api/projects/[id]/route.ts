@@ -100,11 +100,13 @@ export async function GET(
             email: proyecto.aprobadoPor.email
           }
         : null,
-      manager: {
-        id: proyecto.gerente.id,
-        name: proyecto.gerente.nombre,
-        email: proyecto.gerente.email
-      },
+      manager: proyecto.gerente
+        ? {
+            id: proyecto.gerente.id,
+            name: proyecto.gerente.nombre,
+            email: proyecto.gerente.email
+          }
+        : null,
       razonRechazo: proyecto.razonRechazo
     }
 

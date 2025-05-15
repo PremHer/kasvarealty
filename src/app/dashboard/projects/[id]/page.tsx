@@ -63,6 +63,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const handleProjectUpdated = (updatedProject: Project) => {
     setProject(updatedProject)
+    setIsEditModalOpen(false)
     toast({
       title: 'Éxito',
       description: 'Proyecto actualizado correctamente',
@@ -217,6 +218,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                       </div>
                     </div>
                     <div className="flex items-start text-gray-600">
+                      <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                      <div>
+                        <p className="font-medium">Gerente del Proyecto</p>
+                        <p className="text-sm">{project.manager?.name || 'No asignado'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start text-gray-600">
                       <FiMapPin className="w-5 h-5 mr-3 mt-1 text-primary-500" />
                       <div>
                         <p className="font-medium">Ubicación</p>
@@ -328,22 +336,26 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           <div className="bg-gray-50 rounded-lg p-4">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Equipo del Proyecto</h2>
             <div className="space-y-4">
-              <div className="flex items-start text-gray-600">
-                <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
-                <div>
-                  <p className="font-medium">Gerente</p>
-                  <p className="text-sm">{project.manager.name}</p>
-                  <p className="text-sm text-gray-500">{project.manager.email}</p>
+              {project.manager && (
+                <div className="flex items-start text-gray-600">
+                  <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                  <div>
+                    <p className="font-medium">Gerente</p>
+                    <p className="text-sm">{project.manager.name}</p>
+                    <p className="text-sm text-gray-500">{project.manager.email}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-start text-gray-600">
-                <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
-                <div>
-                  <p className="font-medium">Creado por</p>
-                  <p className="text-sm">{project.createdBy.name}</p>
-                  <p className="text-sm text-gray-500">{project.createdBy.email}</p>
+              )}
+              {project.createdBy && (
+                <div className="flex items-start text-gray-600">
+                  <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
+                  <div>
+                    <p className="font-medium">Creado por</p>
+                    <p className="text-sm">{project.createdBy.name}</p>
+                    <p className="text-sm text-gray-500">{project.createdBy.email}</p>
+                  </div>
                 </div>
-              </div>
+              )}
               {project.approvedBy && (
                 <div className="flex items-start text-gray-600">
                   <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />

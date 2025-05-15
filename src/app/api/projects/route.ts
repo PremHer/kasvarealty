@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
+import { EstadoProyecto, TipoProyecto } from '@prisma/client'
 
 type Rol = 'SUPER_ADMIN' | 'ADMIN' | 'GERENTE_GENERAL' | 'PROJECT_MANAGER'
 
@@ -160,11 +161,13 @@ export async function GET(request: Request) {
             email: proyecto.aprobadoPor.email
           }
         : null,
-      manager: {
-        id: proyecto.gerente.id,
-        name: proyecto.gerente.nombre,
-        email: proyecto.gerente.email
-      }
+      manager: proyecto.gerente
+        ? {
+            id: proyecto.gerente.id,
+            name: proyecto.gerente.nombre,
+            email: proyecto.gerente.email
+          }
+        : null
     }))
 
     return NextResponse.json(projects)
@@ -195,73 +198,92 @@ export async function POST(request: Request) {
 
     // Solo los roles autorizados pueden crear proyectos
     if (!['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER'].includes(usuario.rol)) {
-      return NextResponse.json(
-        { error: 'No tienes permiso para crear proyectos' },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
     const data = await request.json()
-    const {
-      name,
-      description,
-      location,
-      departamento,
-      provincia,
-      distrito,
-      latitud,
-      longitud,
-      startDate,
-      endDate,
-      precioTerreno,
-      inversionInicial,
-      inversionTotal,
-      inversionActual,
-      developerCompanyId,
-      type,
-      totalArea,
-      usableArea,
-      totalUnits
-    } = data
 
-    // Validar datos requeridos
-    if (!name || !description || !location || !startDate || !developerCompanyId || !type) {
-      return NextResponse.json(
-        { error: 'Faltan campos requeridos' },
-        { status: 400 }
-      )
+    // Mapear los campos del inglés al español
+    const proyectoData = {
+      nombre: data.name,
+      descripcion: data.description,
+      direccion: data.location,
+      departamento: data.departamento,
+      provincia: data.provincia,
+      distrito: data.distrito,
+      latitud: data.latitud ? parseFloat(data.latitud) : null,
+      longitud: data.longitud ? parseFloat(data.longitud) : null,
+      fechaInicio: new Date(data.startDate),
+      fechaFin: data.endDate ? new Date(data.endDate) : null,
+      precioTerreno: data.precioTerreno ? parseFloat(data.precioTerreno) : null,
+      inversionInicial: data.inversionInicial ? parseFloat(data.inversionInicial) : null,
+      inversionTotal: data.inversionTotal ? parseFloat(data.inversionTotal) : null,
+      inversionActual: data.inversionActual ? parseFloat(data.inversionActual) : null,
+      areaTotal: data.totalArea ? parseFloat(data.totalArea) : null,
+      areaUtil: data.usableArea ? parseFloat(data.usableArea) : null,
+      cantidadUnidades: data.totalUnits ? parseInt(data.totalUnits) : null,
+      tipo: data.type,
+      empresaDesarrolladoraId: data.developerCompanyId
     }
 
-    // Crear el proyecto con estado PENDING_APPROVAL
+    // Determinar el estado inicial del proyecto y el gerente según el rol
+    let estadoInicial = EstadoProyecto.DRAFT
+    let aprobadoPorId = null
+    let fechaAprobacion = null
+    let gerenteId = null
+
+    if (['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL'].includes(usuario.rol)) {
+      // Si es admin, super admin o gerente general, el proyecto se crea aprobado
+      estadoInicial = EstadoProyecto.APPROVED
+      aprobadoPorId = usuario.id
+      fechaAprobacion = new Date()
+    } else if (usuario.rol === 'PROJECT_MANAGER') {
+      // Si es project manager, el proyecto se crea pendiente de aprobación
+      estadoInicial = EstadoProyecto.PENDING_APPROVAL
+      gerenteId = usuario.id // Se asigna automáticamente como gerente
+    }
+
     const proyecto = await prisma.proyecto.create({
       data: {
-        nombre: name,
-        descripcion: description,
-        direccion: location,
-        departamento: departamento || null,
-        provincia: provincia || null,
-        distrito: distrito || null,
-        latitud: latitud ? parseFloat(latitud) : null,
-        longitud: longitud ? parseFloat(longitud) : null,
-        fechaInicio: new Date(startDate),
-        fechaFin: endDate ? new Date(endDate) : null,
-        precioTerreno: precioTerreno ? parseFloat(precioTerreno) : null,
-        inversionInicial: inversionInicial ? parseFloat(inversionInicial) : null,
-        inversionTotal: inversionTotal ? parseFloat(inversionTotal) : null,
-        inversionActual: inversionActual ? parseFloat(inversionActual) : null,
-        empresaDesarrolladoraId: developerCompanyId,
-        tipo: type,
-        areaTotal: totalArea ? parseFloat(totalArea) : null,
-        areaUtil: usableArea ? parseFloat(usableArea) : null,
-        cantidadUnidades: totalUnits ? parseInt(totalUnits) : null,
-        estado: 'PENDING_APPROVAL',
-        gerenteId: usuario.id,
-        creadoPorId: usuario.id
+        ...proyectoData,
+        estado: estadoInicial,
+        creadoPorId: usuario.id,
+        aprobadoPorId,
+        fechaAprobacion,
+        gerenteId
+      },
+      include: {
+        creadoPor: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        },
+        aprobadoPor: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        },
+        gerente: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        },
+        empresaDesarrolladora: {
+          select: {
+            id: true,
+            nombre: true
+          }
+        }
       }
     })
 
-    // Transformar la respuesta al formato en inglés para mantener la compatibilidad
-    const project = {
+    return NextResponse.json({
       id: proyecto.id,
       name: proyecto.nombre,
       description: proyecto.descripcion,
@@ -288,10 +310,27 @@ export async function POST(request: Request) {
       type: proyecto.tipo,
       totalArea: proyecto.areaTotal,
       usableArea: proyecto.areaUtil,
-      totalUnits: proyecto.cantidadUnidades
-    }
-
-    return NextResponse.json(project)
+      totalUnits: proyecto.cantidadUnidades,
+      createdBy: {
+        id: proyecto.creadoPor.id,
+        name: proyecto.creadoPor.nombre,
+        email: proyecto.creadoPor.email
+      },
+      approvedBy: proyecto.aprobadoPor
+        ? {
+            id: proyecto.aprobadoPor.id,
+            name: proyecto.aprobadoPor.nombre,
+            email: proyecto.aprobadoPor.email
+          }
+        : null,
+      manager: proyecto.gerente
+        ? {
+            id: proyecto.gerente.id,
+            name: proyecto.gerente.nombre,
+            email: proyecto.gerente.email
+          }
+        : null
+    })
   } catch (error) {
     console.error('Error al crear proyecto:', error)
     return NextResponse.json(
