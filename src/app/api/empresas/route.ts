@@ -3,15 +3,35 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-
-    if (!session) {
-      return new NextResponse('No autorizado', { status: 401 })
+    if (!session?.user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    const usuario = await prisma.usuario.findUnique({
+      where: { email: session.user.email! },
+      select: { rol: true, id: true }
+    })
+
+    if (!usuario) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    }
+
+    // Construir la condición where según el rol
+    let whereClause = {}
+    
+    if (usuario.rol === 'GERENTE_GENERAL') {
+      // Gerente General solo ve empresas donde es representante legal
+      whereClause = {
+        representanteLegalId: usuario.id
+      }
+    }
+    // SUPER_ADMIN y ADMIN ven todas las empresas (whereClause vacío)
+
     const empresas = await prisma.empresaDesarrolladora.findMany({
+      where: whereClause,
       include: {
         representanteLegal: {
           select: {
@@ -19,28 +39,20 @@ export async function GET() {
             nombre: true,
             email: true
           }
-        },
-        _count: {
-          select: {
-            proyectos: true
-          }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        nombre: 'asc'
       }
     })
 
-    // Transformar la respuesta para incluir el número de proyectos
-    const empresasFormateadas = empresas.map(empresa => ({
-      ...empresa,
-      numeroProyectos: empresa._count.proyectos
-    }))
-
-    return NextResponse.json(empresasFormateadas)
+    return NextResponse.json(empresas)
   } catch (error) {
     console.error('Error al obtener empresas:', error)
-    return new NextResponse('Error interno del servidor', { status: 500 })
+    return NextResponse.json(
+      { error: 'Error al obtener empresas' },
+      { status: 500 }
+    )
   }
 }
 

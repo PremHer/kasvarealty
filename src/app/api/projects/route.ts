@@ -203,6 +203,23 @@ export async function POST(request: Request) {
 
     const data = await request.json()
 
+    // Si es gerente general, verificar que la empresa pertenece al usuario
+    if (usuario.rol === 'GERENTE_GENERAL') {
+      const empresa = await prisma.empresaDesarrolladora.findFirst({
+        where: {
+          id: data.developerCompanyId,
+          representanteLegalId: usuario.id
+        }
+      })
+
+      if (!empresa) {
+        return NextResponse.json(
+          { error: 'No tienes permiso para crear proyectos en esta empresa' },
+          { status: 403 }
+        )
+      }
+    }
+
     // Mapear los campos del inglés al español
     const proyectoData = {
       nombre: data.name,
