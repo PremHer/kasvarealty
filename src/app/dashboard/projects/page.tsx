@@ -2,17 +2,21 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { FiPlus, FiFilter, FiAlertCircle } from 'react-icons/fi'
-import { Project, EstadoProyecto } from '@/types/project'
+import { FiPlus, FiAlertCircle } from 'react-icons/fi'
+import { Project, EstadoProyecto, TipoProyecto } from '@/types/project'
 import ProjectList from '@/components/projects/ProjectList'
-import ProjectFilters from '@/components/projects/project-filters'
+import { ProjectFilters } from '@/components/projects/project-filters'
 import NewProjectModal from '@/components/projects/new-project-modal'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Pagination } from '@/components/ui/pagination'
 
 interface Filters {
-  status: 'ALL' | EstadoProyecto
   search: string
+  sortBy: string
+  sortOrder: 'asc' | 'desc'
+  status: EstadoProyecto | 'all'
+  type: TipoProyecto | 'all'
 }
 
 interface SessionUser {
@@ -29,11 +33,15 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<Filters>({
-    status: 'ALL',
-    search: ''
+    search: '',
+    sortBy: 'name',
+    sortOrder: 'asc',
+    status: 'all',
+    type: 'all'
   })
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 9 // 3 columnas x 3 filas
 
   useEffect(() => {
     if (!session?.user) {
@@ -91,19 +99,62 @@ export default function ProjectsPage() {
   }
 
   const filteredProjects = projects.filter(project => {
-    if (filters.status !== 'ALL' && project.status !== filters.status) {
+    if (filters.status !== 'all' && project.status !== filters.status) {
       return false
     }
     if (filters.search && !project.name.toLowerCase().includes(filters.search.toLowerCase())) {
       return false
     }
+    if (filters.type !== 'all' && project.type !== filters.type) {
+      return false
+    }
     return true
+  }).sort((a, b) => {
+    const aValue = a[filters.sortBy as keyof Project]
+    const bValue = b[filters.sortBy as keyof Project]
+    
+    if (filters.sortBy === 'createdAt') {
+      const aDate = new Date(aValue as string).getTime()
+      const bDate = new Date(bValue as string).getTime()
+      return filters.sortOrder === 'asc' ? aDate - bDate : bDate - aDate
+    }
+    
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return filters.sortOrder === 'asc' 
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue)
+    }
+    
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return filters.sortOrder === 'asc' ? aValue - bValue : bValue - aValue
+    }
+    
+    return 0
   })
+
+  // Calcular paginación
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage)
+  const paginatedProjects = filteredProjects.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handleFilterChange = (newFilters: Filters) => {
+    setFilters(newFilters)
+    setCurrentPage(1) // Resetear a la primera página al cambiar filtros
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Proyectos</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Proyectos</h1>
+          <p className="mt-1 text-sm text-gray-500">Gestiona los proyectos inmobiliarios</p>
+        </div>
         <div className="flex space-x-4">
           {session?.user?.role === 'GERENTE_GENERAL' && (
             <Link
@@ -114,13 +165,6 @@ export default function ProjectsPage() {
               Proyectos Pendientes
             </Link>
           )}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            <FiFilter className="h-5 w-5 mr-2" />
-            Filtros
-          </button>
           {canCreateProject && (
             <button
               onClick={() => setShowNewProjectModal(true)}
@@ -133,24 +177,30 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {showFilters && (
-        <ProjectFilters
-          filters={filters}
-          onFilterChange={setFilters}
-          onClose={() => setShowFilters(false)}
-        />
-      )}
+      <ProjectFilters onFilterChange={handleFilterChange} />
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
       ) : (
-        <ProjectList 
-          projects={filteredProjects} 
-          onProjectUpdated={fetchProjects}
-          onProjectDeleted={handleProjectDeleted}
-        />
+        <>
+          <ProjectList 
+            projects={paginatedProjects} 
+            onProjectUpdated={fetchProjects}
+            onProjectDeleted={handleProjectDeleted}
+          />
+          
+          {totalPages > 1 && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {showNewProjectModal && (

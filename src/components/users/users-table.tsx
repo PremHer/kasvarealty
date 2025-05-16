@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiX, FiUser, FiMail, FiShield, FiCalendar, FiUserPlus } from 'react-icons/fi'
 import { Button } from '@/components/ui/button'
 import EditUserModal from './edit-user-modal'
@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { useSession } from 'next-auth/react'
 import type { Rol } from '@prisma/client'
+import { UserFilters } from './user-filters'
+import { Pagination } from '@/components/ui/pagination'
 
 interface User {
   id: string
@@ -65,6 +67,81 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
   } | null>(null)
   const { toast } = useToast()
   const { data: session } = useSession()
+
+  // Estado para filtros y paginación
+  const [filters, setFilters] = useState({
+    search: '',
+    sortBy: 'nombre',
+    sortOrder: 'asc' as 'asc' | 'desc',
+    role: 'all' as Rol | 'all',
+    status: 'all' as 'active' | 'inactive' | 'all'
+  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  // Filtrar y ordenar usuarios
+  const filteredUsers = useMemo(() => {
+    let result = [...users]
+
+    // Aplicar búsqueda
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      result = result.filter(user => 
+        user.nombre.toLowerCase().includes(searchLower) ||
+        user.email.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // Aplicar filtro de rol
+    if (filters.role !== 'all') {
+      result = result.filter(user => user.rol === filters.role)
+    }
+
+    // Aplicar filtro de estado
+    if (filters.status !== 'all') {
+      result = result.filter(user => 
+        filters.status === 'active' ? user.isActive : !user.isActive
+      )
+    }
+
+    // Aplicar ordenamiento
+    result.sort((a, b) => {
+      const aValue = a[filters.sortBy as keyof User]
+      const bValue = b[filters.sortBy as keyof User]
+      
+      if (filters.sortBy === 'lastLogin') {
+        const aDate = aValue ? new Date(aValue as string).getTime() : 0
+        const bDate = bValue ? new Date(bValue as string).getTime() : 0
+        return filters.sortOrder === 'asc' ? aDate - bDate : bDate - aDate
+      }
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return filters.sortOrder === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue)
+      }
+      
+      return 0
+    })
+
+    return result
+  }, [users, filters])
+
+  // Calcular paginación
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handleFilterChange = (newFilters: typeof filters) => {
+    setFilters(newFilters)
+    setCurrentPage(1) // Resetear a la primera página al cambiar filtros
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
 
   const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
     SUPER_ADMIN: ['ADMIN', 'GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
@@ -276,6 +353,8 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
         )}
       </div>
 
+      <UserFilters onFilterChange={handleFilterChange} />
+
       {!selectedUserDetails && (
         <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100">
           <div className="overflow-hidden">
@@ -297,7 +376,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {paginatedUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150">
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
@@ -352,16 +431,16 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
                                 <FiUser className="h-4 w-4" />
                               )}
                             </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(user)}
-                            disabled={isDeleting}
-                            title="Editar"
-                            className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                          >
-                            <FiEdit2 className="h-4 w-4" />
-                          </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(user)}
+                              disabled={isDeleting}
+                              title="Editar"
+                              className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                            >
+                              <FiEdit2 className="h-4 w-4" />
+                            </Button>
                           </>
                         )}
                         {canDeleteUsers(user.rol, user.id) && (
@@ -384,6 +463,14 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
             </table>
           </div>
         </div>
+      )}
+
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
       )}
 
       {selectedUserDetails && (
