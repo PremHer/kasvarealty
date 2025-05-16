@@ -39,6 +39,11 @@ export async function GET(request: Request) {
             nombre: true,
             email: true
           }
+        },
+        _count: {
+          select: {
+            proyectos: true
+          }
         }
       },
       orderBy: {
@@ -46,7 +51,13 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.json(empresas)
+    // Transformar la respuesta para incluir el número de proyectos
+    const empresasConProyectos = empresas.map(empresa => ({
+      ...empresa,
+      numeroProyectos: empresa._count.proyectos
+    }))
+
+    return NextResponse.json(empresasConProyectos)
   } catch (error) {
     console.error('Error al obtener empresas:', error)
     return NextResponse.json(

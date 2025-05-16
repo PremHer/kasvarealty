@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiX, FiUser, FiMail, FiMapPin, FiPhone, FiCreditCard, FiCalendar } from 'react-icons/fi'
 import { Button } from '@/components/ui/button'
 import EditEmpresaModal from './edit-empresa-modal'
@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { useSession } from 'next-auth/react'
 import { TipoBanco, TipoBilleteraVirtual } from '@prisma/client'
+import { EmpresaFilters } from './empresa-filters'
+import { Pagination } from '@/components/ui/pagination'
 
 interface Empresa {
   id: string
@@ -49,7 +51,69 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
   const { toast, currentToast } = useToast()
   const { data: session } = useSession()
 
+  // Estado para filtros y paginación
+  const [filters, setFilters] = useState({
+    search: '',
+    sortBy: 'nombre',
+    sortOrder: 'asc' as 'asc' | 'desc'
+  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
   const canEditEmpresas = ['SUPER_ADMIN', 'ADMIN'].includes(session?.user?.role || '')
+
+  // Filtrar y ordenar empresas
+  const filteredEmpresas = useMemo(() => {
+    let result = [...empresas]
+
+    // Aplicar búsqueda
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      result = result.filter(empresa => 
+        empresa.nombre.toLowerCase().includes(searchLower) ||
+        empresa.ruc.toLowerCase().includes(searchLower) ||
+        empresa.email.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // Aplicar ordenamiento
+    result.sort((a, b) => {
+      const aValue = a[filters.sortBy as keyof Empresa]
+      const bValue = b[filters.sortBy as keyof Empresa]
+      
+      if (filters.sortBy === 'numeroProyectos') {
+        return filters.sortOrder === 'asc' 
+          ? (aValue as number) - (bValue as number)
+          : (bValue as number) - (aValue as number)
+      }
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return filters.sortOrder === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue)
+      }
+      
+      return 0
+    })
+
+    return result
+  }, [empresas, filters])
+
+  // Calcular paginación
+  const totalPages = Math.ceil(filteredEmpresas.length / itemsPerPage)
+  const paginatedEmpresas = filteredEmpresas.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handleFilterChange = (newFilters: typeof filters) => {
+    setFilters(newFilters)
+    setCurrentPage(1) // Resetear a la primera página al cambiar filtros
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
 
   const handleEdit = (empresa: Empresa) => {
     if (!canEditEmpresas) {
@@ -145,221 +209,229 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
         )}
       </div>
 
-      <div className="flex gap-6">
-        {!selectedEmpresaDetails && (
-          <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
-                    <th scope="col" className="w-1/4 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Empresa
-                    </th>
-                    <th scope="col" className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      RUC
-                    </th>
-                    <th scope="col" className="w-1/4 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Representante Legal
-                    </th>
-                    <th scope="col" className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Proyectos
-                    </th>
-                    <th scope="col" className="w-1/6 px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Acciones
-                    </th>
+      <EmpresaFilters onFilterChange={handleFilterChange} />
+
+      {!selectedEmpresaDetails && (
+        <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100">
+          <div className="overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th scope="col" className="w-1/4 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Empresa
+                  </th>
+                  <th scope="col" className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    RUC
+                  </th>
+                  <th scope="col" className="w-1/4 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Representante Legal
+                  </th>
+                  <th scope="col" className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Proyectos
+                  </th>
+                  <th scope="col" className="w-1/6 px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedEmpresas.map((empresa) => (
+                  <tr key={empresa.id} className="hover:bg-gray-50 transition-colors duration-150">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0">
+                          <div className="h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                            <FiUser className="h-5 w-5 text-primary-600" />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 truncate" title={empresa.nombre}>
+                            {empresa.nombre}
+                          </div>
+                          <div className="text-sm text-gray-500 truncate" title={empresa.email}>
+                            {empresa.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {empresa.ruc}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0">
+                          <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <FiUser className="h-5 w-5 text-blue-600" />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 truncate" title={empresa.representanteLegal.nombre}>
+                            {empresa.representanteLegal.nombre}
+                          </div>
+                          <div className="text-sm text-gray-500 truncate" title={empresa.representanteLegal.email}>
+                            {empresa.representanteLegal.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
+                        {empresa.numeroProyectos} proyectos
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetails(empresa)}
+                          title="Ver detalles"
+                          className="text-gray-600 hover:text-primary-600 hover:bg-primary-50"
+                        >
+                          <FiEye className="h-4 w-4" />
+                        </Button>
+                        {canEditEmpresas && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(empresa)}
+                              disabled={isDeleting}
+                              title="Editar"
+                              className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                            >
+                              <FiEdit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(empresa)}
+                              disabled={isDeleting}
+                              title="Eliminar"
+                              className="text-gray-600 hover:text-red-600 hover:bg-red-50"
+                            >
+                              <FiTrash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {empresas.map((empresa) => (
-                    <tr key={empresa.id} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex-shrink-0">
-                            <div className="h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
-                              <FiUser className="h-5 w-5 text-primary-600" />
-                            </div>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900 truncate" title={empresa.nombre}>
-                              {empresa.nombre}
-                            </div>
-                            <div className="text-sm text-gray-500 truncate" title={empresa.email}>
-                              {empresa.email}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          {empresa.ruc}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex-shrink-0">
-                            <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                              <FiUser className="h-5 w-5 text-blue-600" />
-                            </div>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900 truncate" title={empresa.representanteLegal.nombre}>
-                              {empresa.representanteLegal.nombre}
-                            </div>
-                            <div className="text-sm text-gray-500 truncate" title={empresa.representanteLegal.email}>
-                              {empresa.representanteLegal.email}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
-                          {empresa.numeroProyectos} proyectos
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewDetails(empresa)}
-                            title="Ver detalles"
-                            className="text-gray-600 hover:text-primary-600 hover:bg-primary-50"
-                          >
-                            <FiEye className="h-4 w-4" />
-                          </Button>
-                          {canEditEmpresas && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEdit(empresa)}
-                                disabled={isDeleting}
-                                title="Editar"
-                                className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                              >
-                                <FiEdit2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(empresa)}
-                                disabled={isDeleting}
-                                title="Eliminar"
-                                className="text-gray-600 hover:text-red-600 hover:bg-red-50"
-                              >
-                                <FiTrash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {selectedEmpresaDetails && (
+        <Card className="w-full bg-white rounded-xl shadow-sm border border-gray-100">
+          <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-primary-50 to-white">
+            <div className="flex justify-between items-start">
+              <div className="flex items-start space-x-6">
+                <div className="h-20 w-20 rounded-xl bg-primary-100 flex items-center justify-center shadow-sm">
+                  <FiUser className="h-10 w-10 text-primary-600" />
+                </div>
+                <div>
+                  <h3 className="text-3xl font-bold text-gray-900">{selectedEmpresaDetails.nombre}</h3>
+                  <div className="mt-3 flex flex-wrap gap-4">
+                    <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
+                      <FiUser className="h-5 w-5 text-primary-500" />
+                      <span className="text-base text-gray-700">{selectedEmpresaDetails.representanteLegal.nombre}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
+                      <FiMail className="h-5 w-5 text-blue-500" />
+                      <span className="text-base text-gray-700">{selectedEmpresaDetails.email}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
+                      <FiPhone className="h-5 w-5 text-green-500" />
+                      <span className="text-base text-gray-700">{selectedEmpresaDetails.telefono}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCloseDetails}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX className="h-5 w-5" />
+              </Button>
             </div>
           </div>
-        )}
 
-        {selectedEmpresaDetails && (
-          <Card className="w-full bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-primary-50 to-white">
-              <div className="flex justify-between items-start">
-                <div className="flex items-start space-x-6">
-                  <div className="h-20 w-20 rounded-xl bg-primary-100 flex items-center justify-center shadow-sm">
-                    <FiUser className="h-10 w-10 text-primary-600" />
+          <div className="p-6 space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <FiMapPin className="h-5 w-5 text-gray-400" />
+                  <h4 className="font-semibold text-gray-900">Dirección</h4>
+                </div>
+                <p className="text-gray-600">{selectedEmpresaDetails.direccion}</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <FiCreditCard className="h-5 w-5 text-gray-400" />
+                  <h4 className="font-semibold text-gray-900">Información Bancaria</h4>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-500">Bancos</h5>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {selectedEmpresaDetails.bancos.map((banco) => (
+                        <Badge key={banco} variant="secondary" className="bg-gray-100 text-gray-700">
+                          {banco}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                   <div>
-                    <h3 className="text-3xl font-bold text-gray-900">{selectedEmpresaDetails.nombre}</h3>
-                    <div className="mt-3 flex flex-wrap gap-4">
-                      <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                        <FiUser className="h-5 w-5 text-primary-500" />
-                        <span className="text-base text-gray-700">{selectedEmpresaDetails.representanteLegal.nombre}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                        <FiMail className="h-5 w-5 text-blue-500" />
-                        <span className="text-base text-gray-700">{selectedEmpresaDetails.email}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                        <FiPhone className="h-5 w-5 text-green-500" />
-                        <span className="text-base text-gray-700">{selectedEmpresaDetails.telefono}</span>
-                      </div>
+                    <h5 className="text-sm font-medium text-gray-500">Billeteras Virtuales</h5>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {selectedEmpresaDetails.billeterasVirtuales.map((billetera) => (
+                        <Badge key={billetera} variant="secondary" className="bg-gray-100 text-gray-700">
+                          {billetera}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCloseDetails}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <FiX className="h-5 w-5" />
-                </Button>
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <FiMapPin className="h-5 w-5 text-gray-400" />
-                    <h4 className="font-semibold text-gray-900">Dirección</h4>
-                  </div>
-                  <p className="text-gray-600">{selectedEmpresaDetails.direccion}</p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <FiCreditCard className="h-5 w-5 text-gray-400" />
-                    <h4 className="font-semibold text-gray-900">Información Bancaria</h4>
-                  </div>
-                  <div className="space-y-2">
-                    <div>
-                      <h5 className="text-sm font-medium text-gray-500">Bancos</h5>
-                      <div className="mt-1 flex flex-wrap gap-2">
-                        {selectedEmpresaDetails.bancos.map((banco) => (
-                          <Badge key={banco} variant="secondary" className="bg-gray-100 text-gray-700">
-                            {banco}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h5 className="text-sm font-medium text-gray-500">Billeteras Virtuales</h5>
-                      <div className="mt-1 flex flex-wrap gap-2">
-                        {selectedEmpresaDetails.billeterasVirtuales.map((billetera) => (
-                          <Badge key={billetera} variant="secondary" className="bg-gray-100 text-gray-700">
-                            {billetera}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            <div className="flex items-center space-x-2">
+              <FiCalendar className="h-5 w-5 text-gray-400" />
+              <h4 className="font-semibold text-gray-900">Información de Registro</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h5 className="text-sm font-medium text-gray-500">Fecha de Creación</h5>
+                <p className="text-gray-600">
+                  {new Date(selectedEmpresaDetails.createdAt).toLocaleDateString()}
+                </p>
               </div>
-
-              <div className="flex items-center space-x-2">
-                <FiCalendar className="h-5 w-5 text-gray-400" />
-                <h4 className="font-semibold text-gray-900">Información de Registro</h4>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h5 className="text-sm font-medium text-gray-500">Fecha de Creación</h5>
-                  <p className="text-gray-600">
-                    {new Date(selectedEmpresaDetails.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <div>
-                  <h5 className="text-sm font-medium text-gray-500">Última Actualización</h5>
-                  <p className="text-gray-600">
-                    {new Date(selectedEmpresaDetails.updatedAt).toLocaleDateString()}
-                  </p>
-                </div>
+              <div>
+                <h5 className="text-sm font-medium text-gray-500">Última Actualización</h5>
+                <p className="text-gray-600">
+                  {new Date(selectedEmpresaDetails.updatedAt).toLocaleDateString()}
+                </p>
               </div>
             </div>
-          </Card>
-        )}
-      </div>
+          </div>
+        </Card>
+      )}
+
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      )}
 
       {selectedEmpresa && (
         <EditEmpresaModal
