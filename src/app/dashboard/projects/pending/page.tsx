@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from 'next/link'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function PendingProjectsPage() {
   const { data: session } = useSession()
@@ -28,8 +29,12 @@ export default function PendingProjectsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [approveDialogOpen, setApproveDialogOpen] = useState(false)
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [selectedManager, setSelectedManager] = useState<string>('')
+  const [projectManagers, setProjectManagers] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [activeTab, setActiveTab] = useState<'approval' | 'assignment'>('approval')
 
   useEffect(() => {
     if (!session?.user) {
@@ -44,11 +49,13 @@ export default function PendingProjectsPage() {
     }
 
     fetchPendingProjects()
-  }, [session, router])
+    fetchProjectManagers()
+  }, [session, router, activeTab])
 
   const fetchPendingProjects = async () => {
     try {
-      const response = await fetch('/api/projects/pending')
+      const endpoint = activeTab === 'approval' ? '/api/projects/pending' : '/api/projects/pending-assignment'
+      const response = await fetch(endpoint)
       if (response.ok) {
         const data = await response.json()
         setPendingProjects(data)
@@ -65,6 +72,23 @@ export default function PendingProjectsPage() {
     }
   }
 
+  const fetchProjectManagers = async () => {
+    try {
+      const response = await fetch('/api/users/project-managers')
+      if (response.ok) {
+        const data = await response.json()
+        setProjectManagers(data)
+      }
+    } catch (error) {
+      console.error('Error al cargar gerentes de proyecto:', error)
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los gerentes de proyecto',
+        variant: 'destructive'
+      })
+    }
+  }
+
   const handleApprove = async (project: Project) => {
     setSelectedProject(project)
     setApproveDialogOpen(true)
@@ -74,6 +98,12 @@ export default function PendingProjectsPage() {
     setSelectedProject(project)
     setRejectReason('')
     setRejectDialogOpen(true)
+  }
+
+  const handleAssign = async (project: Project) => {
+    setSelectedProject(project)
+    setSelectedManager('')
+    setAssignDialogOpen(true)
   }
 
   const confirmApprove = async () => {
@@ -140,10 +170,44 @@ export default function PendingProjectsPage() {
     }
   }
 
+  const confirmAssign = async () => {
+    if (!selectedProject || !selectedManager) return
+
+    try {
+      const response = await fetch(`/api/projects/${selectedProject.id}/assign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ managerId: selectedManager })
+      })
+
+      if (response.ok) {
+        toast({
+          title: 'Proyecto asignado',
+          description: `El proyecto "${selectedProject.name}" ha sido asignado exitosamente`,
+          variant: 'default'
+        })
+        setAssignDialogOpen(false)
+        fetchPendingProjects()
+      } else {
+        const error = await response.json()
+        throw new Error(error.message)
+      }
+    } catch (error) {
+      console.error('Error al asignar proyecto:', error)
+      toast({
+        title: 'Error',
+        description: 'No se pudo asignar el proyecto',
+        variant: 'destructive'
+      })
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     )
   }
@@ -176,7 +240,7 @@ export default function PendingProjectsPage() {
       </nav>
 
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-blue-600">Proyectos Pendientes de Aprobación</h1>
+        <h1 className="text-2xl font-bold text-blue-600">Proyectos Pendientes</h1>
         <Link href="/dashboard/projects">
           <Button variant="outline" size="sm" className="hover:bg-blue-50 hover:text-blue-600">
             <FiArrowLeft className="mr-2 h-4 w-4" />
@@ -184,11 +248,41 @@ export default function PendingProjectsPage() {
           </Button>
         </Link>
       </div>
-      
+
+      {/* Tabs */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('approval')}
+            className={`${
+              activeTab === 'approval'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Pendientes de Aprobación
+          </button>
+          <button
+            onClick={() => setActiveTab('assignment')}
+            className={`${
+              activeTab === 'assignment'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Pendientes de Asignación
+          </button>
+        </nav>
+      </div>
+
       {pendingProjects.length === 0 ? (
         <div className="text-center py-8">
           <FiInfo className="mx-auto h-12 w-12 text-blue-400" />
-          <p className="mt-2 text-gray-600">No hay proyectos pendientes de aprobación</p>
+          <p className="mt-2 text-gray-600">
+            {activeTab === 'approval'
+              ? 'No hay proyectos pendientes de aprobación'
+              : 'No hay proyectos pendientes de asignación'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
@@ -211,13 +305,23 @@ export default function PendingProjectsPage() {
                       </h3>
                       <p className="mt-1 text-gray-700">{project.developerCompany?.name}</p>
                     </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-blue-600 flex items-center">
-                        <FiUser className="mr-2 h-4 w-4 text-blue-500" />
-                        Gerente del Proyecto
-                      </h3>
-                      <p className="mt-1 text-gray-700">{project.manager.name}</p>
-                    </div>
+                    {activeTab === 'approval' ? (
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-600 flex items-center">
+                          <FiUser className="mr-2 h-4 w-4 text-blue-500" />
+                          Gerente del Proyecto
+                        </h3>
+                        <p className="mt-1 text-gray-700">{project.manager?.name || 'No asignado'}</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-600 flex items-center">
+                          <FiUser className="mr-2 h-4 w-4 text-blue-500" />
+                          Creado por
+                        </h3>
+                        <p className="mt-1 text-gray-700">{project.createdBy?.name || 'No disponible'}</p>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-4">
                     <div>
@@ -244,22 +348,35 @@ export default function PendingProjectsPage() {
                   </div>
                 </div>
                 <div className="mt-6 flex justify-end space-x-4">
-                  <Button
-                    variant="destructive"
-                    onClick={() => handleReject(project)}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    <FiX className="w-4 h-4 mr-2" />
-                    Rechazar
-                  </Button>
-                  <Button
-                    variant="default"
-                    onClick={() => handleApprove(project)}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <FiCheck className="w-4 h-4 mr-2" />
-                    Aprobar
-                  </Button>
+                  {activeTab === 'approval' ? (
+                    <>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleReject(project)}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        <FiX className="w-4 h-4 mr-2" />
+                        Rechazar
+                      </Button>
+                      <Button
+                        variant="default"
+                        onClick={() => handleApprove(project)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <FiCheck className="w-4 h-4 mr-2" />
+                        Aprobar
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="default"
+                      onClick={() => handleAssign(project)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <FiUser className="w-4 h-4 mr-2" />
+                      Asignar Gerente
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -294,17 +411,17 @@ export default function PendingProjectsPage() {
           <DialogHeader>
             <DialogTitle className="text-red-600">Rechazar Proyecto</DialogTitle>
             <DialogDescription>
-              Por favor, proporciona un motivo detallado para el rechazo del proyecto "{selectedProject?.name}".
+              Por favor, proporciona una razón para rechazar el proyecto "{selectedProject?.name}".
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="rejectReason" className="text-gray-700">Motivo del Rechazo</Label>
+            <Label htmlFor="rejectReason">Razón del Rechazo</Label>
             <Input
               id="rejectReason"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Ingrese el motivo del rechazo..."
-              className="mt-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Ingrese la razón del rechazo"
+              className="mt-2"
             />
           </div>
           <DialogFooter>
@@ -312,13 +429,55 @@ export default function PendingProjectsPage() {
               Cancelar
             </Button>
             <Button
-              variant="destructive"
               onClick={confirmReject}
-              disabled={!rejectReason.trim()}
+              disabled={!rejectReason}
               className="bg-red-600 hover:bg-red-700"
             >
               <FiX className="w-4 h-4 mr-2" />
               Rechazar Proyecto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Asignación */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-blue-600">Asignar Gerente de Proyecto</DialogTitle>
+            <DialogDescription>
+              Selecciona un gerente de proyecto para "{selectedProject?.name}".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="manager">Gerente de Proyecto</Label>
+            <Select
+              value={selectedManager}
+              onValueChange={setSelectedManager}
+            >
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Seleccione un gerente" />
+              </SelectTrigger>
+              <SelectContent>
+                {projectManagers.map((manager) => (
+                  <SelectItem key={manager.id} value={manager.id}>
+                    {manager.name} - {manager.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmAssign}
+              disabled={!selectedManager}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <FiUser className="w-4 h-4 mr-2" />
+              Asignar Gerente
             </Button>
           </DialogFooter>
         </DialogContent>

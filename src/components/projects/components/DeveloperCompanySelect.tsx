@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
-import { DeveloperCompany } from '@/types/project'
+
+interface DeveloperCompany {
+  id: string
+  name: string
+}
 
 interface DeveloperCompanySelectProps {
   value: string
@@ -15,12 +19,17 @@ export default function DeveloperCompanySelect({ value, onChange, required }: De
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const response = await fetch('/api/developer-companies')
+        const response = await fetch('/api/empresas')
         if (!response.ok) {
           throw new Error('Error al cargar las empresas desarrolladoras')
         }
         const data = await response.json()
-        setCompanies(data)
+        // Transformar los datos al formato esperado
+        const formattedCompanies = data.map((company: any) => ({
+          id: company.id,
+          name: company.nombre
+        }))
+        setCompanies(formattedCompanies)
       } catch (error) {
         console.error('Error:', error)
         setError(error instanceof Error ? error.message : 'Error al cargar las empresas desarrolladoras')
