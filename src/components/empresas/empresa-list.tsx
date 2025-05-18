@@ -185,7 +185,7 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
   return (
     <div className="space-y-6">
       {currentToast && (
-        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg ${
+        <div className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg ${
           currentToast.variant === 'destructive' ? 'bg-red-500' : 'bg-green-500'
         } text-white z-50`}>
           <h3 className="font-bold">{currentToast.title}</h3>

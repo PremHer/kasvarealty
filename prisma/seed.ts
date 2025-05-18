@@ -3,257 +3,487 @@ import { hash } from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-async function main() {
-  // Crear usuario SUPER_ADMIN
-  const superAdmin = await prisma.usuario.create({
-    data: {
-      email: 'superadmin@kasvarealty.com',
-      password: await hash('Admin123!', 12),
-      nombre: 'Super Administrador',
-      rol: 'SUPER_ADMIN',
-      isActive: true
-    }
-  })
-
-  // Crear usuario ADMIN
-  const admin = await prisma.usuario.create({
-    data: {
-      email: 'admin@kasvarealty.com',
-      password: await hash('Admin123!', 12),
-      nombre: 'Administrador',
-      rol: 'ADMIN',
-      isActive: true
-    }
-  })
-
-  // Crear empresas desarrolladoras
-  const empresas = await Promise.all([
-    prisma.empresaDesarrolladora.create({
-      data: {
-        nombre: 'Kasva Realty',
+// Datos de empresas realistas
+const empresasData = [
+  {
+    nombre: 'Constructora Inmobiliaria del Norte S.A.C.',
         ruc: '20123456789',
-        direccion: 'Av. Principal 123, Lima',
-        telefono: '01-1234567',
-        email: 'contacto@kasvarealty.com',
-        representanteLegal: {
-          connect: {
-            id: superAdmin.id
-          }
-        }
-      }
-    }),
-    prisma.empresaDesarrolladora.create({
-      data: {
-        nombre: 'Constructora XYZ',
+    direccion: 'Av. Primavera 123, San Isidro',
+    telefono: '01-422-1234',
+    email: 'contacto@constructoranorte.com',
+    website: 'www.constructoranorte.com',
+    descripcion: 'Líder en desarrollo inmobiliario en el norte del país'
+  },
+  {
+    nombre: 'Grupo Inmobiliario Sur S.A.',
         ruc: '20123456790',
-        direccion: 'Av. Los Olivos 456, Lima',
-        telefono: '01-7654321',
-        email: 'contacto@constructora-xyz.com',
-        representanteLegal: {
-          connect: {
-            id: admin.id
-          }
-        }
-      }
-    }),
-    prisma.empresaDesarrolladora.create({
-      data: {
-        nombre: 'Inmobiliaria Delta',
+    direccion: 'Av. La Marina 456, San Miguel',
+    telefono: '01-422-5678',
+    email: 'info@grupoinmobiliariosur.com',
+    website: 'www.grupoinmobiliariosur.com',
+    descripcion: 'Desarrolladora especializada en proyectos residenciales de lujo'
+  },
+  {
+    nombre: 'Inversiones Inmobiliarias del Este S.A.C.',
         ruc: '20123456791',
-        direccion: 'Av. Primavera 789, Lima',
-        telefono: '01-9876543',
-        email: 'contacto@inmobiliariadelta.com',
-        representanteLegal: {
-          connect: {
-            id: superAdmin.id
-          }
-        }
-      }
-    }),
-    prisma.empresaDesarrolladora.create({
-      data: {
-        nombre: 'Desarrolladora Omega',
-        ruc: '20123456792',
-        direccion: 'Av. La Marina 321, Lima',
-        telefono: '01-4567890',
-        email: 'contacto@desarrolladoraomega.com',
-        representanteLegal: {
-          connect: {
-            id: admin.id
-          }
-        }
-      }
-    })
-  ])
+    direccion: 'Av. Javier Prado 789, Surco',
+    telefono: '01-422-9012',
+    email: 'ventas@inversioneseste.com',
+    website: 'www.inversioneseste.com',
+    descripcion: 'Desarrolladora con enfoque en proyectos comerciales y mixtos'
+  },
+  {
+    nombre: 'Desarrolladora Costa Verde S.A.',
+    ruc: '20123456792',
+    direccion: 'Av. Costa Verde 123, Miraflores',
+    telefono: '01-422-3456',
+    email: 'info@costaverde.com',
+    website: 'www.costaverde.com',
+    descripcion: 'Especialistas en proyectos frente al mar'
+  },
+  {
+    nombre: 'Constructora Andina S.A.C.',
+    ruc: '20123456793',
+    direccion: 'Av. Arequipa 456, Lima',
+    telefono: '01-422-7890',
+    email: 'contacto@constructoraandina.com',
+    website: 'www.constructoraandina.com',
+    descripcion: 'Desarrolladora con presencia en todo el país'
+  }
+]
 
-  // Crear usuarios para cada empresa
-  const usuariosPorEmpresa = await Promise.all(empresas.map(async (empresa, index) => {
-    const prefix = empresa.nombre.toLowerCase().replace(/\s+/g, '')
-    
-    // Crear GERENTE_GENERAL
-    const gerenteGeneral = await prisma.usuario.create({
-      data: {
-        email: `gerente${index + 1}@kasvarealty.com`,
-        password: await hash('Gerente123!', 12),
-        nombre: `Gerente General ${empresa.nombre}`,
-        rol: 'GERENTE_GENERAL',
-        isActive: true,
-        empresaDesarrolladoraId: empresa.id
-      }
-    })
+// Datos de usuarios realistas
+const usuariosData = [
+  // Super Admin
+  {
+    email: 'admin@kasvarealty.com',
+    password: 'Admin123!',
+    nombre: 'Administrador Sistema',
+    rol: Rol.SUPER_ADMIN
+  },
+  // Representantes Legales
+  {
+    email: 'carlos.mendoza@constructoranorte.com',
+    password: 'RepLegal123!',
+    nombre: 'Carlos Mendoza',
+    rol: Rol.GERENTE_GENERAL
+  },
+  {
+    email: 'ana.torres@grupoinmobiliariosur.com',
+    password: 'RepLegal123!',
+    nombre: 'Ana Torres',
+    rol: Rol.GERENTE_GENERAL
+  },
+  {
+    email: 'roberto.silva@inversioneseste.com',
+    password: 'RepLegal123!',
+    nombre: 'Roberto Silva',
+    rol: Rol.GERENTE_GENERAL
+  },
+  {
+    email: 'maria.pilar@costaverde.com',
+    password: 'RepLegal123!',
+    nombre: 'María del Pilar',
+    rol: Rol.GERENTE_GENERAL
+  },
+  {
+    email: 'jose.ramirez@constructoraandina.com',
+    password: 'RepLegal123!',
+    nombre: 'José Ramírez',
+    rol: Rol.GERENTE_GENERAL
+  },
+  // Project Managers
+  {
+    email: 'pm1.norte@constructoranorte.com',
+    password: 'PM123!',
+    nombre: 'Luis García',
+    rol: Rol.PROJECT_MANAGER
+  },
+  {
+    email: 'pm2.norte@constructoranorte.com',
+    password: 'PM123!',
+    nombre: 'Carmen Ruiz',
+    rol: Rol.PROJECT_MANAGER
+  },
+  {
+    email: 'pm1.sur@grupoinmobiliariosur.com',
+    password: 'PM123!',
+    nombre: 'Pedro Sánchez',
+    rol: Rol.PROJECT_MANAGER
+  },
+  {
+    email: 'pm2.sur@grupoinmobiliariosur.com',
+    password: 'PM123!',
+    nombre: 'Laura Martínez',
+    rol: Rol.PROJECT_MANAGER
+  },
+  {
+    email: 'pm1.este@inversioneseste.com',
+    password: 'PM123!',
+    nombre: 'Miguel Ángel',
+    rol: Rol.PROJECT_MANAGER
+  },
+  {
+    email: 'pm2.este@inversioneseste.com',
+    password: 'PM123!',
+    nombre: 'Sofía Vargas',
+    rol: Rol.PROJECT_MANAGER
+  },
+  // Sales Managers
+  {
+    email: 'ventas.norte@constructoranorte.com',
+    password: 'Ventas123!',
+    nombre: 'Juan Pérez',
+    rol: Rol.SALES_MANAGER
+  },
+  {
+    email: 'ventas.sur@grupoinmobiliariosur.com',
+    password: 'Ventas123!',
+    nombre: 'María López',
+    rol: Rol.SALES_MANAGER
+  },
+  {
+    email: 'ventas.este@inversioneseste.com',
+    password: 'Ventas123!',
+    nombre: 'Carlos Ruiz',
+    rol: Rol.SALES_MANAGER
+  },
+  // Finance Managers
+  {
+    email: 'finanzas.norte@constructoranorte.com',
+    password: 'Finanzas123!',
+    nombre: 'Ana Martínez',
+    rol: Rol.FINANCE_MANAGER
+  },
+  {
+    email: 'finanzas.sur@grupoinmobiliariosur.com',
+    password: 'Finanzas123!',
+    nombre: 'Roberto Díaz',
+    rol: Rol.FINANCE_MANAGER
+  },
+  {
+    email: 'finanzas.este@inversioneseste.com',
+    password: 'Finanzas123!',
+    nombre: 'Laura Sánchez',
+    rol: Rol.FINANCE_MANAGER
+  },
+  // Developers
+  {
+    email: 'dev1.norte@constructoranorte.com',
+    password: 'Dev123!',
+    nombre: 'José García',
+    rol: Rol.DEVELOPER
+  },
+  {
+    email: 'dev2.norte@constructoranorte.com',
+    password: 'Dev123!',
+    nombre: 'Carmen Torres',
+    rol: Rol.DEVELOPER
+  },
+  {
+    email: 'dev1.sur@grupoinmobiliariosur.com',
+    password: 'Dev123!',
+    nombre: 'Pedro Martínez',
+    rol: Rol.DEVELOPER
+  },
+  {
+    email: 'dev2.sur@grupoinmobiliariosur.com',
+    password: 'Dev123!',
+    nombre: 'Sofía López',
+    rol: Rol.DEVELOPER
+  },
+  // Construction Supervisors
+  {
+    email: 'construccion.norte@constructoranorte.com',
+    password: 'Const123!',
+    nombre: 'Miguel Torres',
+    rol: Rol.CONSTRUCTION_SUPERVISOR
+  },
+  {
+    email: 'construccion.sur@grupoinmobiliariosur.com',
+    password: 'Const123!',
+    nombre: 'Ana García',
+    rol: Rol.CONSTRUCTION_SUPERVISOR
+  },
+  {
+    email: 'construccion.este@inversioneseste.com',
+    password: 'Const123!',
+    nombre: 'Carlos Martínez',
+    rol: Rol.CONSTRUCTION_SUPERVISOR
+  }
+]
 
-    // Crear PROJECT_MANAGER
-    const projectManager = await prisma.usuario.create({
-      data: {
-        email: `pm${index + 1}@kasvarealty.com`,
-        password: await hash('PM123!', 12),
-        nombre: `Project Manager ${empresa.nombre}`,
-        rol: 'PROJECT_MANAGER',
-        isActive: true,
-        empresaDesarrolladoraId: empresa.id
-      }
-    })
+// Datos de proyectos realistas
+const proyectosData = [
+  // Constructora del Norte
+  {
+    nombre: 'Residencial Primavera',
+    tipo: TipoProyecto.CONDOMINIO_CASAS,
+    descripcion: 'Exclusivo condominio de casas con áreas verdes y seguridad 24/7',
+    direccion: 'Av. Primavera 123, San Isidro',
+    departamento: 'Lima',
+    provincia: 'Lima',
+    distrito: 'San Isidro',
+    latitud: -12.0931,
+    longitud: -77.0465,
+    areaTotal: 50000,
+    areaUtil: 35000,
+    cantidadUnidades: 50,
+    inversionInicial: 50000000,
+    inversionTotal: 75000000,
+    inversionActual: 25000000,
+    estado: EstadoProyecto.IN_PROGRESS,
+    fechaInicio: new Date('2024-01-01'),
+    fechaFin: new Date('2025-12-31')
+  },
+  {
+    nombre: 'Torre Marina Business Center',
+    tipo: TipoProyecto.OFICINAS,
+    descripcion: 'Edificio corporativo de oficinas clase A',
+    direccion: 'Av. La Marina 456, San Miguel',
+    departamento: 'Lima',
+    provincia: 'Lima',
+    distrito: 'San Miguel',
+    latitud: -12.0831,
+    longitud: -77.0865,
+    areaTotal: 30000,
+    areaUtil: 25000,
+    cantidadUnidades: 30,
+    inversionInicial: 30000000,
+    inversionTotal: 45000000,
+    inversionActual: 15000000,
+    estado: EstadoProyecto.PENDING_APPROVAL,
+    fechaInicio: new Date('2024-03-01')
+  },
+  // Grupo Inmobiliario Sur
+  {
+    nombre: 'Plaza Sur Shopping',
+    tipo: TipoProyecto.CENTRO_COMERCIAL,
+    descripcion: 'Centro comercial moderno con más de 100 tiendas',
+    direccion: 'Av. Javier Prado 789, Surco',
+    departamento: 'Lima',
+    provincia: 'Lima',
+    distrito: 'Surco',
+    latitud: -12.0731,
+    longitud: -77.0265,
+    areaTotal: 80000,
+    areaUtil: 60000,
+    cantidadUnidades: 120,
+    inversionInicial: 80000000,
+    inversionTotal: 100000000,
+    inversionActual: 100000000,
+    estado: EstadoProyecto.COMPLETED,
+    fechaInicio: new Date('2023-06-01'),
+    fechaFin: new Date('2024-12-31')
+  },
+  {
+    nombre: 'Residencial Los Pinos',
+    tipo: TipoProyecto.CONDOMINIO_DEPARTAMENTOS,
+    descripcion: 'Condominio de departamentos con amenities de lujo',
+    direccion: 'Av. Primavera 456, San Isidro',
+    departamento: 'Lima',
+    provincia: 'Lima',
+    distrito: 'San Isidro',
+    latitud: -12.0931,
+    longitud: -77.0465,
+    areaTotal: 40000,
+    areaUtil: 30000,
+    cantidadUnidades: 80,
+    inversionInicial: 40000000,
+    inversionTotal: 60000000,
+    inversionActual: 20000000,
+    estado: EstadoProyecto.PENDING_ASSIGNMENT,
+    fechaInicio: new Date('2024-02-01')
+  },
+  // Inversiones del Este
+  {
+    nombre: 'Parque Industrial Este',
+    tipo: TipoProyecto.PARQUE_INDUSTRIAL,
+    descripcion: 'Parque industrial con naves logísticas y oficinas',
+    direccion: 'Carretera Central Km 15, Lurigancho',
+    departamento: 'Lima',
+    provincia: 'Lima',
+    distrito: 'Lurigancho',
+    latitud: -12.0131,
+    longitud: -76.9465,
+    areaTotal: 100000,
+    areaUtil: 80000,
+    cantidadUnidades: 40,
+    inversionInicial: 60000000,
+    inversionTotal: 80000000,
+    inversionActual: 40000000,
+    estado: EstadoProyecto.IN_PROGRESS,
+    fechaInicio: new Date('2023-09-01'),
+    fechaFin: new Date('2024-09-30')
+  },
+  {
+    nombre: 'Centro Médico San Juan',
+    tipo: TipoProyecto.CLINICA,
+    descripcion: 'Clínica moderna con tecnología de última generación',
+    direccion: 'Av. San Juan 789, San Juan de Lurigancho',
+    departamento: 'Lima',
+    provincia: 'Lima',
+    distrito: 'San Juan de Lurigancho',
+    latitud: -12.0231,
+    longitud: -76.9565,
+    areaTotal: 60000,
+    areaUtil: 45000,
+    cantidadUnidades: 1,
+    inversionInicial: 70000000,
+    inversionTotal: 90000000,
+    inversionActual: 35000000,
+    estado: EstadoProyecto.DRAFT,
+    fechaInicio: new Date('2024-04-01')
+  }
+]
 
-    // Crear SALES_MANAGER
-    const salesManager = await prisma.usuario.create({
-      data: {
-        email: `ventas${index + 1}@kasvarealty.com`,
-        password: await hash('Ventas123!', 12),
-        nombre: `Sales Manager ${empresa.nombre}`,
-        rol: 'SALES_MANAGER',
-        isActive: true,
-        empresaDesarrolladoraId: empresa.id
-      }
-    })
+async function main() {
+  // Limpiar la base de datos
+  await prisma.venta.deleteMany()
+  await prisma.unidadInmobiliaria.deleteMany()
+  await prisma.actividad.deleteMany()
+  await prisma.comentario.deleteMany()
+  await prisma.documento.deleteMany()
+  await prisma.proyecto.deleteMany()
+  await prisma.usuario.deleteMany()
+  await prisma.empresaDesarrolladora.deleteMany()
 
-    // Crear FINANCE_MANAGER
-    const financeManager = await prisma.usuario.create({
+  // Crear usuarios primero
+  const usuarios = await Promise.all(
+    usuariosData.map(async data => {
+      return prisma.usuario.create({
       data: {
-        email: `finanzas${index + 1}@kasvarealty.com`,
-        password: await hash('Finanzas123!', 12),
-        nombre: `Finance Manager ${empresa.nombre}`,
-        rol: 'FINANCE_MANAGER',
-        isActive: true,
-        empresaDesarrolladoraId: empresa.id
-      }
-    })
-
-    // Crear otros roles
-    const otrosUsuarios = await Promise.all([
-      prisma.usuario.create({
-        data: {
-          email: `dev${index + 1}@kasvarealty.com`,
-          password: await hash('Dev123!', 12),
-          nombre: `Developer ${empresa.nombre}`,
-          rol: 'DEVELOPER',
-          isActive: true,
-          empresaDesarrolladoraId: empresa.id
-        }
-      }),
-      prisma.usuario.create({
-        data: {
-          email: `ventasrep${index + 1}@kasvarealty.com`,
-          password: await hash('Sales123!', 12),
-          nombre: `Sales Rep ${empresa.nombre}`,
-          rol: 'SALES_REP',
-          isActive: true,
-          empresaDesarrolladoraId: empresa.id
-        }
-      }),
-      prisma.usuario.create({
-        data: {
-          email: `construccion${index + 1}@kasvarealty.com`,
-          password: await hash('Const123!', 12),
-          nombre: `Construction Supervisor ${empresa.nombre}`,
-          rol: 'CONSTRUCTION_SUPERVISOR',
-          isActive: true,
-          empresaDesarrolladoraId: empresa.id
+          ...data,
+          password: await hash(data.password, 10)
         }
       })
-    ])
+    })
+  )
 
-    return {
-      empresa,
-      gerenteGeneral,
-      projectManager,
-      salesManager,
-      financeManager,
-      otrosUsuarios
-    }
-  }))
+  // Crear empresas con sus representantes legales
+  const empresas = await Promise.all(
+    empresasData.map((data, index) => 
+      prisma.empresaDesarrolladora.create({
+        data: {
+          ...data,
+          representanteLegalId: usuarios[index + 1].id // +1 porque el primer usuario es SUPER_ADMIN
+        }
+      })
+    )
+  )
 
-  // Crear proyectos para cada empresa
-  const tiposProyectos = [
-    TipoProyecto.CONDOMINIO_CASAS,
-    TipoProyecto.DEPARTAMENTO,
-    TipoProyecto.OFICINAS,
-    TipoProyecto.CENTRO_COMERCIAL,
-    TipoProyecto.HOTEL,
-    TipoProyecto.MIXTO_RESIDENCIAL_COMERCIAL
-  ]
+  // Actualizar los usuarios con sus empresas
+  await Promise.all(
+    usuarios.slice(1, 6).map((usuario, index) => // Los primeros 5 usuarios después del SUPER_ADMIN
+      prisma.usuario.update({
+        where: { id: usuario.id },
+        data: {
+          empresaDesarrolladoraId: empresas[index].id
+        }
+      })
+    )
+  )
 
-  const estadosProyectos = [
-    EstadoProyecto.DRAFT,
-    EstadoProyecto.PENDING_APPROVAL,
-    EstadoProyecto.IN_PROGRESS,
-    EstadoProyecto.COMPLETED,
-    EstadoProyecto.CANCELLED
-  ]
-
-  const proyectos = await Promise.all(usuariosPorEmpresa.flatMap(({ empresa, projectManager, gerenteGeneral }) => 
-    tiposProyectos.map((tipo, index) => {
-      const estado = estadosProyectos[index % estadosProyectos.length]
-      const fechaInicio = new Date('2024-01-01')
-      const fechaFin = new Date('2024-12-31')
+  // Crear proyectos base
+  const proyectosBase = await Promise.all(
+    proyectosData.map(async (data, index) => {
+      const empresaIndex = Math.floor(index / 2)
+      const gerenteIndex = empresaIndex * 2 + (index % 2)
       
       return prisma.proyecto.create({
         data: {
-          nombre: `${tipo} ${empresa.nombre} ${index + 1}`,
-          tipo,
-          descripcion: `Proyecto ${tipo} desarrollado por ${empresa.nombre}`,
-          direccion: `Av. Proyecto ${index + 1}, Lima`,
-          departamento: 'Lima',
-          provincia: 'Lima',
-          distrito: ['Surco', 'San Isidro', 'Miraflores', 'La Molina'][index % 4],
-          latitud: -12.123456 + (index * 0.01),
-          longitud: -77.123456 + (index * 0.01),
-          empresaDesarrolladoraId: empresa.id,
-          fechaInicio,
-          fechaFin,
-          precioTerreno: 1000000 * (index + 1),
-          inversionInicial: 5000000 * (index + 1),
-          inversionTotal: 20000000 * (index + 1),
-          inversionActual: 5000000 * (index + 1),
-          estado,
-          gerenteId: projectManager.id,
-          creadoPorId: gerenteGeneral.id,
-          areaTotal: 10000 * (index + 1),
-          areaUtil: 8000 * (index + 1),
-          cantidadUnidades: 50 * (index + 1),
-          ...(estado === EstadoProyecto.PENDING_APPROVAL && {
-            aprobadoPorId: null,
-            fechaAprobacion: null,
-            razonRechazo: null
-          }),
-          ...(estado === EstadoProyecto.COMPLETED && {
-            aprobadoPorId: superAdmin.id,
-            fechaAprobacion: new Date('2024-01-15'),
-            razonRechazo: null
-          }),
-          ...(estado === EstadoProyecto.CANCELLED && {
-            aprobadoPorId: superAdmin.id,
-            fechaAprobacion: new Date('2024-01-15'),
-            razonRechazo: 'Proyecto cancelado por razones estratégicas'
-          })
+          ...data,
+          empresaDesarrolladoraId: empresas[empresaIndex].id,
+          creadoPorId: usuarios[empresaIndex + 1].id, // +1 porque el primer usuario es SUPER_ADMIN
+          gerenteId: usuarios[gerenteIndex + 6].id // +6 porque los primeros 6 son SUPER_ADMIN y GERENTE_GENERAL
         }
       })
     })
-  ))
+  )
 
-  console.log('Seed completado: Datos de prueba creados exitosamente')
-  console.log(`Empresas creadas: ${empresas.length}`)
-  console.log(`Usuarios creados: ${usuariosPorEmpresa.length * 7}`)
-  console.log(`Proyectos creados: ${proyectos.length}`)
+  // Generar más proyectos variados
+  const proyectosAdicionales = await Promise.all(
+    Array(44).fill(null).map(async (_, index) => {
+      const empresaIndex = index % 5
+      const tipoIndex = index % Object.keys(TipoProyecto).length
+      const estadoIndex = index % Object.keys(EstadoProyecto).length
+      const gerenteIndex = (empresaIndex * 2) + (index % 2)
+      
+      const fechaInicio = new Date(2024, Math.floor(index / 12), 1)
+      const fechaFin = new Date(2025, Math.floor(index / 12), 1)
+      
+      return prisma.proyecto.create({
+        data: {
+          nombre: `Proyecto ${index + 1} - ${empresas[empresaIndex].nombre}`,
+          tipo: Object.values(TipoProyecto)[tipoIndex],
+          descripcion: `Proyecto ${index + 1} desarrollado por ${empresas[empresaIndex].nombre}`,
+          direccion: `Av. Proyecto ${index + 1}, ${['Lima', 'Arequipa', 'Trujillo', 'Cusco', 'Piura'][empresaIndex]}`,
+          departamento: ['Lima', 'Arequipa', 'La Libertad', 'Cusco', 'Piura'][empresaIndex],
+          provincia: ['Lima', 'Arequipa', 'Trujillo', 'Cusco', 'Piura'][empresaIndex],
+          distrito: ['San Isidro', 'Surco', 'Miraflores', 'La Molina', 'San Borja'][index % 5],
+          latitud: -12.0931 + (index * 0.01),
+          longitud: -77.0465 + (index * 0.01),
+          areaTotal: 10000 * (index + 1),
+          areaUtil: 8000 * (index + 1),
+          cantidadUnidades: 50 * (index + 1),
+          inversionInicial: 5000000 * (index + 1),
+          inversionTotal: 10000000 * (index + 1),
+          inversionActual: 2500000 * (index + 1),
+          estado: Object.values(EstadoProyecto)[estadoIndex],
+          fechaInicio,
+          fechaFin,
+          empresaDesarrolladoraId: empresas[empresaIndex].id,
+          creadoPorId: usuarios[empresaIndex + 1].id,
+          gerenteId: usuarios[gerenteIndex + 6].id
+        }
+      })
+    })
+  )
+
+  // Crear unidades inmobiliarias para algunos proyectos
+  const unidades = await Promise.all(
+    proyectosBase.flatMap((proyecto, proyectoIndex) => 
+      Array(10).fill(null).map((_, index) => 
+        prisma.unidadInmobiliaria.create({
+          data: {
+            codigo: `${proyecto.nombre.substring(0, 3).toUpperCase()}-${proyectoIndex + 1}-${index + 1}`,
+            tipo: proyecto.tipo === TipoProyecto.CONDOMINIO_CASAS ? 'Casa' :
+                  proyecto.tipo === TipoProyecto.CONDOMINIO_DEPARTAMENTOS ? 'Departamento' :
+                  proyecto.tipo === TipoProyecto.OFICINAS ? 'Oficina' :
+                  proyecto.tipo === TipoProyecto.CENTRO_COMERCIAL ? 'Local Comercial' : 'Unidad',
+            estado: index < 5 ? 'DISPONIBLE' : 'VENDIDO',
+            precio: 350000 + (index * 10000) + (proyectoIndex * 50000),
+            area: 200 + (index * 10) + (proyectoIndex * 50),
+            proyectoId: proyecto.id
+          }
+        })
+      )
+    )
+  )
+
+  console.log('Datos de prueba creados exitosamente')
+  console.log('Credenciales de acceso:')
+  console.log('Super Admin:')
+  console.log('Email: admin@kasvarealty.com')
+  console.log('Password: Admin123!')
+  console.log('\nGerentes Generales:')
+  console.log('Email: gerente.norte@constructoranorte.com')
+  console.log('Password: Gerente123!')
+  console.log('\nProject Managers:')
+  console.log('Email: pm1.norte@constructoranorte.com')
+  console.log('Password: PM123!')
+  console.log('\nSales Managers:')
+  console.log('Email: ventas.norte@constructoranorte.com')
+  console.log('Password: Ventas123!')
+  console.log('\nFinance Managers:')
+  console.log('Email: finanzas.norte@constructoranorte.com')
+  console.log('Password: Finanzas123!')
+  console.log('\nDevelopers:')
+  console.log('Email: dev1.norte@constructoranorte.com')
+  console.log('Password: Dev123!')
+  console.log('\nConstruction Supervisors:')
+  console.log('Email: construccion.norte@constructoranorte.com')
+  console.log('Password: Const123!')
 }
 
 main()

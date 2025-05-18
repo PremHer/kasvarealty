@@ -149,7 +149,10 @@ export async function POST(request: Request) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'El email ya está registrado' },
+        { 
+          error: 'El email ya está registrado',
+          details: 'Por favor, utilice un email diferente o contacte al administrador si necesita recuperar el acceso a esta cuenta.'
+        },
         { status: 400 }
       )
     }
@@ -175,7 +178,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error al crear usuario:', error)
     return NextResponse.json(
-      { error: 'Error al crear usuario' },
+      { 
+        error: 'Error al crear usuario',
+        details: 'Ha ocurrido un error inesperado. Por favor, intente nuevamente o contacte al administrador del sistema.'
+      },
       { status: 500 }
     )
   }

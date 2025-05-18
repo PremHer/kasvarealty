@@ -2,6 +2,7 @@
 
 import { FiX } from 'react-icons/fi'
 import { useProjectForm } from '@/hooks/useProjectForm'
+import toast from 'react-hot-toast'
 import ProjectTypeSelect from './components/ProjectTypeSelect'
 import DeveloperCompanySelect from './components/DeveloperCompanySelect'
 import dynamic from 'next/dynamic'
@@ -29,21 +30,28 @@ export default function NewProjectModal({
   const { data: session } = useSession()
   const { formData, handleChange, handleSubmit, isSubmitting, error } = useProjectForm({
     onSubmit: async (data: ProjectFormData) => {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-      })
+      try {
+        const response = await fetch('/api/projects', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Error al crear el proyecto')
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.message || 'Error al crear el proyecto')
+        }
+
+        toast.success('Proyecto creado exitosamente')
+        onProjectCreated()
+        onClose()
+      } catch (error) {
+        console.error('Error al crear proyecto:', error)
+        toast.error('No se pudo crear el proyecto')
+        throw error
       }
-
-      onProjectCreated()
-      onClose()
     }
   })
 

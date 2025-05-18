@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
+  DialogClose,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -83,7 +84,7 @@ export default function NewUserModal({
   const currentUserRole = session?.user?.role as Rol
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-
+  const [formError, setFormError] = useState<string | null>(null)
   const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
     SUPER_ADMIN: ['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
     ADMIN: ['ADMIN', 'GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
@@ -151,14 +152,15 @@ export default function NewUserModal({
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Error al crear usuario')
+        const errorData = await response.json()
+        throw new Error(errorData.details || errorData.error || 'Error al crear usuario')
       }
 
       toast.success('Usuario creado exitosamente')
       onClose()
       onUserCreated()
     } catch (error) {
+      console.error('Error al crear usuario:', error)
       toast.error(error instanceof Error ? error.message : 'Error al crear usuario')
     } finally {
       setIsSubmitting(false)
@@ -167,10 +169,10 @@ export default function NewUserModal({
 
   const renderRoleGroups = () => {
     const availableRoles = getAvailableRoles()
-    
+
     return Object.entries(ROLE_GROUPS).map(([groupName, roles]) => {
       const availableRolesInGroup = roles.filter(role => availableRoles.includes(role))
-      
+
       if (availableRolesInGroup.length === 0) return null
 
       return (
@@ -188,22 +190,31 @@ export default function NewUserModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-none">
           <DialogTitle className="text-2xl font-bold text-gray-900">Crear Nuevo Usuario</DialogTitle>
           <DialogDescription className="text-base text-gray-600">
             Complete el formulario para crear un nuevo usuario en el sistema.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+            <div className="flex-1 overflow-y-auto py-4">
+              <div className="space-y-6">
+              {formError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-red-600">
+                    <FiInfo className="h-5 w-5" />
+                    <p className="text-sm font-medium">{formError}</p>
+                  </div>
+                </div>
+              )}
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-center space-x-2 mb-4">
                   <FiUser className="h-5 w-5 text-blue-600" />
                   <h3 className="font-semibold text-gray-900">Información Personal</h3>
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="nombre"
@@ -356,9 +367,9 @@ export default function NewUserModal({
                 />
               </div>
             </div>
-
-            <DialogFooter>
-              <Button 
+            </div>
+            <DialogFooter className="flex-none pt-4 border-t">
+              <Button
                 type="submit"
                 className="h-11 text-base font-semibold"
                 disabled={isSubmitting}

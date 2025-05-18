@@ -10,6 +10,7 @@ import NewProjectModal from '@/components/projects/new-project-modal'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Pagination } from '@/components/ui/pagination'
+import { toast } from 'react-hot-toast'
 
 interface Filters {
   search: string
@@ -83,18 +84,13 @@ export default function ProjectsPage() {
 
   const handleProjectDeleted = async (id: string) => {
     try {
-      const response = await fetch(`/api/projects/${id}`, {
-        method: 'DELETE'
-      })
-
-      if (response.ok) {
-        fetchProjects()
-      } else {
-        const error = await response.json()
-        console.error('Error al eliminar proyecto:', error)
-      }
+      // No necesitamos hacer la llamada DELETE aquí porque ya se hizo en el ProjectCard
+      // Solo actualizamos la lista de proyectos
+      setProjects(prevProjects => prevProjects.filter(project => project.id !== id))
+      toast.success('Proyecto eliminado correctamente')
     } catch (error) {
-      console.error('Error al eliminar proyecto:', error)
+      console.error('Error al actualizar la lista de proyectos:', error)
+      // No mostramos error aquí porque la eliminación ya fue exitosa
     }
   }
 

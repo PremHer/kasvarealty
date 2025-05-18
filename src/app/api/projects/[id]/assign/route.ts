@@ -57,7 +57,8 @@ export async function POST(
     const proyectoActualizado = await prisma.proyecto.update({
       where: { id: params.id },
       data: {
-        gerenteId: managerId
+        gerenteId: managerId,
+        estado: EstadoProyecto.PENDING_ASSIGNMENT
       },
       include: {
         gerente: {
@@ -69,6 +70,10 @@ export async function POST(
         }
       }
     })
+
+    if (!proyectoActualizado.gerente) {
+      return NextResponse.json({ error: 'Error al asignar gerente' }, { status: 500 })
+    }
 
     return NextResponse.json({
       id: proyectoActualizado.id,

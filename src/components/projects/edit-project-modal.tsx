@@ -2,6 +2,7 @@
 
 import { FiX } from 'react-icons/fi'
 import { useProjectForm } from '@/hooks/useProjectForm'
+import toast from 'react-hot-toast'
 import ProjectTypeSelect from './components/ProjectTypeSelect'
 import DeveloperCompanySelect from './components/DeveloperCompanySelect'
 import dynamic from 'next/dynamic'
@@ -42,6 +43,7 @@ export default function EditProjectModal({ project, onClose, onProjectUpdated }:
     },
     onSubmit: async (data: ProjectFormData) => {
       try {
+        console.log('Enviando actualización al proyecto:', project.id)
         const response = await fetch(`/api/projects/${project.id}`, {
           method: 'PUT',
           headers: {
@@ -51,15 +53,20 @@ export default function EditProjectModal({ project, onClose, onProjectUpdated }:
         })
 
         if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.message || 'Error al actualizar el proyecto')
+          const errorData = await response.json()
+          console.error('Error en la respuesta:', errorData)
+          throw new Error(errorData.error || 'Error al actualizar el proyecto')
         }
 
         const updatedProject = await response.json()
+        console.log('Proyecto actualizado:', updatedProject)
+
+        toast.success('Proyecto actualizado exitosamente')
         onProjectUpdated(updatedProject)
         onClose()
       } catch (error) {
         console.error('Error al actualizar el proyecto:', error)
+        toast.error('No se pudo actualizar el proyecto')
         throw error
       }
     }

@@ -8,85 +8,71 @@ datasource db {
 }
 
 model EmpresaDesarrolladora {
-  id                   String    @id @default(cuid())
-  nombre               String
-  ruc                  String    @unique
-  direccion            String
-  telefono             String?
-  email                String?
-  website              String?
-  logo                 String?
-  descripcion          String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  isActive             Boolean   @default(true)
-  createdBy            String?
-  updatedBy            String?
-  representanteLegalId String?
-  representanteLegal   Usuario?  @relation("RepresentanteLegal", fields: [representanteLegalId], references: [id])
-  usuarios             Usuario[] @relation("EmpresaUsuario")
-
-  // Nuevos campos
-  bancos              TipoBanco[]
-  billeterasVirtuales TipoBilleteraVirtual[]
-  numeroProyectos     Int                    @default(0)
-
-  // Relaciones
-  proyectos Proyecto[]
+  id                              String                 @id @default(cuid())
+  nombre                          String
+  ruc                             String                 @unique
+  direccion                       String
+  telefono                        String?
+  email                           String?
+  website                         String?
+  logo                            String?
+  descripcion                     String?
+  createdAt                       DateTime               @default(now())
+  updatedAt                       DateTime               @updatedAt
+  isActive                        Boolean                @default(true)
+  createdBy                       String?
+  updatedBy                       String?
+  representanteLegalId            String?
+  bancos                          TipoBanco[]
+  billeterasVirtuales             TipoBilleteraVirtual[]
+  numeroProyectos                 Int                    @default(0)
+  proyectos                       Proyecto[]
+  representanteLegal              Usuario?               @relation("RepresentanteLegal", fields: [representanteLegalId], references: [id])
+  usuarios                        Usuario[]              @relation("EmpresaUsuario")
+  usuarios_GerenteGeneralEmpresas Usuario[]              @relation("GerenteGeneralEmpresas")
 
   @@map("empresas_desarrolladoras")
 }
 
 model Usuario {
-  id                      String                  @id @default(cuid())
-  email                   String                  @unique
-  password                String
-  nombre                  String
-  rol                     Rol                     @default(GUEST)
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
-  resetToken              String?
-  resetTokenExpiry        DateTime?
-  isActive                Boolean                 @default(true)
-  lastLogin               DateTime?
-  empresaDesarrolladoraId String?
-  empresaDesarrolladora   EmpresaDesarrolladora?  @relation("EmpresaUsuario", fields: [empresaDesarrolladoraId], references: [id])
-  createdBy               String?
-  updatedBy               String?
-  // Relación opuesta para representante legal
-  empresasRepresentante   EmpresaDesarrolladora[] @relation("RepresentanteLegal")
-
-  // Relaciones
-  proyectosGestionados Proyecto[]   @relation("ProjectManager")
-  proyectosCreados     Proyecto[]   @relation("ProjectCreator")
-  proyectosAprobados   Proyecto[]   @relation("ProjectApprover")
-  proyectosMiembro     Proyecto[]   @relation("ProjectMembers")
-  actividades          Actividad[]
-  documentos           Documento[]
-  comentarios          Comentario[]
+  id                                              String                  @id @default(cuid())
+  email                                           String                  @unique
+  password                                        String
+  nombre                                          String
+  rol                                             Rol                     @default(GUEST)
+  createdAt                                       DateTime                @default(now())
+  updatedAt                                       DateTime                @updatedAt
+  resetToken                                      String?
+  resetTokenExpiry                                DateTime?
+  isActive                                        Boolean                 @default(true)
+  lastLogin                                       DateTime?
+  empresaDesarrolladoraId                         String?
+  createdBy                                       String?
+  updatedBy                                       String?
+  actividades                                     Actividad[]
+  comentarios                                     Comentario[]
+  documentos                                      Documento[]
+  proyectosAprobados                              Proyecto[]              @relation("ProjectApprover")
+  proyectosCreados                                Proyecto[]              @relation("ProjectCreator")
+  proyectosGestionados                            Proyecto[]              @relation("ProjectManager")
+  empresasRepresentante                           EmpresaDesarrolladora[] @relation("RepresentanteLegal")
+  empresaDesarrolladora                           EmpresaDesarrolladora?  @relation("EmpresaUsuario", fields: [empresaDesarrolladoraId], references: [id])
+  empresas_desarrolladoras_GerenteGeneralEmpresas EmpresaDesarrolladora[] @relation("GerenteGeneralEmpresas")
+  proyectosMiembro                                Proyecto[]              @relation("ProjectMembers")
 
   @@map("usuarios")
 }
 
 model Proyecto {
-  id                      String         @id @default(cuid())
+  id                      String                @id @default(cuid())
   nombre                  String
   tipo                    TipoProyecto
   descripcion             String
   direccion               String
-  departamento            String?
-  provincia               String?
-  distrito                String?
-  latitud                 Float?
-  longitud                Float?
   empresaDesarrolladoraId String
   fechaInicio             DateTime
   fechaFin                DateTime?
-  precioTerreno           Float?         @map("precio_terreno")
-  inversionInicial        Float?         @map("inversion_inicial")
-  inversionTotal          Float?         @map("inversion_total")
-  inversionActual         Float?         @map("inversion_actual")
-  estado                  EstadoProyecto @default(DRAFT)
+  estado                  EstadoProyecto        @default(DRAFT)
   gerenteId               String?
   creadoPorId             String
   aprobadoPorId           String?
@@ -95,19 +81,26 @@ model Proyecto {
   areaTotal               Float?
   areaUtil                Float?
   cantidadUnidades        Int?
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @updatedAt
-
-  // Relaciones
-  empresaDesarrolladora EmpresaDesarrolladora @relation(fields: [empresaDesarrolladoraId], references: [id])
-  gerente               Usuario?              @relation("ProjectManager", fields: [gerenteId], references: [id])
-  creadoPor             Usuario               @relation("ProjectCreator", fields: [creadoPorId], references: [id])
-  aprobadoPor           Usuario?              @relation("ProjectApprover", fields: [aprobadoPorId], references: [id])
-  unidades              UnidadInmobiliaria[]
-  miembros              Usuario[]             @relation("ProjectMembers")
-  actividades           Actividad[]
-  documentos            Documento[]
-  comentarios           Comentario[]
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  departamento            String?
+  distrito                String?
+  inversionActual         Float?                @map("inversion_actual")
+  inversionInicial        Float?                @map("inversion_inicial")
+  inversionTotal          Float?                @map("inversion_total")
+  latitud                 Float?
+  longitud                Float?
+  precioTerreno           Float?                @map("precio_terreno")
+  provincia               String?
+  actividades             Actividad[]
+  comentarios             Comentario[]
+  documentos              Documento[]
+  aprobadoPor             Usuario?              @relation("ProjectApprover", fields: [aprobadoPorId], references: [id])
+  creadoPor               Usuario               @relation("ProjectCreator", fields: [creadoPorId], references: [id])
+  empresaDesarrolladora   EmpresaDesarrolladora @relation(fields: [empresaDesarrolladoraId], references: [id])
+  gerente                 Usuario?              @relation("ProjectManager", fields: [gerenteId], references: [id], onUpdate: NoAction)
+  unidades                UnidadInmobiliaria[]
+  miembros                Usuario[]             @relation("ProjectMembers")
 
   @@index([latitud, longitud])
 }
@@ -122,25 +115,21 @@ model UnidadInmobiliaria {
   proyectoId String
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
-
-  // Relaciones
-  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
-  ventas   Venta[]
+  proyecto   Proyecto     @relation(fields: [proyectoId], references: [id])
+  ventas     Venta[]
 }
 
 model Venta {
-  id                   String      @id @default(cuid())
+  id                   String             @id @default(cuid())
   unidadInmobiliariaId String
   clienteId            String
   fechaVenta           DateTime
   precioVenta          Float
   estado               EstadoVenta
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
-
-  // Relaciones
-  unidadInmobiliaria UnidadInmobiliaria @relation(fields: [unidadInmobiliariaId], references: [id])
-  cliente            Cliente            @relation(fields: [clienteId], references: [id])
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  cliente              Cliente            @relation(fields: [clienteId], references: [id])
+  unidadInmobiliaria   UnidadInmobiliaria @relation(fields: [unidadInmobiliariaId], references: [id])
 }
 
 model Cliente {
@@ -151,9 +140,7 @@ model Cliente {
   email     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // Relaciones
-  ventas Venta[]
+  ventas    Venta[]
 }
 
 model Actividad {
@@ -163,10 +150,8 @@ model Actividad {
   proyectoId  String
   usuarioId   String
   createdAt   DateTime @default(now())
-
-  // Relaciones
-  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
-  usuario  Usuario  @relation(fields: [usuarioId], references: [id])
+  proyecto    Proyecto @relation(fields: [proyectoId], references: [id])
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
 }
 
 model Comentario {
@@ -176,10 +161,8 @@ model Comentario {
   usuarioId  String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  // Relaciones
-  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
-  usuario  Usuario  @relation(fields: [usuarioId], references: [id])
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id])
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
 }
 
 model Documento {
@@ -191,10 +174,8 @@ model Documento {
   usuarioId  String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  // Relaciones
-  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
-  usuario  Usuario  @relation(fields: [usuarioId], references: [id])
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id])
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
 }
 
 enum Rol {

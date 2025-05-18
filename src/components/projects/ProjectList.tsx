@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Project } from '@/types/project'
 import { useRouter } from 'next/navigation'
-import { useToast } from '@/components/ui/use-toast'
+import toast from 'react-hot-toast'
 import EditProjectModal from './edit-project-modal'
 import NewProjectModal from './new-project-modal'
 import { useSession } from 'next-auth/react'
@@ -20,17 +20,11 @@ export default function ProjectList({ projects, onProjectUpdated, onProjectDelet
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
   const router = useRouter()
-  const { toast } = useToast()
   const { data: session } = useSession()
 
   const handleEdit = (project: Project) => {
     setSelectedProject(project)
     setIsEditModalOpen(true)
-  }
-
-  const handleDelete = async (projectId: string) => {
-    if (!confirm('¿Está seguro de eliminar este proyecto?')) return
-    onProjectDeleted(projectId)
   }
 
   const handleProjectClick = (projectId: string) => {
@@ -45,7 +39,7 @@ export default function ProjectList({ projects, onProjectUpdated, onProjectDelet
             key={project.id}
             project={project}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={onProjectDeleted}
           />
         ))}
       </div>
