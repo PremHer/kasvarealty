@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { FiSearch, FiFilter } from 'react-icons/fi'
+import { FiSearch, FiFilter, FiX } from 'react-icons/fi'
+import { Button } from '@/components/ui/button'
 
 interface EmpresaFiltersProps {
   onFilterChange: (filters: {
@@ -16,9 +17,13 @@ interface EmpresaFiltersProps {
 export function EmpresaFilters({ onFilterChange }: EmpresaFiltersProps) {
   const [filters, setFilters] = useState({
     search: '',
-    sortBy: 'nombre',
-    sortOrder: 'asc' as 'asc' | 'desc'
+    sortBy: 'createdAt',
+    sortOrder: 'desc' as 'asc' | 'desc'
   })
+
+  const hasActiveFilters = filters.search !== '' || 
+    filters.sortBy !== 'createdAt' || 
+    filters.sortOrder !== 'desc'
 
   const handleSearchChange = (value: string) => {
     const newFilters = { ...filters, search: value }
@@ -31,6 +36,16 @@ export function EmpresaFilters({ onFilterChange }: EmpresaFiltersProps) {
     const newFilters = { ...filters, sortBy, sortOrder: sortOrder as 'asc' | 'desc' }
     setFilters(newFilters)
     onFilterChange(newFilters)
+  }
+
+  const handleClearFilters = () => {
+    const defaultFilters = {
+      search: '',
+      sortBy: 'createdAt',
+      sortOrder: 'desc' as 'asc' | 'desc'
+    }
+    setFilters(defaultFilters)
+    onFilterChange(defaultFilters)
   }
 
   return (
@@ -57,6 +72,8 @@ export function EmpresaFilters({ onFilterChange }: EmpresaFiltersProps) {
           <SelectContent>
             <SelectItem value="nombre-asc">Nombre (A-Z)</SelectItem>
             <SelectItem value="nombre-desc">Nombre (Z-A)</SelectItem>
+            <SelectItem value="ruc-asc">RUC (A-Z)</SelectItem>
+            <SelectItem value="ruc-desc">RUC (Z-A)</SelectItem>
             <SelectItem value="numeroProyectos-desc">Más proyectos</SelectItem>
             <SelectItem value="numeroProyectos-asc">Menos proyectos</SelectItem>
             <SelectItem value="createdAt-desc">Más recientes</SelectItem>
@@ -64,6 +81,17 @@ export function EmpresaFilters({ onFilterChange }: EmpresaFiltersProps) {
           </SelectContent>
         </Select>
       </div>
+      {hasActiveFilters && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleClearFilters}
+          className="flex items-center gap-2"
+        >
+          <FiX className="h-4 w-4" />
+          Limpiar filtros
+        </Button>
+      )}
     </div>
   )
 } 

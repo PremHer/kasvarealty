@@ -88,6 +88,7 @@ export default function EditUserModal({
   onUserUpdated,
 }: EditUserModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
     SUPER_ADMIN: ['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'DEVELOPER', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
@@ -145,6 +146,7 @@ export default function EditUserModal({
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true)
+    setFormError(null)
     try {
       const response = await fetch(`/api/users/${user?.id}`, {
         method: 'PUT',
@@ -153,17 +155,26 @@ export default function EditUserModal({
         },
         body: JSON.stringify(data)
       })
-
+  
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.message || 'Error al actualizar usuario')
+        
+        // Manejar errores específicos
+        if (error.code === 'EMAIL_DUPLICATE') {
+          setFormError('El correo electrónico ya está registrado en el sistema')
+        } else if (error.error) {
+          setFormError(error.error)
+        } else {
+          setFormError('Error al actualizar el usuario')
+        }
+        return
       }
-
+  
       toast.success('Usuario actualizado exitosamente')
       onClose()
       onUserUpdated()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al actualizar usuario')
+      setFormError(error instanceof Error ? error.message : 'Error al actualizar el usuario')
     } finally {
       setIsSubmitting(false)
     }
@@ -171,10 +182,10 @@ export default function EditUserModal({
 
   const renderRoleGroups = () => {
     const availableRoles = getAvailableRoles()
-    
+
     return Object.entries(ROLE_GROUPS).map(([groupName, roles]) => {
       const availableRolesInGroup = roles.filter(role => availableRoles.includes(role))
-      
+
       if (availableRolesInGroup.length === 0) return null
 
       return (
@@ -201,13 +212,21 @@ export default function EditUserModal({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {formError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-red-600">
+                  <FiInfo className="h-5 w-5" />
+                  <p className="text-sm font-medium">{formError}</p>
+                </div>
+              </div>
+            )}
             <div className="space-y-6">
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-center space-x-2 mb-4">
                   <FiUser className="h-5 w-5 text-blue-600" />
                   <h3 className="font-semibold text-gray-900">Información Personal</h3>
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="nombre"
@@ -318,7 +337,7 @@ export default function EditUserModal({
             </div>
 
             <DialogFooter>
-              <Button 
+              <Button
                 type="submit"
                 className="h-11 text-base font-semibold"
                 disabled={isSubmitting}

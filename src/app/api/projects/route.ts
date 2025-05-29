@@ -75,11 +75,28 @@ export async function GET(request: Request) {
         gerenteId: usuario.id
       }
     } else if (usuario.rol === 'GERENTE_GENERAL') {
-      // Gerente General solo ve proyectos de su empresa donde es representante legal
+      // Gerente General ve proyectos de su empresa donde es representante legal
+      // y también ve los proyectos pendientes de asignación
       whereClause = {
-        empresaDesarrolladora: {
-          representanteLegalId: usuario.id
-        }
+        AND: [
+          {
+            empresaDesarrolladora: {
+              representanteLegalId: usuario.id
+            }
+          },
+          {
+            OR: [
+              {
+                estado: {
+                  not: EstadoProyecto.PENDING_ASSIGNMENT
+                }
+              },
+              {
+                estado: EstadoProyecto.PENDING_ASSIGNMENT
+              }
+            ]
+          }
+        ]
       }
     }
     // SUPER_ADMIN y ADMIN ven todos los proyectos (whereClause vacío)
@@ -121,7 +138,16 @@ export async function GET(request: Request) {
       }
     })
 
-    const projects = proyectos.map((proyecto) => ({
+    // Filtrar los proyectos según el rol después de obtenerlos
+    let filteredProjects = proyectos
+
+    if (usuario.rol === 'GERENTE_GENERAL') {
+      // Para el gerente general, mostrar todos los proyectos de su empresa
+      // Los proyectos pendientes de asignación se manejarán en el frontend
+      filteredProjects = proyectos
+    }
+
+    const projects = filteredProjects.map((proyecto) => ({
       id: proyecto.id,
       name: proyecto.nombre,
       description: proyecto.descripcion,
@@ -236,39 +262,21 @@ export async function POST(request: Request) {
       inversionInicial: data.inversionInicial ? parseFloat(data.inversionInicial) : null,
       inversionTotal: data.inversionTotal ? parseFloat(data.inversionTotal) : null,
       inversionActual: data.inversionActual ? parseFloat(data.inversionActual) : null,
+      estado: data.managerId ? EstadoProyecto.APPROVED : EstadoProyecto.PENDING_ASSIGNMENT,
+      empresaDesarrolladoraId: data.developerCompanyId,
+      gerenteId: data.managerId || usuario.id, // Si no hay manager asignado, se asigna al creador temporalmente
+      creadoPorId: usuario.id,
+      aprobadoPorId: data.managerId ? usuario.id : null,
+      fechaAprobacion: data.managerId ? new Date() : null,
+      razonRechazo: null,
       areaTotal: data.totalArea ? parseFloat(data.totalArea) : null,
       areaUtil: data.usableArea ? parseFloat(data.usableArea) : null,
       cantidadUnidades: data.totalUnits ? parseInt(data.totalUnits) : null,
-      tipo: data.type,
-      empresaDesarrolladoraId: data.developerCompanyId
-    }
-
-    // Determinar el estado inicial del proyecto y el gerente según el rol
-    let estadoInicial = EstadoProyecto.DRAFT
-    let aprobadoPorId = null
-    let fechaAprobacion = null
-    let gerenteId = null
-
-    if (['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL'].includes(usuario.rol)) {
-      // Si es admin, super admin o gerente general, el proyecto se crea aprobado
-      estadoInicial = EstadoProyecto.APPROVED
-      aprobadoPorId = usuario.id
-      fechaAprobacion = new Date()
-    } else if (usuario.rol === 'PROJECT_MANAGER') {
-      // Si es project manager, el proyecto se crea pendiente de aprobación
-      estadoInicial = EstadoProyecto.PENDING_APPROVAL
-      gerenteId = usuario.id // Se asigna automáticamente como gerente
+      tipo: data.type as TipoProyecto
     }
 
     const proyecto = await prisma.proyecto.create({
-      data: {
-        ...proyectoData,
-        estado: estadoInicial,
-        creadoPorId: usuario.id,
-        aprobadoPorId,
-        fechaAprobacion,
-        gerenteId
-      },
+      data: proyectoData,
       include: {
         creadoPor: {
           select: {

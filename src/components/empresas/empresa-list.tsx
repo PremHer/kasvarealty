@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { FiPlus, FiEdit2, FiTrash2, FiEye, FiX, FiUser, FiMail, FiMapPin, FiPhone, FiCreditCard, FiCalendar } from 'react-icons/fi'
+import { FiEdit2, FiTrash2, FiUser, FiMail, FiMapPin, FiPhone, FiCreditCard, FiCalendar, FiX } from 'react-icons/fi'
 import { Button } from '@/components/ui/button'
 import EditEmpresaModal from './edit-empresa-modal'
-import NewEmpresaModal from './new-empresa-modal'
 import DeleteEmpresaAlert from './delete-empresa-alert'
 import { useToast } from '@/components/ui/use-toast'
 import { Badge } from '@/components/ui/badge'
@@ -43,30 +42,22 @@ interface EmpresaListProps {
 export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: EmpresaListProps) {
   const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isNewModalOpen, setIsNewModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [selectedEmpresaDetails, setSelectedEmpresaDetails] = useState<Empresa | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [empresaToDelete, setEmpresaToDelete] = useState<Empresa | null>(null)
-  const { toast, currentToast } = useToast()
+  const { toast } = useToast()
   const { data: session } = useSession()
 
-  // Estado para filtros y paginación
   const [filters, setFilters] = useState({
     search: '',
-    sortBy: 'nombre',
-    sortOrder: 'asc' as 'asc' | 'desc'
+    sortBy: 'createdAt',
+    sortOrder: 'desc' as 'asc' | 'desc'
   })
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
 
-  const canEditEmpresas = ['SUPER_ADMIN', 'ADMIN'].includes(session?.user?.role || '')
-
-  // Filtrar y ordenar empresas
   const filteredEmpresas = useMemo(() => {
     let result = [...empresas]
 
-    // Aplicar búsqueda
     if (filters.search) {
       const searchLower = filters.search.toLowerCase()
       result = result.filter(empresa => 
@@ -76,16 +67,21 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
       )
     }
 
-    // Aplicar ordenamiento
     result.sort((a, b) => {
-      const aValue = a[filters.sortBy as keyof Empresa]
-      const bValue = b[filters.sortBy as keyof Empresa]
+      if (filters.sortBy === 'createdAt') {
+        const aDate = new Date(a.createdAt).getTime()
+        const bDate = new Date(b.createdAt).getTime()
+        return filters.sortOrder === 'asc' ? aDate - bDate : bDate - aDate
+      }
       
       if (filters.sortBy === 'numeroProyectos') {
         return filters.sortOrder === 'asc' 
-          ? (aValue as number) - (bValue as number)
-          : (bValue as number) - (aValue as number)
+          ? a.numeroProyectos - b.numeroProyectos
+          : b.numeroProyectos - a.numeroProyectos
       }
+      
+      const aValue = a[filters.sortBy as keyof Empresa]
+      const bValue = b[filters.sortBy as keyof Empresa]
       
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         return filters.sortOrder === 'asc' 
@@ -99,7 +95,8 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
     return result
   }, [empresas, filters])
 
-  // Calcular paginación
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
   const totalPages = Math.ceil(filteredEmpresas.length / itemsPerPage)
   const paginatedEmpresas = filteredEmpresas.slice(
     (currentPage - 1) * itemsPerPage,
@@ -108,12 +105,14 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
 
   const handleFilterChange = (newFilters: typeof filters) => {
     setFilters(newFilters)
-    setCurrentPage(1) // Resetear a la primera página al cambiar filtros
+    setCurrentPage(1)
   }
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
   }
+
+  const canEditEmpresas = ['SUPER_ADMIN', 'ADMIN'].includes(session?.user?.role || '')
 
   const handleEdit = (empresa: Empresa) => {
     if (!canEditEmpresas) {
@@ -184,31 +183,6 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
 
   return (
     <div className="space-y-6">
-      {currentToast && (
-        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg ${
-          currentToast.variant === 'destructive' ? 'bg-red-500' : 'bg-green-500'
-        } text-white z-50`}>
-          <h3 className="font-bold">{currentToast.title}</h3>
-          <p>{currentToast.description}</p>
-        </div>
-      )}
-
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Empresas Desarrolladoras</h2>
-          <p className="mt-1 text-sm text-gray-500">Gestiona las empresas desarrolladoras y sus proyectos</p>
-        </div>
-        {canEditEmpresas && (
-          <Button 
-            onClick={() => setIsNewModalOpen(true)}
-            className="bg-primary-600 hover:bg-primary-700 text-white shadow-sm"
-          >
-            <FiPlus className="mr-2 h-5 w-5" />
-            Nueva Empresa
-          </Button>
-        )}
-      </div>
-
       <EmpresaFilters onFilterChange={handleFilterChange} />
 
       {!selectedEmpresaDetails && (
@@ -236,7 +210,11 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
               </thead>
               <tbody>
                 {paginatedEmpresas.map((empresa) => (
-                  <tr key={empresa.id} className="hover:bg-gray-50 transition-colors duration-150">
+                  <tr 
+                    key={empresa.id} 
+                    className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                    onClick={() => handleViewDetails(empresa)}
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
                         <div className="flex-shrink-0">
@@ -255,25 +233,14 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        {empresa.ruc}
-                      </span>
+                      <span className="text-sm text-gray-900">{empresa.ruc}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                            <FiUser className="h-5 w-5 text-blue-600" />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900 truncate" title={empresa.representanteLegal.nombre}>
-                            {empresa.representanteLegal.nombre}
-                          </div>
-                          <div className="text-sm text-gray-500 truncate" title={empresa.representanteLegal.email}>
-                            {empresa.representanteLegal.email}
-                          </div>
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <FiUser className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-900">
+                          {empresa.representanteLegal?.nombre || 'No asignado'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -282,16 +249,7 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewDetails(empresa)}
-                          title="Ver detalles"
-                          className="text-gray-600 hover:text-primary-600 hover:bg-primary-50"
-                        >
-                          <FiEye className="h-4 w-4" />
-                        </Button>
+                      <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
                         {canEditEmpresas && (
                           <>
                             <Button
@@ -326,111 +284,130 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
         </div>
       )}
 
-      {selectedEmpresaDetails && (
-        <Card className="w-full bg-white rounded-xl shadow-sm border border-gray-100">
-          <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-primary-50 to-white">
-            <div className="flex justify-between items-start">
-              <div className="flex items-start space-x-6">
-                <div className="h-20 w-20 rounded-xl bg-primary-100 flex items-center justify-center shadow-sm">
-                  <FiUser className="h-10 w-10 text-primary-600" />
-                </div>
-                <div>
-                  <h3 className="text-3xl font-bold text-gray-900">{selectedEmpresaDetails.nombre}</h3>
-                  <div className="mt-3 flex flex-wrap gap-4">
-                    <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                      <FiUser className="h-5 w-5 text-primary-500" />
-                      <span className="text-base text-gray-700">{selectedEmpresaDetails.representanteLegal.nombre}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                      <FiMail className="h-5 w-5 text-blue-500" />
-                      <span className="text-base text-gray-700">{selectedEmpresaDetails.email}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                      <FiPhone className="h-5 w-5 text-green-500" />
-                      <span className="text-base text-gray-700">{selectedEmpresaDetails.telefono}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCloseDetails}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <FiMapPin className="h-5 w-5 text-gray-400" />
-                  <h4 className="font-semibold text-gray-900">Dirección</h4>
-                </div>
-                <p className="text-gray-600">{selectedEmpresaDetails.direccion}</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <FiCreditCard className="h-5 w-5 text-gray-400" />
-                  <h4 className="font-semibold text-gray-900">Información Bancaria</h4>
-                </div>
-                <div className="space-y-2">
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-500">Bancos</h5>
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      {selectedEmpresaDetails.bancos.map((banco) => (
-                        <Badge key={banco} variant="secondary" className="bg-gray-100 text-gray-700">
-                          {banco}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-500">Billeteras Virtuales</h5>
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      {selectedEmpresaDetails.billeterasVirtuales.map((billetera) => (
-                        <Badge key={billetera} variant="secondary" className="bg-gray-100 text-gray-700">
-                          {billetera}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <FiCalendar className="h-5 w-5 text-gray-400" />
-              <h4 className="font-semibold text-gray-900">Información de Registro</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h5 className="text-sm font-medium text-gray-500">Fecha de Creación</h5>
-                <p className="text-gray-600">
-                  {new Date(selectedEmpresaDetails.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-              <div>
-                <h5 className="text-sm font-medium text-gray-500">Última Actualización</h5>
-                <p className="text-gray-600">
-                  {new Date(selectedEmpresaDetails.updatedAt).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {totalPages > 1 && (
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={handlePageChange}
         />
+      )}
+
+      {selectedEmpresaDetails && (
+        <div className="mt-4">
+          <Card className="w-full bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-primary-50 to-white">
+              <div className="flex justify-between items-start">
+                <div className="flex items-start space-x-6">
+                  <div className="h-20 w-20 rounded-xl bg-primary-100 flex items-center justify-center shadow-sm">
+                    <FiUser className="h-10 w-10 text-primary-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-bold text-gray-900">{selectedEmpresaDetails.nombre}</h3>
+                    <div className="mt-3 flex flex-wrap gap-4">
+                      <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
+                        <FiMail className="h-5 w-5 text-primary-500" />
+                        <span className="text-base text-gray-700">{selectedEmpresaDetails.email}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
+                        <FiMapPin className="h-5 w-5 text-blue-500" />
+                        <span className="text-base text-gray-700">{selectedEmpresaDetails.direccion}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
+                        <FiPhone className="h-5 w-5 text-green-500" />
+                        <span className="text-base text-gray-700">{selectedEmpresaDetails.telefono}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCloseDetails}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FiX className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="flex items-center space-x-2">
+                <FiCalendar className="h-5 w-5 text-gray-400" />
+                <h4 className="font-semibold text-gray-900">Información de Registro</h4>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h5 className="text-sm font-medium text-gray-500">Fecha de Creación</h5>
+                  <p className="text-gray-600">
+                    {new Date(selectedEmpresaDetails.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <h5 className="text-sm font-medium text-gray-500">Última Actualización</h5>
+                  <p className="text-gray-600">
+                    {new Date(selectedEmpresaDetails.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 mt-6">
+                <FiUser className="h-5 w-5 text-gray-400" />
+                <h4 className="font-semibold text-gray-900">Representante Legal</h4>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                {selectedEmpresaDetails.representanteLegal ? (
+                  <div className="space-y-2">
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-500">Nombre</h5>
+                      <p className="text-gray-600">{selectedEmpresaDetails.representanteLegal.nombre}</p>
+                    </div>
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-500">Email</h5>
+                      <p className="text-gray-600">{selectedEmpresaDetails.representanteLegal.email}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No hay representante legal asignado</p>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-2 mt-6">
+                <FiCreditCard className="h-5 w-5 text-gray-400" />
+                <h4 className="font-semibold text-gray-900">Información Bancaria</h4>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h5 className="text-sm font-medium text-gray-500">Bancos</h5>
+                  <div className="mt-2 space-y-2">
+                    {selectedEmpresaDetails.bancos.length > 0 ? (
+                      selectedEmpresaDetails.bancos.map((banco, index) => (
+                        <Badge key={index} variant="secondary" className="bg-blue-50 text-blue-700">
+                          {banco}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-gray-500">No hay bancos registrados</p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h5 className="text-sm font-medium text-gray-500">Billeteras Virtuales</h5>
+                  <div className="mt-2 space-y-2">
+                    {selectedEmpresaDetails.billeterasVirtuales.length > 0 ? (
+                      selectedEmpresaDetails.billeterasVirtuales.map((billetera, index) => (
+                        <Badge key={index} variant="secondary" className="bg-green-50 text-green-700">
+                          {billetera}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-gray-500">No hay billeteras virtuales registradas</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
       )}
 
       {selectedEmpresa && (
@@ -441,26 +418,25 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
             setIsEditModalOpen(false)
             setSelectedEmpresa(null)
           }}
-          onEmpresaUpdated={onEmpresaUpdated}
+          onEmpresaUpdated={() => {
+            onEmpresaUpdated()
+            setIsEditModalOpen(false)
+            setSelectedEmpresa(null)
+          }}
         />
       )}
 
-      <NewEmpresaModal
-        isOpen={isNewModalOpen}
-        onClose={() => setIsNewModalOpen(false)}
-        onEmpresaCreated={onEmpresaCreated}
-      />
-
-      <DeleteEmpresaAlert
-        isOpen={deleteDialogOpen}
-        onClose={() => {
-          setDeleteDialogOpen(false)
-          setEmpresaToDelete(null)
-        }}
-        onEmpresaDeleted={handleDeleteConfirm}
-        empresaId={empresaToDelete?.id || ''}
-        empresaNombre={empresaToDelete?.nombre || ''}
-      />
+      {empresaToDelete && (
+        <DeleteEmpresaAlert
+          isOpen={deleteDialogOpen}
+          onClose={() => {
+            setDeleteDialogOpen(false)
+            setEmpresaToDelete(null)
+          }}
+          onConfirm={handleDeleteConfirm}
+          empresaName={empresaToDelete.nombre}
+        />
+      )}
     </div>
   )
 } 

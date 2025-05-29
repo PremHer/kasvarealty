@@ -65,7 +65,7 @@ export interface Project {
   inversionInicial?: number
   inversionTotal?: number
   inversionActual?: number
-  status: string
+  status: EstadoProyecto
   developerCompanyId: string
   developerCompany?: {
     id: string
@@ -73,10 +73,14 @@ export interface Project {
   }
   managerId: string
   createdById: string
-  type: string
+  type: TipoProyecto
   totalArea?: number
   usableArea?: number
   totalUnits?: number
+  createdAt: string
+  updatedAt: string
+  budget?: number
+  progress?: number
   createdBy: {
     id: string
     name: string

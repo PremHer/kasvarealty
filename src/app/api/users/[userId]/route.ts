@@ -86,25 +86,96 @@ export async function PUT(
 
       if (existingUser) {
         return NextResponse.json(
-          { error: 'El email ya está registrado' },
+          { 
+            error: 'El correo electrónico ya está registrado en el sistema',
+            code: 'EMAIL_DUPLICATE'
+          },
           { status: 400 }
         )
       }
     }
 
-    // Actualizar usuario
-    const updatedUser = await prisma.usuario.update({
-      where: { id: params.userId },
-      data: {
-        nombre,
-        email,
-        rol
+    // RESTRICCIÓN: No permitir cambiar el rol si el usuario tiene proyectos asociados como gerente, creador o aprobador
+    if (rol !== userToUpdate.rol) {
+      const proyectosAsociados = await prisma.proyecto.findFirst({
+        where: {
+          OR: [
+            { gerenteId: params.userId },
+            { creadoPorId: params.userId },
+            { aprobadoPorId: params.userId }
+          ]
+        }
+      })
+      if (proyectosAsociados) {
+        return NextResponse.json(
+          {
+            error: 'No se puede cambiar el rol de un usuario que tiene proyectos asociados (como gerente, creador o aprobador).',
+            code: 'USER_HAS_PROJECTS'
+          },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Verificar proyectos asociados antes de actualizar el usuario
+    const projects = await prisma.proyecto.findMany({
+      where: {
+        OR: [
+          {
+            liderId: params.userId
+          },
+          {
+            participantes: {
+              some: {
+                id: params.userId
+              }
+            }
+          }
+        ]
       }
     })
 
-    // No devolver la contraseña en la respuesta
-    const { password: _, ...userWithoutPassword } = updatedUser
-    return NextResponse.json(userWithoutPassword)
+    if (projects.length > 0) {
+      return NextResponse.json(
+        { error: 'No puedes actualizar este usuario porque tiene proyectos asociados' },
+        { status: 403 }
+      )
+    }
+
+    // Actualizar usuario
+    try {
+      const updatedUser = await prisma.usuario.update({
+        where: { id: params.userId },
+        data: {
+          nombre,
+          email,
+          rol
+        }
+      })
+
+      // No devolver la contraseña en la respuesta
+      const { password: _, ...userWithoutPassword } = updatedUser
+      return NextResponse.json(userWithoutPassword)
+    } catch (error: any) {
+      console.error('Error al actualizar usuario:', error)
+      
+      if (error.code === 'P2002') {
+        if (error.meta?.target?.includes('email')) {
+          return NextResponse.json(
+            { 
+              error: 'El correo electrónico ya está registrado en el sistema',
+              code: 'EMAIL_DUPLICATE'
+            },
+            { status: 400 }
+          )
+        }
+      }
+      
+      return NextResponse.json(
+        { error: 'Error al actualizar usuario' },
+        { status: 500 }
+      )
+    }
   } catch (error) {
     console.error('Error al actualizar usuario:', error)
     return NextResponse.json(
@@ -184,6 +255,48 @@ export async function DELETE(
     if (!allowedRoles.includes(userToDelete.rol)) {
       return NextResponse.json(
         { error: 'No tienes permisos para eliminar este usuario' },
+        { status: 403 }
+      )
+    }
+
+    // Verificar proyectos asociados antes de eliminar el usuario
+    const projects = await prisma.proyecto.findMany({
+      where: {
+        OR: [
+          {
+            liderId: params.userId
+          },
+          {
+            participantes: {
+              some: {
+                id: params.userId
+              }
+            }
+          }
+        ]
+      }
+    })
+
+    if (projects.length > 0) {
+      return NextResponse.json(
+        { error: 'No puedes eliminar este usuario porque tiene proyectos asociados' },
+        { status: 403 }
+      )
+    }
+
+    // RESTRICCIÓN: No permitir eliminar si el usuario tiene proyectos asociados como gerente, creador o aprobador
+    const proyectosAsociados = await prisma.proyecto.findFirst({
+      where: {
+        OR: [
+          { gerenteId: params.userId },
+          { creadoPorId: params.userId },
+          { aprobadoPorId: params.userId }
+        ]
+      }
+    })
+    if (proyectosAsociados) {
+      return NextResponse.json(
+        { error: 'No puedes eliminar este usuario porque tiene proyectos asociados (como gerente, creador o aprobador).' },
         { status: 403 }
       )
     }

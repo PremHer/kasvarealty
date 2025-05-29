@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FiPlus, FiX, FiUser, FiMail, FiMapPin, FiPhone, FiCreditCard } from 'react-icons/fi'
 import { useToast } from '@/components/ui/use-toast'
 import { TipoBanco, TipoBilleteraVirtual } from '@prisma/client'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface Usuario {
   id: string
@@ -253,36 +254,31 @@ export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: N
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     {Object.values(TipoBanco).map((banco) => (
                       <div key={banco} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           id={`banco-${banco}`}
                           checked={formData.bancos.includes(banco)}
-                          onChange={() => handleBancoChange(banco)}
-                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                          onCheckedChange={() => handleBancoChange(banco)}
                         />
-                        <label htmlFor={`banco-${banco}`} className="text-sm text-gray-700">
-                          {banco.replace(/_/g, ' ')}
-                        </label>
+                        <Label htmlFor={`banco-${banco}`} className="text-sm font-normal">
+                          {banco}
+                        </Label>
                       </div>
                     ))}
                   </div>
                 </div>
-
                 <div>
                   <Label>Billeteras Virtuales</Label>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     {Object.values(TipoBilleteraVirtual).map((billetera) => (
                       <div key={billetera} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           id={`billetera-${billetera}`}
                           checked={formData.billeterasVirtuales.includes(billetera)}
-                          onChange={() => handleBilleteraChange(billetera)}
-                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                          onCheckedChange={() => handleBilleteraChange(billetera)}
                         />
-                        <label htmlFor={`billetera-${billetera}`} className="text-sm text-gray-700">
-                          {billetera.replace(/_/g, ' ')}
-                        </label>
+                        <Label htmlFor={`billetera-${billetera}`} className="text-sm font-normal">
+                          {billetera}
+                        </Label>
                       </div>
                     ))}
                   </div>
@@ -296,14 +292,14 @@ export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: N
               type="button"
               variant="outline"
               onClick={onClose}
-              className="mr-2"
+              disabled={isSubmitting}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-primary-600 hover:bg-primary-700 text-white"
+              className="bg-primary-600 hover:bg-primary-700"
             >
               {isSubmitting ? 'Creando...' : 'Crear Empresa'}
             </Button>

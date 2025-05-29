@@ -33,7 +33,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           if (!user.isActive) {
-            throw new Error('Usuario inactivo')
+            throw new Error('Tu cuenta está inactiva. Por favor, contacta al administrador del sistema para activar tu cuenta.')
           }
 
           const isValid = await compare(credentials.password, user.password)

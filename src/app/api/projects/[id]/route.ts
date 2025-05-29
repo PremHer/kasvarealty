@@ -132,7 +132,7 @@ export async function PUT(
 
     const usuario = await prisma.usuario.findUnique({
       where: { email: session.user.email! },
-      select: { role: true, id: true }
+      select: { rol: true, id: true }
     })
 
     if (!usuario) {
@@ -157,9 +157,9 @@ export async function PUT(
 
     // Verificar si el usuario tiene permiso para editar
     const canEdit = 
-      ['SUPER_ADMIN', 'ADMIN'].includes(usuario.role) || // Super Admin y Admin pueden editar cualquier proyecto
-      (usuario.role === 'PROJECT_MANAGER' && proyecto.gerenteId === usuario.id) || // Project Manager solo puede editar sus proyectos
-      (usuario.role === 'GERENTE_GENERAL' && proyecto.empresaDesarrolladora?.representanteLegalId === usuario.id) // Gerente General solo puede editar proyectos de su empresa
+      ['SUPER_ADMIN', 'ADMIN'].includes(usuario.rol) || // Super Admin y Admin pueden editar cualquier proyecto
+      (usuario.rol === 'PROJECT_MANAGER' && proyecto.gerenteId === usuario.id) || // Project Manager solo puede editar sus proyectos
+      (usuario.rol === 'GERENTE_GENERAL' && proyecto.empresaDesarrolladora?.representanteLegalId === usuario.id) // Gerente General solo puede editar proyectos de su empresa
 
     if (!canEdit) {
       return NextResponse.json(
@@ -213,10 +213,86 @@ export async function PUT(
         areaTotal: totalArea ? parseFloat(totalArea) : null,
         areaUtil: usableArea ? parseFloat(usableArea) : null,
         cantidadUnidades: totalUnits ? parseInt(totalUnits) : null
+      },
+      include: {
+        creadoPor: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        },
+        aprobadoPor: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        },
+        gerente: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        },
+        empresaDesarrolladora: {
+          select: {
+            id: true,
+            nombre: true
+          }
+        }
       }
     })
 
-    return NextResponse.json(proyectoActualizado)
+    return NextResponse.json({
+      id: proyectoActualizado.id,
+      name: proyectoActualizado.nombre,
+      description: proyectoActualizado.descripcion,
+      location: proyectoActualizado.direccion,
+      departamento: proyectoActualizado.departamento,
+      provincia: proyectoActualizado.provincia,
+      distrito: proyectoActualizado.distrito,
+      latitud: proyectoActualizado.latitud,
+      longitud: proyectoActualizado.longitud,
+      startDate: proyectoActualizado.fechaInicio,
+      endDate: proyectoActualizado.fechaFin,
+      precioTerreno: proyectoActualizado.precioTerreno,
+      inversionInicial: proyectoActualizado.inversionInicial,
+      inversionTotal: proyectoActualizado.inversionTotal,
+      inversionActual: proyectoActualizado.inversionActual,
+      status: proyectoActualizado.estado,
+      developerCompanyId: proyectoActualizado.empresaDesarrolladoraId,
+      developerCompany: proyectoActualizado.empresaDesarrolladora ? {
+        id: proyectoActualizado.empresaDesarrolladora.id,
+        name: proyectoActualizado.empresaDesarrolladora.nombre
+      } : null,
+      managerId: proyectoActualizado.gerenteId,
+      createdById: proyectoActualizado.creadoPorId,
+      type: proyectoActualizado.tipo,
+      totalArea: proyectoActualizado.areaTotal,
+      usableArea: proyectoActualizado.areaUtil,
+      totalUnits: proyectoActualizado.cantidadUnidades,
+      createdBy: {
+        id: proyectoActualizado.creadoPor.id,
+        name: proyectoActualizado.creadoPor.nombre,
+        email: proyectoActualizado.creadoPor.email
+      },
+      approvedBy: proyectoActualizado.aprobadoPor
+        ? {
+            id: proyectoActualizado.aprobadoPor.id,
+            name: proyectoActualizado.aprobadoPor.nombre,
+            email: proyectoActualizado.aprobadoPor.email
+          }
+        : null,
+      manager: proyectoActualizado.gerente
+        ? {
+            id: proyectoActualizado.gerente.id,
+            name: proyectoActualizado.gerente.nombre,
+            email: proyectoActualizado.gerente.email
+          }
+        : null
+    })
   } catch (error) {
     console.error('Error al actualizar proyecto:', error)
     return NextResponse.json(
@@ -238,7 +314,7 @@ export async function DELETE(
 
     const usuario = await prisma.usuario.findUnique({
       where: { email: session.user.email! },
-      select: { role: true, id: true }
+      select: { rol: true, id: true }
     })
 
     if (!usuario) {
@@ -253,7 +329,11 @@ export async function DELETE(
           select: {
             representanteLegalId: true
           }
-        }
+        },
+        actividades: true,
+        comentarios: true,
+        documentos: true,
+        unidades: true
       }
     })
 
@@ -263,9 +343,8 @@ export async function DELETE(
 
     // Verificar si el usuario tiene permiso para eliminar
     const canDelete = 
-      ['SUPER_ADMIN', 'ADMIN'].includes(usuario.role) || // Super Admin y Admin pueden eliminar cualquier proyecto
-      (usuario.role === 'PROJECT_MANAGER' && proyecto.gerenteId === usuario.id) || // Project Manager solo puede eliminar sus proyectos
-      (usuario.role === 'GERENTE_GENERAL' && proyecto.empresaDesarrolladora?.representanteLegalId === usuario.id) // Gerente General solo puede eliminar proyectos de su empresa
+      ['SUPER_ADMIN', 'ADMIN'].includes(usuario.rol) || // Super Admin y Admin pueden eliminar cualquier proyecto
+      (usuario.rol === 'GERENTE_GENERAL' && proyecto.empresaDesarrolladora?.representanteLegalId === usuario.id) // Gerente General solo puede eliminar proyectos de su empresa
 
     if (!canDelete) {
       return NextResponse.json(
@@ -274,15 +353,66 @@ export async function DELETE(
       )
     }
 
+    // Verificar relaciones activas
+    const relacionesActivas = []
+
+    if (proyecto.actividades.length > 0) {
+      relacionesActivas.push({
+        tipo: 'Actividades',
+        cantidad: proyecto.actividades.length,
+        items: proyecto.actividades.map(a => `${a.tipo} - ${a.descripcion}`)
+      })
+    }
+    if (proyecto.comentarios.length > 0) {
+      relacionesActivas.push({
+        tipo: 'Comentarios',
+        cantidad: proyecto.comentarios.length,
+        items: proyecto.comentarios.map(c => c.contenido.substring(0, 50) + '...')
+      })
+    }
+    if (proyecto.documentos.length > 0) {
+      relacionesActivas.push({
+        tipo: 'Documentos',
+        cantidad: proyecto.documentos.length,
+        items: proyecto.documentos.map(d => `${d.nombre} (${d.tipo})`)
+      })
+    }
+    if (proyecto.unidades.length > 0) {
+      relacionesActivas.push({
+        tipo: 'Unidades Inmobiliarias',
+        cantidad: proyecto.unidades.length,
+        items: proyecto.unidades.map(u => `${u.codigo} - ${u.tipo} (${u.estado})`)
+      })
+    }
+
+    if (relacionesActivas.length > 0) {
+      const mensaje = [
+        `No se puede eliminar el proyecto "${proyecto.nombre}" porque tiene las siguientes relaciones activas:`,
+        '',
+        ...relacionesActivas.map(r => [
+          `${r.tipo} (${r.cantidad}):`,
+          ...r.items.map(item => `• ${item}`),
+          ''
+        ]).flat(),
+        'Debes eliminar estas relaciones antes de eliminar el proyecto.'
+      ].join('\n')
+
+      return NextResponse.json({
+        error: 'No se puede eliminar el proyecto',
+        detalles: mensaje
+      }, { status: 400 })
+    }
+
+    // Si no hay relaciones activas, eliminar el proyecto
     await prisma.proyecto.delete({
       where: { id: params.id }
     })
 
-    return NextResponse.json({ message: 'Proyecto eliminado correctamente' })
+    return NextResponse.json({ message: 'Proyecto eliminado exitosamente' })
   } catch (error) {
     console.error('Error al eliminar proyecto:', error)
     return NextResponse.json(
-      { error: 'Error al eliminar proyecto' },
+      { error: 'Error al eliminar el proyecto' },
       { status: 500 }
     )
   }

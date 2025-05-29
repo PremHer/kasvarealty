@@ -5,19 +5,11 @@ import { useSession } from 'next-auth/react'
 import { FiPlus, FiAlertCircle } from 'react-icons/fi'
 import { Project, EstadoProyecto, TipoProyecto } from '@/types/project'
 import ProjectList from '@/components/projects/ProjectList'
-import { ProjectFilters } from '@/components/projects/project-filters'
 import NewProjectModal from '@/components/projects/new-project-modal'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Pagination } from '@/components/ui/pagination'
-
-interface Filters {
-  search: string
-  sortBy: string
-  sortOrder: 'asc' | 'desc'
-  status: EstadoProyecto | 'all'
-  type: TipoProyecto | 'all'
-}
+import { toast } from 'react-hot-toast'
+import { Breadcrumb } from "@/components/ui/breadcrumb"
 
 interface SessionUser {
   role?: string
@@ -33,15 +25,6 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
-  const [filters, setFilters] = useState<Filters>({
-    search: '',
-    sortBy: 'name',
-    sortOrder: 'asc',
-    status: 'all',
-    type: 'all'
-  })
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 9 // 3 columnas x 3 filas
 
   useEffect(() => {
     if (!session?.user) {
@@ -83,77 +66,27 @@ export default function ProjectsPage() {
 
   const handleProjectDeleted = async (id: string) => {
     try {
-      const response = await fetch(`/api/projects/${id}`, {
-        method: 'DELETE'
-      })
-
-      if (response.ok) {
-        fetchProjects()
-      } else {
-        const error = await response.json()
-        console.error('Error al eliminar proyecto:', error)
-      }
+      // No necesitamos hacer la llamada DELETE aquí porque ya se hizo en el ProjectCard
+      // Solo actualizamos la lista de proyectos
+      setProjects(prevProjects => prevProjects.filter(project => project.id !== id))
+      toast.success('Proyecto eliminado correctamente')
     } catch (error) {
-      console.error('Error al eliminar proyecto:', error)
+      console.error('Error al actualizar la lista de proyectos:', error)
+      // No mostramos error aquí porque la eliminación ya fue exitosa
     }
-  }
-
-  const filteredProjects = projects.filter(project => {
-    if (filters.status !== 'all' && project.status !== filters.status) {
-      return false
-    }
-    if (filters.search && !project.name.toLowerCase().includes(filters.search.toLowerCase())) {
-      return false
-    }
-    if (filters.type !== 'all' && project.type !== filters.type) {
-      return false
-    }
-    return true
-  }).sort((a, b) => {
-    const aValue = a[filters.sortBy as keyof Project]
-    const bValue = b[filters.sortBy as keyof Project]
-    
-    if (filters.sortBy === 'createdAt') {
-      const aDate = new Date(aValue as string).getTime()
-      const bDate = new Date(bValue as string).getTime()
-      return filters.sortOrder === 'asc' ? aDate - bDate : bDate - aDate
-    }
-    
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return filters.sortOrder === 'asc' 
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue)
-    }
-    
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return filters.sortOrder === 'asc' ? aValue - bValue : bValue - aValue
-    }
-    
-    return 0
-  })
-
-  // Calcular paginación
-  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage)
-  const paginatedProjects = filteredProjects.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
-
-  const handleFilterChange = (newFilters: Filters) => {
-    setFilters(newFilters)
-    setCurrentPage(1) // Resetear a la primera página al cambiar filtros
-  }
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Proyectos</h1>
-          <p className="mt-1 text-sm text-gray-500">Gestiona los proyectos inmobiliarios</p>
+          <h1 className="text-3xl font-bold tracking-tight">Proyectos</h1>
+          <Breadcrumb
+            items={[
+              { label: "Proyectos" }
+            ]}
+            className="mt-2"
+          />
         </div>
         <div className="flex space-x-4">
           {session?.user?.role === 'GERENTE_GENERAL' && (
@@ -177,31 +110,11 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      <ProjectFilters onFilterChange={handleFilterChange} />
-
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-        </div>
-      ) : (
-        <>
-          <ProjectList 
-            projects={paginatedProjects} 
-            onProjectUpdated={fetchProjects}
-            onProjectDeleted={handleProjectDeleted}
-          />
-          
-          {totalPages > 1 && (
-            <div className="mt-6">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
-            </div>
-          )}
-        </>
-      )}
+      <ProjectList 
+        projects={projects}
+        onProjectUpdated={fetchProjects}
+        onProjectDeleted={handleProjectDeleted}
+      />
 
       {showNewProjectModal && (
         <NewProjectModal

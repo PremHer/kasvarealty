@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { FiSearch, FiFilter } from 'react-icons/fi'
+import { FiSearch, FiFilter, FiX } from 'react-icons/fi'
 import { Rol } from '@prisma/client'
+import { Button } from '@/components/ui/button'
 
 interface UserFiltersProps {
   onFilterChange: (filters: {
@@ -19,11 +20,17 @@ interface UserFiltersProps {
 export function UserFilters({ onFilterChange }: UserFiltersProps) {
   const [filters, setFilters] = useState({
     search: '',
-    sortBy: 'nombre',
-    sortOrder: 'asc' as 'asc' | 'desc',
-    role: 'all' as Rol | 'all',
+    sortBy: 'createdAt',
+    sortOrder: 'desc' as 'asc' | 'desc',
+    role: undefined as Rol | undefined,
     status: 'all' as 'active' | 'inactive' | 'all'
   })
+
+  const hasActiveFilters = filters.search !== '' || 
+    filters.role !== undefined || 
+    filters.status !== 'all' || 
+    filters.sortBy !== 'createdAt' || 
+    filters.sortOrder !== 'desc'
 
   const handleSearchChange = (value: string) => {
     const newFilters = { ...filters, search: value }
@@ -39,7 +46,10 @@ export function UserFilters({ onFilterChange }: UserFiltersProps) {
   }
 
   const handleRoleChange = (value: Rol | 'all') => {
-    const newFilters = { ...filters, role: value }
+    const newFilters = { 
+      ...filters, 
+      role: value === 'all' ? undefined : value 
+    }
     setFilters(newFilters)
     onFilterChange(newFilters)
   }
@@ -48,6 +58,18 @@ export function UserFilters({ onFilterChange }: UserFiltersProps) {
     const newFilters = { ...filters, status: value }
     setFilters(newFilters)
     onFilterChange(newFilters)
+  }
+
+  const handleClearFilters = () => {
+    const defaultFilters = {
+      search: '',
+      sortBy: 'createdAt',
+      sortOrder: 'desc' as 'asc' | 'desc',
+      role: undefined as Rol | undefined,
+      status: 'all' as 'active' | 'inactive' | 'all'
+    }
+    setFilters(defaultFilters)
+    onFilterChange(defaultFilters)
   }
 
   return (
@@ -85,7 +107,7 @@ export function UserFilters({ onFilterChange }: UserFiltersProps) {
       </div>
       <div className="flex items-center gap-2">
         <Select
-          value={filters.role}
+          value={filters.role || 'all'}
           onValueChange={handleRoleChange}
         >
           <SelectTrigger className="w-[200px]">
@@ -117,6 +139,17 @@ export function UserFilters({ onFilterChange }: UserFiltersProps) {
           </SelectContent>
         </Select>
       </div>
+      {hasActiveFilters && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleClearFilters}
+          className="flex items-center gap-2"
+        >
+          <FiX className="h-4 w-4" />
+          Limpiar filtros
+        </Button>
+      )}
     </div>
   )
 } 

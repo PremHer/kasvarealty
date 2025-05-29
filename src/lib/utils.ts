@@ -3,4 +3,12 @@ import { twMerge } from 'tailwind-merge'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+export function formatCurrency(amount: number | null | undefined) {
+  if (!amount) return 'No especificado'
+  return new Intl.NumberFormat('es-PE', {
+    style: 'currency',
+    currency: 'PEN'
+  }).format(amount)
 } 

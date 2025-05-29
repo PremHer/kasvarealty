@@ -27,7 +27,7 @@ export async function POST(
       return NextResponse.json({ error: 'ID del gerente es requerido' }, { status: 400 })
     }
 
-    // Verificar que el proyecto existe y está aprobado
+    // Verificar que el proyecto existe y está en un estado válido para asignación
     const proyecto = await prisma.proyecto.findUnique({
       where: { id: params.id }
     })
@@ -36,8 +36,8 @@ export async function POST(
       return NextResponse.json({ error: 'Proyecto no encontrado' }, { status: 404 })
     }
 
-    if (proyecto.estado !== EstadoProyecto.APPROVED) {
-      return NextResponse.json({ error: 'El proyecto no está aprobado' }, { status: 400 })
+    if (proyecto.estado !== EstadoProyecto.PENDING_ASSIGNMENT && proyecto.estado !== EstadoProyecto.APPROVED) {
+      return NextResponse.json({ error: 'El proyecto no está en un estado válido para asignación' }, { status: 400 })
     }
 
     // Verificar que el gerente existe y tiene el rol correcto
@@ -57,7 +57,10 @@ export async function POST(
     const proyectoActualizado = await prisma.proyecto.update({
       where: { id: params.id },
       data: {
-        gerenteId: managerId
+        gerenteId: managerId,
+        estado: EstadoProyecto.APPROVED,
+        aprobadoPorId: session.user.id,
+        fechaAprobacion: new Date()
       },
       include: {
         gerente: {
@@ -69,6 +72,10 @@ export async function POST(
         }
       }
     })
+
+    if (!proyectoActualizado.gerente) {
+      return NextResponse.json({ error: 'Error al asignar gerente' }, { status: 500 })
+    }
 
     return NextResponse.json({
       id: proyectoActualizado.id,

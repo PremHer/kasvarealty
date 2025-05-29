@@ -6,7 +6,7 @@ import { useEffect } from 'react'
 import Navbar from '@/components/layout/navbar'
 
 export default function DashboardLayout({
-  children
+  children,
 }: {
   children: React.ReactNode
 }) {

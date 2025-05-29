@@ -1,3 +1,8 @@
+# para  descartar cambios locales y restaurar a los ultimos cambios en github:
+
+git fetch origin
+git reset --hard origin/main  # o el nombre de tu rama actual
+git clean -fd
 
 git init
 

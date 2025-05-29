@@ -1,66 +1,37 @@
-import { TipoProyecto } from '@/types/project'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { TipoProyecto } from '@prisma/client'
+import { PROJECT_TYPES } from '@/constants/project-types'
 
 interface ProjectTypeSelectProps {
-  value: TipoProyecto
+  value: string
   onChange: (value: TipoProyecto) => void
   required?: boolean
 }
 
-const projectTypes = {
-  'Residencial': [
-    { value: 'CASA_INDIVIDUAL', label: 'Casa Individual' },
-    { value: 'CONDOMINIO_CASAS', label: 'Condominio de Casas' },
-    { value: 'DEPARTAMENTO', label: 'Departamento' },
-    { value: 'CONDOMINIO_DEPARTAMENTOS', label: 'Condominio de Departamentos' },
-    { value: 'DUPLEX', label: 'Dúplex' },
-    { value: 'PENTHOUSE', label: 'Penthouse' },
-    { value: 'TOWNHOUSE', label: 'Townhouse' }
-  ],
-  'Comercial': [
-    { value: 'CENTRO_COMERCIAL', label: 'Centro Comercial' },
-    { value: 'MODULO_COMERCIAL', label: 'Módulo Comercial' },
-    { value: 'GALERIA_COMERCIAL', label: 'Galería Comercial' },
-    { value: 'PLAZA_COMERCIAL', label: 'Plaza Comercial' },
-    { value: 'OFICINAS', label: 'Oficinas' },
-    { value: 'BODEGA', label: 'Bodega' },
-    { value: 'SHOWROOM', label: 'Showroom' }
-  ],
-  'Mixto': [
-    { value: 'MIXTO_RESIDENCIAL_COMERCIAL', label: 'Mixto Residencial Comercial' },
-    { value: 'MIXTO_OFICINAS_COMERCIAL', label: 'Mixto Oficinas Comercial' }
-  ],
-  'Otros': [
-    { value: 'LOTIZACION', label: 'Lotización' },
-    { value: 'CEMENTERIO', label: 'Cementerio' },
-    { value: 'HOTEL', label: 'Hotel' },
-    { value: 'HOSPITAL', label: 'Hospital' },
-    { value: 'CLINICA', label: 'Clínica' },
-    { value: 'COLEGIO', label: 'Colegio' },
-    { value: 'UNIVERSIDAD', label: 'Universidad' },
-    { value: 'ESTADIO', label: 'Estadio' },
-    { value: 'COMPLEJO_DEPORTIVO', label: 'Complejo Deportivo' },
-    { value: 'PARQUE_INDUSTRIAL', label: 'Parque Industrial' }
-  ]
-}
-
 export default function ProjectTypeSelect({ value, onChange, required }: ProjectTypeSelectProps) {
   return (
-    <select
+    <Select
       value={value}
-      onChange={(e) => onChange(e.target.value as TipoProyecto)}
-      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+      onValueChange={(value) => onChange(value as TipoProyecto)}
       required={required}
     >
-      <option value="">Seleccione un tipo</option>
-      {Object.entries(projectTypes).map(([group, types]) => (
-        <optgroup key={group} label={group}>
-          {types.map((type) => (
-            <option key={type.value} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </optgroup>
-      ))}
-    </select>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Selecciona un tipo" />
+      </SelectTrigger>
+      <SelectContent className="max-h-[300px] overflow-y-auto">
+        {PROJECT_TYPES.map((group) => (
+          <div key={group.label}>
+            <SelectItem value={group.label} disabled className="font-semibold text-gray-500">
+              {group.label}
+            </SelectItem>
+            {group.options.map((type) => (
+              <SelectItem key={type.value} value={type.value} className="pl-4">
+                {type.label}
+              </SelectItem>
+            ))}
+          </div>
+        ))}
+      </SelectContent>
+    </Select>
   )
 } 
