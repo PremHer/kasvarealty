@@ -1,52 +1,50 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions)
-
     if (!session?.user) {
-      return new NextResponse('No autorizado', { status: 401 })
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Solo permitir acceso a gerentes generales
-    if (session.user.role !== 'GERENTE_GENERAL') {
-      return new NextResponse('No autorizado', { status: 403 })
+    const usuario = await prisma.usuario.findUnique({
+      where: { email: session.user.email! },
+      select: { rol: true }
+    })
+
+    if (!usuario) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
-    // Obtener todos los project managers registrados
+    // Solo los roles autorizados pueden ver la lista de project managers
+    if (!['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL'].includes(usuario.rol)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
     const projectManagers = await prisma.usuario.findMany({
       where: {
-        rol: 'PROJECT_MANAGER'
+        rol: 'PROJECT_MANAGER',
+        isActive: true
       },
       select: {
         id: true,
         nombre: true,
-        email: true,
-        empresaDesarrolladora: {
-          select: {
-            id: true,
-            nombre: true
-          }
-        }
+        email: true
+      },
+      orderBy: {
+        nombre: 'asc'
       }
     })
 
-    const managers = projectManagers.map(manager => ({
-      id: manager.id,
-      name: manager.nombre,
-      email: manager.email,
-      company: manager.empresaDesarrolladora ? {
-        id: manager.empresaDesarrolladora.id,
-        name: manager.empresaDesarrolladora.nombre
-      } : null
-    }))
-
-    return NextResponse.json(managers)
+    return NextResponse.json(projectManagers)
   } catch (error) {
     console.error('Error al obtener project managers:', error)
-    return new NextResponse('Error interno del servidor', { status: 500 })
+    return NextResponse.json(
+      { error: 'Error al obtener project managers' },
+      { status: 500 }
+    )
   }
 } 

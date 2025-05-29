@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { FiPlus, FiEdit2, FiTrash2, FiEye, FiX, FiUser, FiMail, FiShield, FiCalendar, FiUserPlus } from 'react-icons/fi'
+import { useState, useMemo, useEffect } from 'react'
+import { FiEdit2, FiTrash2, FiUser, FiMail, FiShield, FiCalendar, FiX } from 'react-icons/fi'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import EditUserModal from './edit-user-modal'
-import NewUserModal from './new-user-modal'
 import { DeleteUserAlert } from './delete-user-alert'
 import { useToast } from '@/components/ui/use-toast'
 import { Badge } from '@/components/ui/badge'
@@ -50,10 +50,10 @@ const ROLE_TRANSLATIONS: Record<Rol, string> = {
   DEVELOPER: 'Desarrollador'
 }
 
-export default function UsersTable({ users, onUserUpdated, onUserCreated }: UsersTableProps) {
+export default function UsersTable({ users: initialUsers, onUserUpdated, onUserCreated }: UsersTableProps) {
+  const [users, setUsers] = useState(initialUsers)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isNewModalOpen, setIsNewModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [selectedUserDetails, setSelectedUserDetails] = useState<User | null>(null)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
@@ -68,12 +68,17 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
   const { toast } = useToast()
   const { data: session } = useSession()
 
+  // Actualizar el estado local cuando cambian los usuarios iniciales
+  useEffect(() => {
+    setUsers(initialUsers)
+  }, [initialUsers])
+
   // Estado para filtros y paginación
   const [filters, setFilters] = useState({
     search: '',
-    sortBy: 'nombre',
-    sortOrder: 'asc' as 'asc' | 'desc',
-    role: 'all' as Rol | 'all',
+    sortBy: 'createdAt',
+    sortOrder: 'desc' as 'asc' | 'desc',
+    role: undefined as Rol | undefined,
     status: 'all' as 'active' | 'inactive' | 'all'
   })
   const [currentPage, setCurrentPage] = useState(1)
@@ -93,7 +98,7 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
     }
 
     // Aplicar filtro de rol
-    if (filters.role !== 'all') {
+    if (filters.role !== undefined) {
       result = result.filter(user => user.rol === filters.role)
     }
 
@@ -106,14 +111,16 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
 
     // Aplicar ordenamiento
     result.sort((a, b) => {
-      const aValue = a[filters.sortBy as keyof User]
-      const bValue = b[filters.sortBy as keyof User]
-      
-      if (filters.sortBy === 'lastLogin') {
-        const aDate = aValue ? new Date(aValue as string).getTime() : 0
-        const bDate = bValue ? new Date(bValue as string).getTime() : 0
+      if (filters.sortBy === 'createdAt' || filters.sortBy === 'lastLogin') {
+        const aDate = a[filters.sortBy] instanceof Date ? a[filters.sortBy].getTime() : 
+                     a[filters.sortBy] ? new Date(a[filters.sortBy] as string).getTime() : 0
+        const bDate = b[filters.sortBy] instanceof Date ? b[filters.sortBy].getTime() : 
+                     b[filters.sortBy] ? new Date(b[filters.sortBy] as string).getTime() : 0
         return filters.sortOrder === 'asc' ? aDate - bDate : bDate - aDate
       }
+      
+      const aValue = a[filters.sortBy as keyof User]
+      const bValue = b[filters.sortBy as keyof User]
       
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         return filters.sortOrder === 'asc' 
@@ -134,8 +141,18 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
     currentPage * itemsPerPage
   )
 
-  const handleFilterChange = (newFilters: typeof filters) => {
-    setFilters(newFilters)
+  const handleFilterChange = (newFilters: {
+    search: string
+    sortBy: string
+    sortOrder: 'asc' | 'desc'
+    role?: Rol
+    status?: 'active' | 'inactive' | 'all'
+  }) => {
+    setFilters({
+      ...newFilters,
+      role: newFilters.role,
+      status: newFilters.status || 'all'
+    })
     setCurrentPage(1) // Resetear a la primera página al cambiar filtros
   }
 
@@ -300,59 +317,58 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
     if (!canEditUsers(user.rol, user.id)) {
       toast({
         title: 'Error',
-        description: 'No tienes permisos para modificar este usuario',
+        description: 'No tienes permisos para cambiar el estado de este usuario',
         variant: 'destructive'
       })
       return
     }
 
     try {
-      const response = await fetch(`/api/users/${user.id}/toggle-status`, {
+      // Actualizar el estado local inmediatamente
+      setUsers(prevUsers => 
+        prevUsers.map(u => 
+          u.id === user.id 
+            ? { ...u, isActive: !u.isActive }
+            : u
+        )
+      )
+
+      const response = await fetch(`/api/users/${user.id}/status`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ isActive: !user.isActive }),
+        body: JSON.stringify({ isActive: !user.isActive })
       })
 
       if (!response.ok) {
+        // Si hay error, revertir el estado local
+        setUsers(prevUsers => 
+          prevUsers.map(u => 
+            u.id === user.id 
+              ? { ...u, isActive: !u.isActive }
+              : u
+          )
+        )
         throw new Error('Error al actualizar el estado del usuario')
       }
 
       toast({
         title: 'Estado actualizado',
-        description: `El usuario ha sido ${user.isActive ? 'desactivado' : 'activado'} exitosamente`,
+        description: `Usuario ${user.isActive ? 'desactivado' : 'activado'} exitosamente`,
       })
-
-      onUserUpdated()
     } catch (error) {
-      console.error('Error al actualizar estado:', error)
+      console.error('Error:', error)
       toast({
         title: 'Error',
-        description: 'No se pudo actualizar el estado del usuario',
-        variant: 'destructive',
+        description: 'Error al actualizar el estado del usuario',
+        variant: 'destructive'
       })
     }
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Usuarios del Sistema</h2>
-          <p className="mt-1 text-sm text-gray-500">Gestiona los usuarios y sus permisos</p>
-        </div>
-        {canCreateUsers && (
-          <Button 
-            onClick={() => setIsNewModalOpen(true)}
-            className="bg-primary-600 hover:bg-primary-700 text-white shadow-sm"
-          >
-            <FiUserPlus className="mr-2 h-5 w-5" />
-            Nuevo Usuario
-          </Button>
-        )}
-      </div>
-
       <UserFilters onFilterChange={handleFilterChange} />
 
       {!selectedUserDetails && (
@@ -377,7 +393,11 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
               </thead>
               <tbody>
                 {paginatedUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150">
+                  <tr 
+                    key={user.id} 
+                    className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                    onClick={() => handleViewDetails(user)}
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
                         <div className="flex-shrink-0">
@@ -401,47 +421,31 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge variant={user.isActive ? "success" : "destructive"}>
-                        {user.isActive ? 'Activo' : 'Inactivo'}
-                      </Badge>
+                      <div className="flex items-center space-x-3" onClick={(e) => e.stopPropagation()}>
+                        <Switch
+                          checked={user.isActive}
+                          onCheckedChange={() => handleToggleStatus(user)}
+                          disabled={!canEditUsers(user.rol, user.id)}
+                          className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-gray-300"
+                        />
+                        <span className={`text-sm ${user.isActive ? 'text-green-600' : 'text-gray-500'}`}>
+                          {user.isActive ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewDetails(user)}
-                          title="Ver detalles"
-                          className="text-gray-600 hover:text-primary-600 hover:bg-primary-50"
-                        >
-                          <FiEye className="h-4 w-4" />
-                        </Button>
+                      <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
                         {canEditUsers(user.rol, user.id) && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleStatus(user)}
-                              title={user.isActive ? "Desactivar usuario" : "Activar usuario"}
-                              className={`text-gray-600 hover:${user.isActive ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
-                            >
-                              {user.isActive ? (
-                                <FiX className="h-4 w-4" />
-                              ) : (
-                                <FiUser className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(user)}
-                              disabled={isDeleting}
-                              title="Editar"
-                              className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                            >
-                              <FiEdit2 className="h-4 w-4" />
-                            </Button>
-                          </>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(user)}
+                            disabled={isDeleting}
+                            title="Editar"
+                            className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                          >
+                            <FiEdit2 className="h-4 w-4" />
+                          </Button>
                         )}
                         {canDeleteUsers(user.rol, user.id) && (
                           <Button
@@ -474,66 +478,68 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
       )}
 
       {selectedUserDetails && (
-        <Card className="w-full bg-white rounded-xl shadow-sm border border-gray-100">
-          <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-primary-50 to-white">
-            <div className="flex justify-between items-start">
-              <div className="flex items-start space-x-6">
-                <div className="h-20 w-20 rounded-xl bg-primary-100 flex items-center justify-center shadow-sm">
-                  <FiUser className="h-10 w-10 text-primary-600" />
-                </div>
-                <div>
-                  <h3 className="text-3xl font-bold text-gray-900">{selectedUserDetails.nombre}</h3>
-                  <div className="mt-3 flex flex-wrap gap-4">
-                    <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                      <FiMail className="h-5 w-5 text-primary-500" />
-                      <span className="text-base text-gray-700">{selectedUserDetails.email}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                      <FiShield className="h-5 w-5 text-blue-500" />
-                      <span className="text-base text-gray-700">{ROLE_TRANSLATIONS[selectedUserDetails.rol] || 'Sin rol'}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                      <Badge variant={selectedUserDetails.isActive ? "success" : "destructive"}>
-                        {selectedUserDetails.isActive ? 'Activo' : 'Inactivo'}
-                      </Badge>
+        <div className="mt-4">
+          <Card className="w-full bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-primary-50 to-white">
+              <div className="flex justify-between items-start">
+                <div className="flex items-start space-x-6">
+                  <div className="h-20 w-20 rounded-xl bg-primary-100 flex items-center justify-center shadow-sm">
+                    <FiUser className="h-10 w-10 text-primary-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-bold text-gray-900">{selectedUserDetails.nombre}</h3>
+                    <div className="mt-3 flex flex-wrap gap-4">
+                      <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
+                        <FiMail className="h-5 w-5 text-primary-500" />
+                        <span className="text-base text-gray-700">{selectedUserDetails.email}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
+                        <FiShield className="h-5 w-5 text-blue-500" />
+                        <span className="text-base text-gray-700">{ROLE_TRANSLATIONS[selectedUserDetails.rol] || 'Sin rol'}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg shadow-sm">
+                        <Badge variant={selectedUserDetails.isActive ? "success" : "destructive"}>
+                          {selectedUserDetails.isActive ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCloseDetails}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FiX className="h-5 w-5" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCloseDetails}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX className="h-5 w-5" />
-              </Button>
             </div>
-          </div>
 
-          <div className="p-6 space-y-6">
-            <div className="flex items-center space-x-2">
-              <FiCalendar className="h-5 w-5 text-gray-400" />
-              <h4 className="font-semibold text-gray-900">Información de Registro</h4>
-            </div>
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <h5 className="text-sm font-medium text-gray-500">Fecha de Creación</h5>
-                <p className="text-gray-600">
-                  {new Date(selectedUserDetails.createdAt).toLocaleDateString()}
-                </p>
+            <div className="p-6 space-y-6">
+              <div className="flex items-center space-x-2">
+                <FiCalendar className="h-5 w-5 text-gray-400" />
+                <h4 className="font-semibold text-gray-900">Información de Registro</h4>
               </div>
-              <div>
-                <h5 className="text-sm font-medium text-gray-500">Último Acceso</h5>
-                <p className="text-gray-600">
-                  {selectedUserDetails.lastLogin 
-                    ? new Date(selectedUserDetails.lastLogin).toLocaleDateString()
-                    : 'Nunca ha iniciado sesión'}
-                </p>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h5 className="text-sm font-medium text-gray-500">Fecha de Creación</h5>
+                  <p className="text-gray-600">
+                    {new Date(selectedUserDetails.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <h5 className="text-sm font-medium text-gray-500">Último Acceso</h5>
+                  <p className="text-gray-600">
+                    {selectedUserDetails.lastLogin 
+                      ? new Date(selectedUserDetails.lastLogin).toLocaleDateString()
+                      : 'Nunca ha iniciado sesión'}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       )}
 
       {selectedUser && (
@@ -549,49 +555,17 @@ export default function UsersTable({ users, onUserUpdated, onUserCreated }: User
         />
       )}
 
-      <NewUserModal
-        isOpen={isNewModalOpen}
-        onClose={() => setIsNewModalOpen(false)}
-        onUserCreated={onUserCreated}
-      />
-
       {userToDelete && (
-      <DeleteUserAlert
+        <DeleteUserAlert
           isOpen={!!userToDelete}
-        onClose={() => {
+          onClose={() => {
             setUserToDelete(null)
             setAssociatedData(null)
           }}
-          onConfirm={async () => {
-            try {
-              const response = await fetch(`/api/users/${userToDelete.id}`, {
-                method: 'DELETE',
-              })
-
-              if (!response.ok) {
-                const error = await response.json()
-                throw new Error(error.message || 'Error al eliminar usuario')
-              }
-
-              toast({
-                title: "Éxito",
-                description: "Usuario eliminado correctamente"
-              })
-          setUserToDelete(null)
-              setAssociatedData(null)
-              onUserUpdated()
-            } catch (error) {
-              console.error('Error al eliminar usuario:', error)
-              toast({
-                variant: "destructive",
-                title: "Error",
-                description: error instanceof Error ? error.message : 'Error al eliminar usuario'
-              })
-            }
-          }}
+          onConfirm={handleDeleteConfirm}
           userName={userToDelete.nombre}
           associatedData={associatedData || undefined}
-      />
+        />
       )}
     </div>
   )

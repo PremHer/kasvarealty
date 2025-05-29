@@ -8,6 +8,11 @@ export default withAuth(
       return NextResponse.redirect(new URL('/dashboard/projects', req.url))
     }
 
+    // Redirigir /clientes a /dashboard/clientes
+    if (req.nextUrl.pathname === '/clientes') {
+      return NextResponse.redirect(new URL('/dashboard/clientes', req.url))
+    }
+
     // Proteger rutas de proyectos
     if (req.nextUrl.pathname.startsWith('/dashboard/projects')) {
       const token = req.nextauth.token
@@ -44,6 +49,7 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/projects",
+    "/clientes",
     "/proyectos/:path*",
     "/ventas/:path*",
     "/finanzas/:path*",

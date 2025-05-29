@@ -34,13 +34,7 @@ export async function GET() {
       where: {
         AND: [
           {
-            estado: EstadoProyecto.APPROVED
-          },
-          {
-            OR: [
-              { gerenteId: null },
-              { gerenteId: '' }
-            ]
+            estado: EstadoProyecto.PENDING_ASSIGNMENT
           },
           {
             empresaDesarrolladoraId: {

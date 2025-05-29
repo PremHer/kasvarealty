@@ -30,6 +30,7 @@ model EmpresaDesarrolladora {
   representanteLegal              Usuario?               @relation("RepresentanteLegal", fields: [representanteLegalId], references: [id])
   usuarios                        Usuario[]              @relation("EmpresaUsuario")
   usuarios_GerenteGeneralEmpresas Usuario[]              @relation("GerenteGeneralEmpresas")
+  clientes                        Cliente[]              @relation("ClienteEmpresa")
 
   @@map("empresas_desarrolladoras")
 }
@@ -59,6 +60,7 @@ model Usuario {
   empresaDesarrolladora                           EmpresaDesarrolladora?  @relation("EmpresaUsuario", fields: [empresaDesarrolladoraId], references: [id])
   empresas_desarrolladoras_GerenteGeneralEmpresas EmpresaDesarrolladora[] @relation("GerenteGeneralEmpresas")
   proyectosMiembro                                Proyecto[]              @relation("ProjectMembers")
+  clientesCreados                                 Cliente[]               @relation("ClienteCreadoPor")
 
   @@map("usuarios")
 }
@@ -133,14 +135,35 @@ model Venta {
 }
 
 model Cliente {
-  id        String   @id @default(cuid())
-  nombre    String
-  dni       String   @unique
-  telefono  String
-  email     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ventas    Venta[]
+  id                String    @id @default(cuid())
+  nombre            String?
+  apellido          String?
+  email             String    @unique
+  telefono          String?
+  direccion         String?
+  tipo              String    // INDIVIDUAL o EMPRESA
+  estado            String    @default("ACTIVO") // ACTIVO, INACTIVO, POTENCIAL
+  // Campos para cliente individual
+  dni               String?   @unique
+  fechaNacimiento   DateTime?
+  estadoCivil       String?   // SOLTERO, CASADO, DIVORCIADO, VIUDO
+  ocupacion         String?
+  // Campos para empresa
+  razonSocial       String?
+  ruc               String?   @unique
+  representanteLegal String?
+  cargoRepresentante String?
+  // Relaciones
+  creadoPor         Usuario   @relation("ClienteCreadoPor", fields: [creadoPorId], references: [id])
+  creadoPorId       String
+  empresaId         String?
+  empresa           EmpresaDesarrolladora?  @relation("ClienteEmpresa", fields: [empresaId], references: [id])
+  ventas            Venta[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([creadoPorId])
+  @@index([empresaId])
 }
 
 model Actividad {
@@ -271,4 +294,15 @@ enum TipoBilleteraVirtual {
   TUNKI
   AGRARIO
   BIM
+}
+
+enum TipoCliente {
+  INDIVIDUAL
+  EMPRESA
+}
+
+enum EstadoCliente {
+  ACTIVO
+  INACTIVO
+  POTENCIAL
 }

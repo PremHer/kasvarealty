@@ -36,7 +36,19 @@ export default function LoginPage() {
       }
 
       if (result.error) {
-        throw new Error(result.error)
+        // Manejar errores específicos
+        if (result.error.includes('inactiva')) {
+          setError('Tu cuenta está inactiva. Por favor, contacta al administrador del sistema para activar tu cuenta.')
+        } else if (result.error.includes('no encontrado')) {
+          setError('Usuario no encontrado')
+        } else if (result.error.includes('incorrecta')) {
+          setError('Contraseña incorrecta')
+        } else if (result.error.includes('requeridos')) {
+          setError('Email y contraseña son requeridos')
+        } else {
+          setError('Credenciales inválidas')
+        }
+        return
       }
 
       if (result.ok) {
@@ -46,8 +58,7 @@ export default function LoginPage() {
       }
     } catch (error) {
       console.error('Error:', error)
-      toast.error(error instanceof Error ? error.message : 'Error al iniciar sesión')
-      setError('Credenciales inválidas')
+      setError('Error al iniciar sesión')
     } finally {
       setLoading(false)
     }

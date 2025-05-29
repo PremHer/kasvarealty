@@ -142,6 +142,7 @@ export default function NewUserModal({
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true)
+    setFormError(null)
     try {
       const response = await fetch('/api/users', {
         method: 'POST',
@@ -150,18 +151,26 @@ export default function NewUserModal({
         },
         body: JSON.stringify(data)
       })
-
+  
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.details || errorData.error || 'Error al crear usuario')
+        const error = await response.json()
+        
+        // Manejar errores específicos
+        if (error.code === 'EMAIL_DUPLICATE') {
+          setFormError('El correo electrónico ya está registrado en el sistema. Por favor, utilice un email diferente o contacte al administrador si necesita recuperar el acceso a esta cuenta.')
+        } else if (error.error) {
+          setFormError(error.error)
+        } else {
+          setFormError('Error al crear el usuario')
+        }
+        return
       }
-
+  
       toast.success('Usuario creado exitosamente')
       onClose()
       onUserCreated()
     } catch (error) {
-      console.error('Error al crear usuario:', error)
-      toast.error(error instanceof Error ? error.message : 'Error al crear usuario')
+      setFormError(error instanceof Error ? error.message : 'Error al crear el usuario')
     } finally {
       setIsSubmitting(false)
     }
@@ -199,16 +208,16 @@ export default function NewUserModal({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+          {formError && (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+        <div className="flex items-center gap-2 text-red-600">
+          <FiInfo className="h-5 w-5" />
+          <p className="text-sm font-medium">{formError}</p>
+        </div>
+      </div>
+    )}
             <div className="flex-1 overflow-y-auto py-4">
               <div className="space-y-6">
-              {formError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-red-600">
-                    <FiInfo className="h-5 w-5" />
-                    <p className="text-sm font-medium">{formError}</p>
-                  </div>
-                </div>
-              )}
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-center space-x-2 mb-4">
                   <FiUser className="h-5 w-5 text-blue-600" />

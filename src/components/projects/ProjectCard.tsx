@@ -121,16 +121,17 @@ export default function ProjectCard({ project, onEdit, onDelete }: ProjectCardPr
       // Primero verificamos si hay relaciones activas
       const response = await fetch(`/api/projects/${project.id}/check-relations`)
       
-      if (response.status === 409) {
-        // Si hay relaciones activas, mostramos el diálogo detallado
-        const data = await response.json()
-        setErrorMessage(data.error)
-        setErrorDialogOpen(true)
-        return
-      }
-
       if (!response.ok) {
         throw new Error('Error al verificar relaciones')
+      }
+
+      const data = await response.json()
+      
+      if (data.hasRelations) {
+        // Si hay relaciones activas, mostramos el diálogo detallado
+        setErrorMessage(data.message)
+        setErrorDialogOpen(true)
+        return
       }
 
       // Si no hay relaciones activas, mostramos el diálogo de confirmación simple

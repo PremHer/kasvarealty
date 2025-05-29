@@ -34,6 +34,71 @@ const icon = new Icon({
   shadowSize: [41, 41]
 })
 
+// Función para encontrar la ubicación más cercana usando la API de Perú
+async function findNearestLocation(lat: number, lng: number): Promise<LocationData> {
+  try {
+    // Primero intentamos con la API de Perú
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=es`
+    )
+    const data = await response.json()
+    
+    // Extraer la información de la dirección
+    const address = data.address || {}
+    
+    // Mapear los campos según la estructura de Perú
+    const locationData: LocationData = {
+      latitud: lat,
+      longitud: lng,
+      direccion: data.display_name,
+      departamento: address.state,
+      provincia: address.county || address.state_district,
+      distrito: address.city || address.town || address.village || address.suburb
+    }
+
+    // Si no tenemos provincia o distrito, intentamos con una búsqueda más amplia
+    if (!locationData.provincia || !locationData.distrito) {
+      const searchResponse = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${lat},${lng}&zoom=18&addressdetails=1&accept-language=es`
+      )
+      const searchData = await searchResponse.json()
+      
+      if (searchData && searchData.length > 0) {
+        const nearestAddress = searchData[0].address
+        locationData.provincia = locationData.provincia || nearestAddress.county || nearestAddress.state_district
+        locationData.distrito = locationData.distrito || nearestAddress.city || nearestAddress.town || nearestAddress.village
+      }
+    }
+
+    // Si aún no tenemos la información, intentamos con una búsqueda por radio
+    if (!locationData.provincia || !locationData.distrito) {
+      const radiusResponse = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${lat},${lng}&radius=5000&addressdetails=1&accept-language=es`
+      )
+      const radiusData = await radiusResponse.json()
+      
+      if (radiusData && radiusData.length > 0) {
+        const nearestAddress = radiusData[0].address
+        locationData.provincia = locationData.provincia || nearestAddress.county || nearestAddress.state_district
+        locationData.distrito = locationData.distrito || nearestAddress.city || nearestAddress.town || nearestAddress.village
+      }
+    }
+
+    return locationData
+  } catch (error) {
+    console.error('Error al obtener la ubicación:', error)
+    // Devolver datos básicos en caso de error
+    return {
+      latitud: lat,
+      longitud: lng,
+      direccion: 'Ubicación seleccionada',
+      departamento: 'No disponible',
+      provincia: 'No disponible',
+      distrito: 'No disponible'
+    }
+  }
+}
+
 function MapEvents({ onLocationSelect, readOnly }: { onLocationSelect?: (location: LocationData) => void, readOnly?: boolean }) {
   useMapEvents({
     click: async (e) => {
@@ -41,20 +106,7 @@ function MapEvents({ onLocationSelect, readOnly }: { onLocationSelect?: (locatio
       
       const { lat, lng } = e.latlng
       try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
-        )
-        const data = await response.json()
-        
-        const locationData: LocationData = {
-          latitud: lat,
-          longitud: lng,
-          direccion: data.display_name,
-          departamento: data.address?.state,
-          provincia: data.address?.county,
-          distrito: data.address?.city || data.address?.town || data.address?.village
-        }
-        
+        const locationData = await findNearestLocation(lat, lng)
         onLocationSelect?.(locationData)
       } catch (error) {
         console.error('Error al obtener la dirección:', error)

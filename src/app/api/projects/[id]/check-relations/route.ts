@@ -54,16 +54,16 @@ export async function GET(
       activeRelations.push(`Miembros del proyecto (${project._count.miembros})`)
     }
 
-    if (activeRelations.length > 0) {
-      return new NextResponse(
-        JSON.stringify({
-          error: `No se puede eliminar el proyecto "${project.nombre}" porque tiene las siguientes relaciones activas:\n\n${activeRelations.join('\n')}`
-        }),
-        { status: 409 }
-      )
-    }
-
-    return new NextResponse(null, { status: 200 })
+    return new NextResponse(
+      JSON.stringify({
+        hasRelations: activeRelations.length > 0,
+        relations: activeRelations,
+        message: activeRelations.length > 0 
+          ? `No se puede eliminar el proyecto "${project.nombre}" porque tiene las siguientes relaciones activas:\n\n${activeRelations.join('\n')}`
+          : null
+      }),
+      { status: 200 }
+    )
   } catch (error) {
     console.error('Error al verificar relaciones del proyecto:', error)
     return new NextResponse('Error interno del servidor', { status: 500 })
