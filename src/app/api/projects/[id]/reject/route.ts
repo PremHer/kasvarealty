@@ -31,7 +31,9 @@ export async function POST(
     const proyecto = await prisma.proyecto.findFirst({
       where: {
         id: params.id,
-        estado: 'PENDING_APPROVAL',
+        estado: {
+          in: ['PENDING_APPROVAL', 'PENDING_ASSIGNMENT']
+        },
         empresaDesarrolladora: {
           representanteLegalId: usuario.id
         }

@@ -56,8 +56,11 @@ export default function NewProjectModal({
     },
     onSubmit: async (data: ProjectFormData) => {
       try {
+        // Verificar que el usuario es gerente general
+        const isGerenteGeneral = session?.user?.role === 'GERENTE_GENERAL'
+        
         // Si el usuario es gerente general, mostramos el diálogo de asignación
-        if (session?.user?.role === 'GERENTE_GENERAL' && data.developerCompanyId) {
+        if (isGerenteGeneral && data.developerCompanyId) {
           setPendingProjectData(data)
           setShowAssignDialog(true)
           return
@@ -75,6 +78,19 @@ export default function NewProjectModal({
 
   const createProject = async (data: ProjectFormData, managerId?: string) => {
     try {
+      // Determinar el estado inicial del proyecto según el rol del usuario
+      let initialStatus = 'PENDING_ASSIGNMENT'
+      let projectManagerId = managerId
+
+      if (session?.user?.role === 'PROJECT_MANAGER') {
+        // Si es project manager, se asigna a sí mismo y queda pendiente de aprobación
+        initialStatus = 'PENDING_APPROVAL'
+        projectManagerId = session.user.id
+      } else if (session?.user?.role === 'GERENTE_GENERAL' && managerId) {
+        // Si es gerente general y asigna un manager, queda aprobado
+        initialStatus = 'APPROVED'
+      }
+
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: {
@@ -82,8 +98,8 @@ export default function NewProjectModal({
         },
         body: JSON.stringify({
           ...data,
-          status: managerId ? 'APPROVED' : 'PENDING_ASSIGNMENT',
-          managerId
+          status: initialStatus,
+          managerId: projectManagerId
         })
       })
 
@@ -437,35 +453,39 @@ export default function NewProjectModal({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showAssignDialog} onOpenChange={() => setShowAssignDialog(false)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Asignar Project Manager</DialogTitle>
-            <DialogDescription>
-              ¿Desea asignar un Project Manager al proyecto en este momento? Si selecciona "Sí", podrá elegir un Project Manager de la lista. Si selecciona "No", el proyecto quedará pendiente de asignación.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex space-x-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => handleAssignDecision(false)}
-            >
-              No, más tarde
-            </Button>
-            <Button
-              onClick={() => handleAssignDecision(true)}
-            >
-              Sí, asignar ahora
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {session?.user?.role === 'GERENTE_GENERAL' && (
+        <>
+          <Dialog open={showAssignDialog} onOpenChange={() => setShowAssignDialog(false)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Asignar Project Manager</DialogTitle>
+                <DialogDescription>
+                  ¿Desea asignar un Project Manager al proyecto en este momento? Si selecciona "Sí", podrá elegir un Project Manager de la lista. Si selecciona "No", el proyecto quedará pendiente de asignación.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="flex space-x-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => handleAssignDecision(false)}
+                >
+                  No, más tarde
+                </Button>
+                <Button
+                  onClick={() => handleAssignDecision(true)}
+                >
+                  Sí, asignar ahora
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-      <ProjectManagerSelect
-        open={showManagerSelect}
-        onOpenChange={setShowManagerSelect}
-        onSelect={handleManagerSelect}
-      />
+          <ProjectManagerSelect
+            open={showManagerSelect}
+            onOpenChange={setShowManagerSelect}
+            onSelect={handleManagerSelect}
+          />
+        </>
+      )}
     </>
   )
 } 
