@@ -351,31 +351,39 @@ export default function PendingProjectsPage() {
                   {activeTab === 'approval' ? (
                     <>
                       <Button
-                        variant="destructive"
+                        variant="outline"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         onClick={() => handleReject(project)}
-                        className="bg-red-600 hover:bg-red-700"
                       >
-                        <FiX className="w-4 h-4 mr-2" />
+                        <FiX className="mr-2 h-4 w-4" />
                         Rechazar
                       </Button>
                       <Button
-                        variant="default"
                         onClick={() => handleApprove(project)}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-green-600 hover:bg-green-700"
                       >
-                        <FiCheck className="w-4 h-4 mr-2" />
+                        <FiCheck className="mr-2 h-4 w-4" />
                         Aprobar
                       </Button>
                     </>
                   ) : (
-                    <Button
-                      variant="default"
-                      onClick={() => handleAssign(project)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <FiUser className="w-4 h-4 mr-2" />
-                      Asignar Gerente
-                    </Button>
+                    <>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleReject(project)}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        <FiX className="mr-2 h-4 w-4" />
+                        Rechazar
+                      </Button>
+                      <Button
+                        onClick={() => handleAssign(project)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <FiUser className="mr-2 h-4 w-4" />
+                        Asignar Gerente
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardContent>
