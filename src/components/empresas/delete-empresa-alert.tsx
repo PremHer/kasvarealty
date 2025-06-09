@@ -52,6 +52,15 @@ export default function DeleteEmpresaAlert({
   }, [isOpen, empresaId])
 
   const handleDelete = async () => {
+    if (!empresaId) {
+      toast({
+        title: 'Error',
+        description: 'ID de empresa no válido',
+        variant: 'destructive'
+      })
+      return
+    }
+
     if (associatedData?.proyectos && associatedData.proyectos > 0) {
       toast({
         title: 'No se puede eliminar',
@@ -69,13 +78,15 @@ export default function DeleteEmpresaAlert({
       })
 
       if (!response.ok) {
-        throw new Error('Error al eliminar la empresa')
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Error al eliminar la empresa')
       }
 
       toast({
-        title: 'Empresa eliminada',
+        title: '¡Éxito!',
         description: 'La empresa se ha eliminado exitosamente',
-        variant: 'default'
+        variant: 'success',
+        duration: 3000
       })
 
       onEmpresaDeleted()
@@ -83,8 +94,9 @@ export default function DeleteEmpresaAlert({
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Hubo un error al eliminar la empresa',
-        variant: 'destructive'
+        description: error instanceof Error ? error.message : 'Hubo un error al eliminar la empresa',
+        variant: 'destructive',
+        duration: 5000
       })
     } finally {
       setIsDeleting(false)
@@ -98,52 +110,52 @@ export default function DeleteEmpresaAlert({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2 text-xl">
-            <FiAlertTriangle className="h-6 w-6 text-red-600" />
+            <FiAlertTriangle className="h-6 w-6 text-green-600" />
             <span>Eliminar Empresa</span>
           </DialogTitle>
-          <DialogDescription className="pt-4">
-            <div className="space-y-4">
+          <DialogDescription>
+            <div className="space-y-4 pt-4">
               {isLoading ? (
-                <p>Cargando información...</p>
+                <div>Cargando información...</div>
               ) : hasAssociatedProjects ? (
                 <div className="space-y-4">
-                  <p className="text-gray-600">
+                  <div className="text-gray-600">
                     No se puede eliminar la empresa <span className="font-semibold text-gray-900">{empresaNombre}</span> porque tiene proyectos asociados.
-                  </p>
+                  </div>
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <div className="flex items-start space-x-3">
                       <FiAlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-red-800">Proyectos asociados ({associatedData.proyectos}):</p>
+                        <div className="text-sm font-medium text-red-800">Proyectos asociados ({associatedData.proyectos}):</div>
                         <ul className="list-disc list-inside text-sm text-red-600">
                           {associatedData.proyectosList.map((proyecto, index) => (
                             <li key={index}>{proyecto}</li>
                           ))}
                         </ul>
-                        <p className="text-sm text-red-600 mt-2">
+                        <div className="text-sm text-red-600 mt-2">
                           Debes eliminar o reasignar estos proyectos antes de eliminar la empresa.
-                        </p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <>
-                  <p className="text-gray-600">
+                <div className="space-y-4">
+                  <div className="text-gray-600">
                     ¿Estás seguro que deseas eliminar la empresa <span className="font-semibold text-gray-900">{empresaNombre}</span>?
-                  </p>
+                  </div>
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <div className="flex items-start space-x-3">
                       <FiAlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-red-800">Esta acción no se puede deshacer</p>
-                        <p className="text-sm text-red-600">
+                        <div className="text-sm font-medium text-red-800">Esta acción no se puede deshacer</div>
+                        <div className="text-sm text-red-600">
                           Se eliminarán todos los datos asociados a esta empresa.
-                        </p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </>
+                </div>
               )}
             </div>
           </DialogDescription>
@@ -164,7 +176,7 @@ export default function DeleteEmpresaAlert({
               variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
               {isDeleting ? (
                 <>

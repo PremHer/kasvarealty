@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
-import { UpdateClienteData } from '@/types/cliente'
+import { UpdateClienteData, TIPO_CLIENTE, Sexo, EstadoCivil, TipoDireccion } from '@/types/cliente'
+import { Prisma, TipoCliente } from '@prisma/client'
 
 // GET /api/clientes/[id] - Obtener un cliente específico
 export async function GET(
@@ -53,7 +54,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { estado } = body
+    const { isActive } = body
 
     // Verificar si el cliente existe
     const existingCliente = await prisma.cliente.findUnique({
@@ -67,19 +68,23 @@ export async function PATCH(
       )
     }
 
+    // Actualizar el estado del cliente
     const cliente = await prisma.cliente.update({
       where: { id: params.id },
       data: {
-        estado,
+        isActive,
+        updatedAt: new Date(), // Asegurar que se actualice la fecha de modificación
       },
       include: {
-        empresa: {
+        direcciones: true,
+        creadoPor: {
           select: {
             id: true,
             nombre: true,
-          },
-        },
-      },
+            email: true
+          }
+        }
+      }
     })
 
     return NextResponse.json(cliente)
@@ -109,7 +114,6 @@ export async function PUT(
       apellido,
       email,
       telefono,
-      direccion,
       tipo,
       estado,
       dni,
@@ -120,11 +124,16 @@ export async function PUT(
       ruc,
       representanteLegal,
       cargoRepresentante,
+      direcciones,
+      sexo,
     } = body
 
     // Verificar si el cliente existe
     const existingCliente = await prisma.cliente.findUnique({
       where: { id: params.id },
+      include: {
+        direcciones: true
+      }
     })
 
     if (!existingCliente) {
@@ -173,6 +182,11 @@ export async function PUT(
       }
     }
 
+    // Primero eliminamos las direcciones existentes
+    await prisma.direccion.deleteMany({
+      where: { clienteId: params.id }
+    })
+
     const cliente = await prisma.cliente.update({
       where: { id: params.id },
       data: {
@@ -180,22 +194,34 @@ export async function PUT(
         apellido,
         email,
         telefono: telefono || null,
-        direccion: direccion || null,
         tipo,
-        estado: estado || 'ACTIVO',
         // Campos para cliente individual
         dni: dni || null,
         fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null,
         estadoCivil: estadoCivil || null,
         ocupacion: ocupacion || null,
+        sexo: tipo === 'INDIVIDUAL' ? sexo : null,
         // Campos para empresa
         razonSocial: razonSocial || null,
         ruc: ruc || null,
         representanteLegal: representanteLegal || null,
         cargoRepresentante: cargoRepresentante || null,
+        // Actualizar direcciones
+        direcciones: {
+          deleteMany: {},
+          create: direcciones?.map((dir: any) => ({
+            tipo: dir.tipo,
+            pais: dir.pais,
+            ciudad: dir.ciudad,
+            direccion: dir.direccion,
+            referencia: dir.referencia,
+          })) || []
+        }
       },
       include: {
-        empresa: {
+        direcciones: true,
+        ventas: true,
+        creadoPor: {
           select: {
             id: true,
             nombre: true,

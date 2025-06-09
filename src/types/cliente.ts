@@ -1,70 +1,92 @@
-import { TipoCliente, EstadoCliente } from '@prisma/client'
+export enum TIPO_CLIENTE {
+  INDIVIDUAL = 'INDIVIDUAL',
+  EMPRESA = 'EMPRESA'
+}
+
+export enum EstadoCivil {
+  SOLTERO = 'SOLTERO',
+  CASADO = 'CASADO',
+  DIVORCIADO = 'DIVORCIADO',
+  VIUDO = 'VIUDO'
+}
+
+export enum Sexo {
+  MASCULINO = 'MASCULINO',
+  FEMENINO = 'FEMENINO'
+}
+
+export enum TipoDireccion {
+  NACIONAL = 'NACIONAL',
+  EXTRANJERA = 'EXTRANJERA'
+}
+
+export interface Direccion {
+  id?: string
+  tipo: TipoDireccion
+  pais: string
+  ciudad: string
+  direccion: string
+  referencia?: string
+}
 
 export interface Cliente {
   id: string
-  nombre: string
-  apellido: string
-  email: string
-  telefono?: string
-  direccion?: string
-  tipo: TipoCliente
-  estado: EstadoCliente
-  // Campos para cliente individual
-  dni?: string
-  fechaNacimiento?: Date
-  estadoCivil?: 'SOLTERO' | 'CASADO' | 'DIVORCIADO' | 'VIUDO'
-  ocupacion?: string
-  // Campos para empresa
+  tipo: TIPO_CLIENTE
+  nombre?: string
+  apellido?: string
+  sexo?: Sexo
   razonSocial?: string
   ruc?: string
+  dni?: string
+  email: string
+  telefono?: string
+  fechaNacimiento?: Date
+  estadoCivil?: EstadoCivil
+  ocupacion?: string
   representanteLegal?: string
   cargoRepresentante?: string
-  // Relaciones
+  direcciones: Direccion[]
+  isActive: boolean
   empresaId?: string
-  empresa?: {
-    id: string
-    nombre: string
-  }
   createdAt: Date
   updatedAt: Date
-  creadoPorId: string
-  actualizadoPorId?: string
 }
 
-export type CreateClienteData = {
-  nombre: string
-  apellido: string
-  email: string
-  telefono?: string
-  direccion?: string
-  tipo: 'INDIVIDUAL' | 'EMPRESA'
-  estado?: 'ACTIVO' | 'INACTIVO' | 'POTENCIAL'
-  // Campos para cliente individual
-  dni?: string
-  fechaNacimiento?: string
-  estadoCivil?: 'SOLTERO' | 'CASADO' | 'DIVORCIADO' | 'VIUDO'
-  ocupacion?: string
-  // Campos para empresa
+export interface ClienteFormData {
+  tipo: TIPO_CLIENTE
+  nombre?: string
+  apellido?: string
+  sexo?: Sexo
   razonSocial?: string
   ruc?: string
+  dni?: string
+  email: string
+  telefono?: string
+  fechaNacimiento?: Date
+  estadoCivil?: EstadoCivil
+  ocupacion?: string
   representanteLegal?: string
   cargoRepresentante?: string
+  direcciones: Direccion[]
 }
 
-export interface UpdateClienteData extends Partial<CreateClienteData> {
-  id: string
-}
+export type CreateClienteData = Omit<ClienteFormData, 'id'>
+export type UpdateClienteData = Partial<ClienteFormData>
+
+export type EstadoCliente = 'ACTIVO' | 'INACTIVO' | 'POTENCIAL'
+
+export const ESTADO_CLIENTE = {
+  ACTIVO: 'ACTIVO' as EstadoCliente,
+  INACTIVO: 'INACTIVO' as EstadoCliente,
+  POTENCIAL: 'POTENCIAL' as EstadoCliente
+} as const
 
 export interface ClienteFilters {
   search?: string
-  tipo?: TipoCliente
+  tipo?: TIPO_CLIENTE
   estado?: EstadoCliente
   empresaId?: string
 }
-
-export type ClienteFormData = Omit<Cliente, 'id' | 'createdAt' | 'updatedAt' | 'estado'>
-
-export type ClienteTipo = 'INDIVIDUAL' | 'EMPRESA'
 
 export const CLIENTE_TIPOS = {
   INDIVIDUAL: 'Persona Natural',

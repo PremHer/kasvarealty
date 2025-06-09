@@ -89,10 +89,13 @@ export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: N
         throw new Error(error.message || 'Error al crear la empresa')
       }
 
+      const newEmpresa = await response.json()
+
       toast({
-        title: 'Empresa creada',
+        title: '¡Éxito!',
         description: 'La empresa se ha creado exitosamente',
-        variant: 'default'
+        variant: 'success',
+        duration: 3000
       })
 
       onEmpresaCreated()
@@ -108,10 +111,12 @@ export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: N
         billeterasVirtuales: []
       })
     } catch (error) {
+      console.error('Error al crear empresa:', error)
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Hubo un error al crear la empresa',
-        variant: 'destructive'
+        variant: 'destructive',
+        duration: 5000
       })
     } finally {
       setIsSubmitting(false)

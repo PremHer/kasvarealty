@@ -286,8 +286,10 @@ export default function UsersTable({ users: initialUsers, onUserUpdated, onUserC
       }
 
       toast({
-        title: 'Usuario eliminado',
+        title: '¡Éxito!',
         description: 'El usuario ha sido eliminado exitosamente',
+        variant: 'success',
+        duration: 3000
       })
 
       onUserUpdated()
@@ -297,6 +299,7 @@ export default function UsersTable({ users: initialUsers, onUserUpdated, onUserC
         title: 'Error',
         description: 'No se pudo eliminar el usuario',
         variant: 'destructive',
+        duration: 5000
       })
     } finally {
       setIsDeleting(false)
@@ -318,7 +321,8 @@ export default function UsersTable({ users: initialUsers, onUserUpdated, onUserC
       toast({
         title: 'Error',
         description: 'No tienes permisos para cambiar el estado de este usuario',
-        variant: 'destructive'
+        variant: 'destructive',
+        duration: 5000
       })
       return
     }
@@ -354,15 +358,18 @@ export default function UsersTable({ users: initialUsers, onUserUpdated, onUserC
       }
 
       toast({
-        title: 'Estado actualizado',
+        title: '¡Éxito!',
         description: `Usuario ${user.isActive ? 'desactivado' : 'activado'} exitosamente`,
+        variant: 'success',
+        duration: 3000
       })
     } catch (error) {
       console.error('Error:', error)
       toast({
         title: 'Error',
         description: 'Error al actualizar el estado del usuario',
-        variant: 'destructive'
+        variant: 'destructive',
+        duration: 5000
       })
     }
   }

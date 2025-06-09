@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { FiUser, FiMail, FiLock, FiShield, FiInfo, FiEye, FiEyeOff } from 'react-icons/fi'
 import { useSession } from 'next-auth/react'
+import { useToast } from '@/components/ui/use-toast'
 
 import {
   Dialog,
@@ -36,9 +37,8 @@ import {
   SelectGroup,
   SelectLabel,
 } from '@/components/ui/select'
-import { toast } from 'react-hot-toast'
-import type { Rol } from '@prisma/client'
 import { cn } from '@/lib/utils'
+import type { Rol } from '@prisma/client'
 
 const formSchema = z.object({
   nombre: z.string()
@@ -81,6 +81,7 @@ export default function NewUserModal({
   onUserCreated,
 }: NewUserModalProps) {
   const { data: session } = useSession()
+  const { toast } = useToast()
   const currentUserRole = session?.user?.role as Rol
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -166,7 +167,12 @@ export default function NewUserModal({
         return
       }
   
-      toast.success('Usuario creado exitosamente')
+      toast({
+        title: '¡Éxito!',
+        description: 'El usuario ha sido creado exitosamente',
+        variant: 'success',
+        duration: 3000
+      })
       onClose()
       onUserCreated()
     } catch (error) {

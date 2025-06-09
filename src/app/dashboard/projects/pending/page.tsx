@@ -376,13 +376,13 @@ export default function PendingProjectsPage() {
                         <FiX className="mr-2 h-4 w-4" />
                         Rechazar
                       </Button>
-                      <Button
-                        onClick={() => handleAssign(project)}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
+                    <Button
+                      onClick={() => handleAssign(project)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
                         <FiUser className="mr-2 h-4 w-4" />
-                        Asignar Gerente
-                      </Button>
+                      Asignar Gerente
+                    </Button>
                     </>
                   )}
                 </div>

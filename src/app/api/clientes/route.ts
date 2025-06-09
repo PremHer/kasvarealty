@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
 import { CreateClienteData } from '@/types/cliente'
-import { Prisma } from '@prisma/client'
+import { Prisma, TipoCliente, Sexo, EstadoCivil, TipoDireccion } from '@prisma/client'
 
 // GET /api/clientes - Obtener lista de clientes
 export async function GET(request: Request) {
@@ -16,27 +16,21 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const tipo = searchParams.get('tipo')
-    const estado = searchParams.get('estado')
-    const empresaId = searchParams.get('empresaId')
 
-    const where = {
+    const where: Prisma.ClienteWhereInput = {
       AND: [
         // Búsqueda por nombre, apellido o email
         search
           ? {
               OR: [
-                { nombre: { contains: search, mode: 'insensitive' } },
-                { apellido: { contains: search, mode: 'insensitive' } },
-                { email: { contains: search, mode: 'insensitive' } },
+                { nombre: { contains: search, mode: Prisma.QueryMode.insensitive } },
+                { apellido: { contains: search, mode: Prisma.QueryMode.insensitive } },
+                { email: { contains: search, mode: Prisma.QueryMode.insensitive } },
               ],
             }
           : {},
         // Filtro por tipo
-        tipo ? { tipo } : {},
-        // Filtro por estado
-        estado ? { estado } : {},
-        // Filtro por empresa
-        empresaId ? { empresaId } : {},
+        tipo ? { tipo: tipo as TipoCliente } : {},
       ],
     }
 
@@ -44,7 +38,9 @@ export async function GET(request: Request) {
       where,
       orderBy: { createdAt: 'desc' },
       include: {
-        empresa: {
+        direcciones: true,
+        ventas: true,
+        creadoPor: {
           select: {
             id: true,
             nombre: true,
@@ -77,9 +73,7 @@ export async function POST(request: Request) {
       apellido,
       email,
       telefono,
-      direccion,
       tipo,
-      estado,
       dni,
       fechaNacimiento,
       estadoCivil,
@@ -88,7 +82,26 @@ export async function POST(request: Request) {
       ruc,
       representanteLegal,
       cargoRepresentante,
+      sexo,
+      direcciones,
     } = body
+
+    // Validar campos requeridos según el tipo
+    if (tipo === 'INDIVIDUAL') {
+      if (!nombre || !apellido) {
+        return NextResponse.json(
+          { error: 'Nombre y apellido son requeridos para clientes individuales' },
+          { status: 400 }
+        )
+      }
+    } else if (tipo === 'EMPRESA') {
+      if (!razonSocial || !ruc) {
+        return NextResponse.json(
+          { error: 'Razón social y RUC son requeridos para empresas' },
+          { status: 400 }
+        )
+      }
+    }
 
     // Verificar si el email ya existe
     const existingEmail = await prisma.cliente.findUnique({
@@ -129,28 +142,38 @@ export async function POST(request: Request) {
 
     const cliente = await prisma.cliente.create({
       data: {
-        nombre,
-        apellido,
+        tipo: tipo as TipoCliente,
         email,
-        telefono: telefono || null,
-        direccion: direccion || null,
-        tipo,
-        estado: estado || 'ACTIVO',
+        telefono: telefono || undefined,
         // Campos para cliente individual
-        dni: dni || null,
-        fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null,
-        estadoCivil: estadoCivil || null,
-        ocupacion: ocupacion || null,
+        nombre: tipo === 'INDIVIDUAL' ? nombre : '',
+        apellido: tipo === 'INDIVIDUAL' ? apellido : '',
+        sexo: tipo === 'INDIVIDUAL' ? sexo as Sexo : undefined,
+        dni: tipo === 'INDIVIDUAL' ? dni || undefined : undefined,
+        fechaNacimiento: tipo === 'INDIVIDUAL' && fechaNacimiento ? new Date(fechaNacimiento) : undefined,
+        estadoCivil: tipo === 'INDIVIDUAL' ? estadoCivil as EstadoCivil : undefined,
+        ocupacion: tipo === 'INDIVIDUAL' ? ocupacion || undefined : undefined,
         // Campos para empresa
-        razonSocial: razonSocial || null,
-        ruc: ruc || null,
-        representanteLegal: representanteLegal || null,
-        cargoRepresentante: cargoRepresentante || null,
+        razonSocial: tipo === 'EMPRESA' ? razonSocial : '',
+        ruc: tipo === 'EMPRESA' ? ruc : undefined,
+        representanteLegal: tipo === 'EMPRESA' ? representanteLegal : '',
+        cargoRepresentante: tipo === 'EMPRESA' ? cargoRepresentante || undefined : undefined,
         // Relaciones
         creadoPorId: session.user.id,
+        direcciones: {
+          create: direcciones?.map((dir: any) => ({
+            tipo: dir.tipo as TipoDireccion,
+            pais: dir.pais,
+            ciudad: dir.ciudad,
+            direccion: dir.direccion,
+            referencia: dir.referencia,
+          })) || [],
+        },
       },
       include: {
-        empresa: {
+        direcciones: true,
+        ventas: true,
+        creadoPor: {
           select: {
             id: true,
             nombre: true,
@@ -162,6 +185,27 @@ export async function POST(request: Request) {
     return NextResponse.json(cliente)
   } catch (error) {
     console.error('Error al crear cliente:', error)
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        const field = error.meta?.target?.[0]
+        if (field === 'ruc') {
+          return NextResponse.json(
+            { error: 'El RUC ya está registrado en el sistema' },
+            { status: 400 }
+          )
+        } else if (field === 'email') {
+          return NextResponse.json(
+            { error: 'El email ya está registrado en el sistema' },
+            { status: 400 }
+          )
+        } else if (field === 'dni') {
+          return NextResponse.json(
+            { error: 'El DNI ya está registrado en el sistema' },
+            { status: 400 }
+          )
+        }
+      }
+    }
     return NextResponse.json(
       { error: 'Error al crear cliente' },
       { status: 500 }

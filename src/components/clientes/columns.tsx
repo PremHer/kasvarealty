@@ -1,7 +1,7 @@
 'use client'
 
 import { ColumnDef } from '@tanstack/react-table'
-import { Cliente } from '@/types/cliente'
+import { Cliente, TIPO_CLIENTE, EstadoCliente } from '@/types/cliente'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FiEye, FiEdit, FiTrash2, FiUser, FiChevronDown } from 'react-icons/fi'
@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { toast } from 'sonner'
+import { toast } from 'react-hot-toast'
 import { Switch } from '@/components/ui/switch'
 
 export const columns: ColumnDef<Cliente>[] = [

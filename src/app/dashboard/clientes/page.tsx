@@ -16,112 +16,166 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { FiPlus, FiSearch } from 'react-icons/fi'
-import { CreateClienteData } from '@/types/cliente'
-
-interface Cliente {
-  id: string
-  nombre: string
-  apellido: string
-  email: string
-  telefono: string
-  estado: 'ACTIVO' | 'POTENCIAL' | 'INACTIVO'
-  tipo: 'INDIVIDUAL' | 'EMPRESA'
-  creadoPorId: string
-  createdAt: Date
-  updatedAt: Date
-}
+import { Cliente, CreateClienteData, TIPO_CLIENTE, TipoCliente, EstadoCliente } from '@/types/cliente'
+import toast from 'react-hot-toast'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 
 export default function ClientesPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
-  const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [tipoFilter, setTipoFilter] = useState<'INDIVIDUAL' | 'EMPRESA' | 'ALL'>('ALL')
-  const [estadoFilter, setEstadoFilter] = useState<'ACTIVO' | 'POTENCIAL' | 'INACTIVO' | 'ALL'>('ALL')
+  const [tipoFilter, setTipoFilter] = useState<TipoCliente | 'ALL'>('ALL')
+  const [estadoFilter, setEstadoFilter] = useState<EstadoCliente | 'ALL'>('ALL')
   const [modalOpen, setModalOpen] = useState(false)
 
-  useEffect(() => {
-    if (!session?.user) {
-      router.push('/auth/signin')
-      return
-    }
+  const queryClient = useQueryClient()
 
-    fetchClientes()
-  }, [session, router])
-
-  const fetchClientes = async () => {
-    try {
-      const response = await fetch('/api/clientes')
+  const { data: clientes = [], isLoading } = useQuery({
+    queryKey: ["clientes"],
+    queryFn: async () => {
+      const response = await fetch("/api/clientes")
       if (!response.ok) {
-        throw new Error('Error al cargar clientes')
+        throw new Error("Error al cargar los clientes")
       }
       const data = await response.json()
-      setClientes(data)
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleClienteCreated = async () => {
-    await fetchClientes()
-  }
-
-  const handleClienteUpdated = async () => {
-    await fetchClientes()
-  }
-
-  const handleClienteDeleted = async (id: string) => {
-    try {
-      const response = await fetch(`/api/clientes/${id}`, {
-        method: 'DELETE',
+      return data.sort((a: Cliente, b: Cliente) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       })
-      if (!response.ok) {
-        throw new Error('Error al eliminar el cliente')
-      }
-      await fetchClientes()
-    } catch (error) {
-      console.error('Error:', error)
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
+  })
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login")
     }
-  }
+  }, [status, router])
 
   const handleCreateCliente = async (data: CreateClienteData) => {
     try {
-      const response = await fetch('/api/clientes', {
-        method: 'POST',
+      const response = await fetch("/api/clientes", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
       })
 
       if (!response.ok) {
-        throw new Error('Error al crear el cliente')
+        throw new Error("Error al crear el cliente")
       }
 
-      await handleClienteCreated()
+      const newCliente = await response.json()
+      
+      // Actualizar la caché optimistamente
+      queryClient.setQueryData(["clientes"], (oldData: Cliente[] = []) => {
+        return [newCliente, ...oldData]
+      })
+
+      // Refrescar los datos en segundo plano
+      queryClient.refetchQueries({ queryKey: ["clientes"] })
+      
+      toast.success("Cliente creado exitosamente")
+      setModalOpen(false)
     } catch (error) {
-      console.error('Error:', error)
-      throw error
+      console.error("Error al crear cliente:", error)
+      toast.error("Error al crear el cliente")
     }
   }
 
-  const filteredClientes = clientes.filter((cliente) => {
-    const matchesSearch =
-      search === '' ||
-      cliente.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      cliente.apellido.toLowerCase().includes(search.toLowerCase()) ||
-      cliente.email.toLowerCase().includes(search.toLowerCase())
+  const handleUpdateCliente = async (updatedCliente: Cliente) => {
+    if (!updatedCliente?.id) {
+      toast.error("Error: ID de cliente no válido")
+      return
+    }
 
+    try {
+      const response = await fetch(`/api/clientes/${updatedCliente.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedCliente),
+      })
+
+      if (!response.ok) {
+        throw new Error("Error al actualizar el cliente")
+      }
+
+      const updatedData = await response.json()
+
+      // Actualizar la caché optimistamente
+      queryClient.setQueryData(["clientes"], (oldData: Cliente[] = []) => {
+        return oldData.map(cliente => 
+          cliente.id === updatedCliente.id ? updatedData : cliente
+        )
+      })
+
+      // Refrescar los datos en segundo plano
+      await queryClient.refetchQueries({ queryKey: ["clientes"] })
+
+      toast.success("Cliente actualizado exitosamente")
+    } catch (error) {
+      console.error("Error al actualizar cliente:", error)
+      toast.error("Error al actualizar el cliente")
+    }
+  }
+
+  const handleDeleteCliente = async (id: string) => {
+    try {
+      const response = await fetch(`/api/clientes/${id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error("Error al eliminar el cliente")
+      }
+
+      // Actualizar la caché optimistamente
+      queryClient.setQueryData(["clientes"], (oldData: Cliente[] = []) => {
+        return oldData.filter(cliente => cliente.id !== id)
+      })
+
+      // Refrescar los datos en segundo plano
+      queryClient.refetchQueries({ queryKey: ["clientes"] })
+
+      toast.success("Cliente eliminado exitosamente")
+    } catch (error) {
+      console.error("Error al eliminar cliente:", error)
+      toast.error("Error al eliminar el cliente")
+    }
+  }
+
+  const filteredClientes = clientes.filter((cliente: Cliente) => {
+    const searchLower = search.toLowerCase()
+    const matchesSearch = 
+      search === '' ||
+      cliente.nombre.toLowerCase().includes(searchLower) ||
+      cliente.apellido.toLowerCase().includes(searchLower) ||
+      cliente.email.toLowerCase().includes(searchLower) ||
+      cliente.razonSocial?.toLowerCase().includes(searchLower) ||
+      cliente.dni?.toLowerCase().includes(searchLower) ||
+      cliente.ruc?.toLowerCase().includes(searchLower)
+    
     const matchesTipo = tipoFilter === 'ALL' || cliente.tipo === tipoFilter
     const matchesEstado = estadoFilter === 'ALL' || cliente.estado === estadoFilter
 
     return matchesSearch && matchesTipo && matchesEstado
   })
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -162,17 +216,17 @@ export default function ClientesPage() {
               className="pl-8"
             />
           </div>
-          <Select value={tipoFilter} onValueChange={(value: any) => setTipoFilter(value)}>
+          <Select value={tipoFilter} onValueChange={(value: TipoCliente | 'ALL') => setTipoFilter(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Tipo de cliente" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Todos los tipos</SelectItem>
-              <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-              <SelectItem value="EMPRESA">Empresa</SelectItem>
+              <SelectItem value={TIPO_CLIENTE.INDIVIDUAL}>Persona Natural</SelectItem>
+              <SelectItem value={TIPO_CLIENTE.EMPRESA}>Empresa</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={estadoFilter} onValueChange={(value: any) => setEstadoFilter(value)}>
+          <Select value={estadoFilter} onValueChange={(value: EstadoCliente | 'ALL') => setEstadoFilter(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
@@ -188,9 +242,8 @@ export default function ClientesPage() {
 
       <ClienteList
         clientes={filteredClientes}
-        onDelete={handleClienteDeleted}
-        onCreate={handleClienteCreated}
-        onUpdate={handleClienteUpdated}
+        onDelete={handleDeleteCliente}
+        onUpdate={handleUpdateCliente}
       />
 
       <ClienteModal
