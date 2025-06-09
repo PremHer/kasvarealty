@@ -30,7 +30,6 @@ model EmpresaDesarrolladora {
   representanteLegal              Usuario?               @relation("RepresentanteLegal", fields: [representanteLegalId], references: [id])
   usuarios                        Usuario[]              @relation("EmpresaUsuario")
   usuarios_GerenteGeneralEmpresas Usuario[]              @relation("GerenteGeneralEmpresas")
-  clientes                        Cliente[]              @relation("ClienteEmpresa")
 
   @@map("empresas_desarrolladoras")
 }
@@ -134,36 +133,49 @@ model Venta {
   unidadInmobiliaria   UnidadInmobiliaria @relation(fields: [unidadInmobiliariaId], references: [id])
 }
 
-model Cliente {
-  id                String    @id @default(cuid())
-  nombre            String?
-  apellido          String?
-  email             String    @unique
-  telefono          String?
-  direccion         String?
-  tipo              String    // INDIVIDUAL o EMPRESA
-  estado            String    @default("ACTIVO") // ACTIVO, INACTIVO, POTENCIAL
-  // Campos para cliente individual
-  dni               String?   @unique
-  fechaNacimiento   DateTime?
-  estadoCivil       String?   // SOLTERO, CASADO, DIVORCIADO, VIUDO
-  ocupacion         String?
-  // Campos para empresa
-  razonSocial       String?
-  ruc               String?   @unique
-  representanteLegal String?
-  cargoRepresentante String?
-  // Relaciones
-  creadoPor         Usuario   @relation("ClienteCreadoPor", fields: [creadoPorId], references: [id])
-  creadoPorId       String
-  empresaId         String?
-  empresa           EmpresaDesarrolladora?  @relation("ClienteEmpresa", fields: [empresaId], references: [id])
-  ventas            Venta[]
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+model Direccion {
+  id              String        @id @default(cuid())
+  tipo            TipoDireccion
+  pais            String        // Para nacionales será "Perú", para extranjeros será el país ingresado
+  ciudad          String        // Ciudad o distrito
+  direccion       String
+  referencia      String?
+  cliente         Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  clienteId       String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
+  @@index([clienteId])
+}
+
+model Cliente {
+  id              String        @id @default(cuid())
+  tipo            TipoCliente
+  nombre          String?       // Para personas naturales
+  apellido        String?       // Para personas naturales
+  sexo            Sexo?         // Para personas naturales
+  razonSocial     String?       // Para empresas
+  ruc             String?       // Para empresas
+  dni             String?       // Para personas naturales
+  email           String        @unique
+  telefono        String?
+  fechaNacimiento DateTime?     // Para personas naturales
+  estadoCivil     EstadoCivil?  // Para personas naturales
+  ocupacion       String?       // Para personas naturales
+  representanteLegal String?    // Para empresas
+  cargoRepresentante String?    // Para empresas
+  isActive        Boolean       @default(true)
+  direcciones     Direccion[]
+  ventas          Venta[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  creadoPorId     String?
+  creadoPor       Usuario?      @relation("ClienteCreadoPor", fields: [creadoPorId], references: [id])
+
+  @@index([email])
+  @@index([ruc])
+  @@index([dni])
   @@index([creadoPorId])
-  @@index([empresaId])
 }
 
 model Actividad {
@@ -301,8 +313,19 @@ enum TipoCliente {
   EMPRESA
 }
 
-enum EstadoCliente {
-  ACTIVO
-  INACTIVO
-  POTENCIAL
+enum EstadoCivil {
+  SOLTERO
+  CASADO
+  DIVORCIADO
+  VIUDO
+}
+
+enum Sexo {
+  MASCULINO
+  FEMENINO
+}
+
+enum TipoDireccion {
+  NACIONAL
+  EXTRANJERA
 }

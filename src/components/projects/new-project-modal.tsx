@@ -2,7 +2,7 @@
 
 import { FiX } from 'react-icons/fi'
 import { useProjectForm } from '@/hooks/useProjectForm'
-import toast from 'react-hot-toast'
+import { useToast } from '@/components/ui/use-toast'
 import ProjectTypeSelect from './components/ProjectTypeSelect'
 import DeveloperCompanySelect from './components/DeveloperCompanySelect'
 import ProjectManagerSelect from './components/ProjectManagerSelect'
@@ -32,6 +32,7 @@ export default function NewProjectModal({
   onProjectCreated
 }: NewProjectModalProps) {
   const { data: session } = useSession()
+  const { toast } = useToast()
   const [showAssignDialog, setShowAssignDialog] = useState(false)
   const [showManagerSelect, setShowManagerSelect] = useState(false)
   const [pendingProjectData, setPendingProjectData] = useState<ProjectFormData | null>(null)
@@ -70,7 +71,11 @@ export default function NewProjectModal({
         await createProject(data)
       } catch (error) {
         console.error('Error al crear proyecto:', error)
-        toast.error('No se pudo crear el proyecto')
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'No se pudo crear el proyecto',
+          variant: 'destructive'
+        })
         throw error
       }
     }
@@ -108,12 +113,20 @@ export default function NewProjectModal({
         throw new Error(error.message || 'Error al crear el proyecto')
       }
 
-      toast.success('Proyecto creado exitosamente')
+      toast({
+        title: '¡Éxito!',
+        description: 'El proyecto se ha creado exitosamente',
+        variant: 'success'
+      })
       onProjectCreated()
       onClose()
     } catch (error) {
       console.error('Error al crear proyecto:', error)
-      toast.error('No se pudo crear el proyecto')
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo crear el proyecto',
+        variant: 'destructive'
+      })
       throw error
     }
   }

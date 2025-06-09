@@ -174,6 +174,20 @@ export async function DELETE(
       return new NextResponse('No autorizado', { status: 401 })
     }
 
+    // Verificar si la empresa existe
+    const empresaExistente = await prisma.empresaDesarrolladora.findUnique({
+      where: {
+        id: params.empresaId
+      }
+    })
+
+    if (!empresaExistente) {
+      return new NextResponse(
+        JSON.stringify({ message: 'La empresa no existe' }),
+        { status: 404 }
+      )
+    }
+
     // Verificar si hay proyectos asociados
     const proyectosAsociados = await prisma.proyecto.findMany({
       where: {
@@ -195,6 +209,7 @@ export async function DELETE(
       )
     }
 
+    // Eliminar la empresa
     await prisma.empresaDesarrolladora.delete({
       where: {
         id: params.empresaId
@@ -204,6 +219,12 @@ export async function DELETE(
     return new NextResponse(null, { status: 204 })
   } catch (error) {
     console.error('Error al eliminar empresa:', error)
-    return new NextResponse('Error interno del servidor', { status: 500 })
+    return new NextResponse(
+      JSON.stringify({ 
+        message: 'Error al eliminar la empresa',
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      }),
+      { status: 500 }
+    )
   }
 } 

@@ -150,7 +150,8 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
       })
 
       if (!response.ok) {
-        throw new Error('Error al eliminar la empresa')
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Error al eliminar la empresa')
       }
 
       toast({
@@ -163,7 +164,7 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
       console.error('Error al eliminar empresa:', error)
       toast({
         title: 'Error',
-        description: 'No se pudo eliminar la empresa',
+        description: error instanceof Error ? error.message : 'No se pudo eliminar la empresa',
         variant: 'destructive',
       })
     } finally {
@@ -433,8 +434,9 @@ export function EmpresaList({ empresas, onEmpresaUpdated, onEmpresaCreated }: Em
             setDeleteDialogOpen(false)
             setEmpresaToDelete(null)
           }}
-          onConfirm={handleDeleteConfirm}
-          empresaName={empresaToDelete.nombre}
+          onEmpresaDeleted={onEmpresaUpdated}
+          empresaId={empresaToDelete.id}
+          empresaNombre={empresaToDelete.nombre}
         />
       )}
     </div>

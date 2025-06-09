@@ -122,10 +122,16 @@ export async function PUT(
       where: {
         OR: [
           {
-            liderId: params.userId
+            gerenteId: params.userId
           },
           {
-            participantes: {
+            creadoPorId: params.userId
+          },
+          {
+            aprobadoPorId: params.userId
+          },
+          {
+            miembros: {
               some: {
                 id: params.userId
               }
@@ -264,10 +270,16 @@ export async function DELETE(
       where: {
         OR: [
           {
-            liderId: params.userId
+            gerenteId: params.userId
           },
           {
-            participantes: {
+            creadoPorId: params.userId
+          },
+          {
+            aprobadoPorId: params.userId
+          },
+          {
+            miembros: {
               some: {
                 id: params.userId
               }

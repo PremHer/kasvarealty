@@ -97,19 +97,24 @@ export default function EditEmpresaModal({
         throw new Error(error.message || 'Error al actualizar la empresa')
       }
 
+      const updatedEmpresa = await response.json()
+
       toast({
-        title: 'Empresa actualizada',
+        title: '¡Éxito!',
         description: 'La empresa se ha actualizado exitosamente',
-        variant: 'default'
+        variant: 'success',
+        duration: 3000
       })
 
       onEmpresaUpdated()
       onClose()
     } catch (error) {
+      console.error('Error al actualizar empresa:', error)
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Hubo un error al actualizar la empresa',
-        variant: 'destructive'
+        variant: 'destructive',
+        duration: 5000
       })
     } finally {
       setIsSubmitting(false)

@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { FiUser, FiMail, FiShield, FiInfo, FiUserPlus, FiLock } from 'react-icons/fi'
 import { useSession } from 'next-auth/react'
+import { useToast } from '@/components/ui/use-toast'
 
 import {
   Dialog,
@@ -35,8 +36,6 @@ import {
   SelectGroup,
   SelectLabel,
 } from '@/components/ui/select'
-import { toast } from 'react-hot-toast'
-import type { Rol } from '@prisma/client'
 import { cn } from '@/lib/utils'
 
 const formSchema = z.object({
@@ -87,6 +86,7 @@ export default function EditUserModal({
   onClose,
   onUserUpdated,
 }: EditUserModalProps) {
+  const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -170,7 +170,12 @@ export default function EditUserModal({
         return
       }
   
-      toast.success('Usuario actualizado exitosamente')
+      toast({
+        title: '¡Éxito!',
+        description: 'El usuario ha sido actualizado exitosamente',
+        variant: 'success',
+        duration: 3000
+      })
       onClose()
       onUserUpdated()
     } catch (error) {

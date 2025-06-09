@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +14,7 @@ import {
 import { DataTable } from '@/components/ui/data-table'
 import { columns } from './columns'
 import { ClienteModal } from './ClienteModal'
-import { Cliente, CreateClienteData, UpdateClienteData } from '@/types/cliente'
+import { Cliente, TIPO_CLIENTE, EstadoCliente } from '@/types/cliente'
 // import { TipoCliente, EstadoCliente } from '@prisma/client' // Eliminar
 import { Plus } from 'lucide-react'
 import {
@@ -29,7 +29,7 @@ import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ClienteActions } from './ClienteActions'
-import { FiEdit2, FiTrash2, FiMoreVertical, FiEye, FiEdit, FiUser, FiX, FiMail, FiInfo } from 'react-icons/fi'
+import { FiEdit2, FiTrash2, FiMoreVertical, FiEdit, FiUser, FiX, FiMail, FiInfo, FiHome } from 'react-icons/fi'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,31 +47,44 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { toast } from 'sonner'
 import { Switch } from '@/components/ui/switch'
 import { useSession } from 'next-auth/react'
 import type { Rol } from '@prisma/client'
-
-// Definir los tipos como string union
-export type TipoCliente = 'INDIVIDUAL' | 'EMPRESA';
-export type EstadoCliente = 'ACTIVO' | 'INACTIVO' | 'POTENCIAL';
+import toast from 'react-hot-toast'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface ClienteListProps {
   clientes: Cliente[]
-  onDelete: (id: string) => void
-  onCreate: () => void
-  onUpdate: () => void
+  onUpdate: (cliente: Cliente) => Promise<void>
+  onDelete: (id: string) => Promise<void>
 }
 
-export function ClienteList({ clientes: initialClientes, onDelete, onCreate, onUpdate }: ClienteListProps) {
+interface ExtendedSession {
+  user?: {
+    id: string
+    role: string
+    empresaId?: string
+    name?: string | null
+    email?: string | null
+    image?: string | null
+  }
+}
+
+export function ClienteList({ clientes: initialClientes, onUpdate, onDelete }: ClienteListProps) {
   const router = useRouter()
-  const { data: session } = useSession()
-  const [clientes, setClientes] = useState(initialClientes)
+  const { data: session } = useSession() as { data: ExtendedSession | null }
+  const [clientes, setClientes] = useState<Cliente[]>(initialClientes)
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [clienteToDelete, setClienteToDelete] = useState<Cliente | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null)
+  const queryClient = useQueryClient()
+
+  // Actualizar el estado local cuando cambian los props
+  useEffect(() => {
+    setClientes(initialClientes)
+  }, [initialClientes])
 
   const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
     SUPER_ADMIN: ['ADMIN', 'GERENTE_GENERAL', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'PROJECT_MANAGER', 'CONSTRUCTION_SUPERVISOR', 'QUALITY_CONTROL', 'PROJECT_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'FINANCE_ASSISTANT', 'INVESTOR', 'GUEST'],
@@ -112,12 +125,12 @@ export function ClienteList({ clientes: initialClientes, onDelete, onCreate, onU
 
     // GERENTE_GENERAL puede editar clientes de su empresa
     if (currentUserRole === 'GERENTE_GENERAL') {
-      return cliente.empresaId === session?.user?.empresaDesarrolladoraId
+      return cliente.empresaId === session?.user?.empresaId
     }
 
     // Roles de ventas pueden editar clientes de su empresa
     if (['SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR'].includes(currentUserRole)) {
-      return cliente.empresaId === session?.user?.empresaDesarrolladoraId
+      return cliente.empresaId === session?.user?.empresaId
     }
 
     return false
@@ -132,56 +145,52 @@ export function ClienteList({ clientes: initialClientes, onDelete, onCreate, onU
 
     // Si es GERENTE_GENERAL, solo puede eliminar clientes de su empresa
     if (currentUserRole === 'GERENTE_GENERAL') {
-      return cliente.empresaId === session?.user?.empresaDesarrolladoraId
+      return cliente.empresaId === session?.user?.empresaId
     }
 
     return true
   }
 
   const handleToggleStatus = async (cliente: Cliente) => {
-    if (!canEditClientes(cliente)) {
-      toast({
-        title: 'Error',
-        description: 'No tienes permisos para cambiar el estado de este cliente',
-        variant: 'destructive'
-      })
-      return
-    }
-
     try {
-      const newEstado = cliente.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'
-      
-      setClientes(prevClientes => 
-        prevClientes.map(c => 
-          c.id === cliente.id 
-            ? { ...c, estado: newEstado }
-            : c
-        )
-      )
+      if (!session?.user || !canEditClientes(cliente)) {
+        toast.error('No tienes permiso para cambiar el estado de los clientes')
+        return
+      }
 
+      const newStatus = !cliente.isActive
+      
+      // Llamar a la API para actualizar el estado
       const response = await fetch(`/api/clientes/${cliente.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ estado: newEstado }),
+        body: JSON.stringify({ isActive: newStatus }),
       })
 
       if (!response.ok) {
-        setClientes(prevClientes => 
-          prevClientes.map(c => 
-            c.id === cliente.id 
-              ? { ...c, estado: cliente.estado }
-              : c
-          )
-        )
-        throw new Error('Error al actualizar el estado')
+        throw new Error('Error al actualizar el estado del cliente')
       }
 
-      toast.success('Estado actualizado correctamente')
+      const updatedCliente = await response.json()
+
+      // Actualizar el estado local
+      setClientes(prevClientes => 
+        prevClientes.map(c => 
+          c.id === cliente.id 
+          ? { ...c, isActive: newStatus }
+          : c
+        )
+      )
+
+      // Refrescar los datos
+      queryClient.invalidateQueries({ queryKey: ['clientes'] })
+      
+      toast.success('Estado del cliente actualizado correctamente')
     } catch (error) {
-      toast.error('Error al actualizar el estado')
-      console.error('Error:', error)
+      console.error('Error al cambiar estado del cliente:', error)
+      toast.error('Error al cambiar el estado del cliente')
     }
   }
 
@@ -200,14 +209,14 @@ export function ClienteList({ clientes: initialClientes, onDelete, onCreate, onU
   }
 
   const handleDeleteConfirm = async () => {
-    if (clienteToDelete) {
-      try {
-        await onDelete(clienteToDelete.id)
-        toast.success('Cliente eliminado correctamente')
-      } catch (error) {
-        toast.error('Error al eliminar el cliente')
-      }
+    if (!clienteToDelete) return
+
+    try {
+      await onDelete(clienteToDelete.id)
       setClienteToDelete(null)
+    } catch (error) {
+      console.error('Error al eliminar el cliente:', error)
+      toast.error('Error al eliminar el cliente')
     }
   }
 
@@ -220,23 +229,15 @@ export function ClienteList({ clientes: initialClientes, onDelete, onCreate, onU
     if (!clienteToEdit) return
 
     try {
-      const response = await fetch(`/api/clientes/${clienteToEdit.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-
-      if (!response.ok) {
-        throw new Error('Error al actualizar el cliente')
+      const updatedCliente = {
+        ...clienteToEdit,
+        ...data
       }
-
-      toast.success('Cliente actualizado correctamente')
+      await onUpdate(updatedCliente)
       setIsEditModalOpen(false)
       setClienteToEdit(null)
-      onUpdate()
     } catch (error) {
+      console.error('Error al actualizar el cliente:', error)
       toast.error('Error al actualizar el cliente')
     }
   }
@@ -286,7 +287,7 @@ export function ClienteList({ clientes: initialClientes, onDelete, onCreate, onU
                         </div>
                         <div>
                           <div className="font-medium text-gray-900 truncate" title={getNombreCompleto(cliente)}>
-                            {getNombreCompleto(cliente)}
+                            {cliente.tipo === 'EMPRESA' ? cliente.razonSocial : `${cliente.nombre} ${cliente.apellido}`}
                           </div>
                           <div className="text-sm text-gray-500 truncate" title={cliente.email}>
                             {cliente.email}
@@ -296,38 +297,29 @@ export function ClienteList({ clientes: initialClientes, onDelete, onCreate, onU
                     </td>
                     <td className="px-6 py-4">
                       <Badge variant={cliente.tipo === 'INDIVIDUAL' ? 'default' : 'secondary'} className="bg-blue-50 text-blue-700 hover:bg-blue-100">
-                        {cliente.tipo === 'INDIVIDUAL' ? 'Individual' : 'Empresa'}
+                        {cliente.tipo === 'INDIVIDUAL' ? 'Persona Natural' : 'Empresa'}
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <Switch
-                          checked={cliente.estado === 'ACTIVO'}
+                          checked={cliente.isActive}
                           onCheckedChange={() => handleToggleStatus(cliente)}
                           disabled={!canEditClientes(cliente)}
                           className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-300"
                         />
                         <Badge variant={
-                          cliente.estado === 'ACTIVO' ? 'success' :
-                          cliente.estado === 'INACTIVO' ? 'secondary' :
+                          cliente.isActive ? 'success' :
                           'secondary'
                         } className={
-                          cliente.estado === 'INACTIVO' ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : ''
+                          !cliente.isActive ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : ''
                         }>
-                          {cliente.estado}
+                          {cliente.isActive ? 'ACTIVO' : 'INACTIVO'}
                         </Badge>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewDetails(cliente)}
-                          className="text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                        >
-                          <FiEye className="h-4 w-4" />
-                        </Button>
                         {canEditClientes(cliente) && (
                           <Button
                             variant="ghost"
@@ -402,6 +394,9 @@ export function ClienteList({ clientes: initialClientes, onDelete, onCreate, onU
                           <span className="font-medium">DNI:</span> {selectedCliente.dni || '-'}
                         </p>
                         <p className="text-sm text-gray-900">
+                          <span className="font-medium">Sexo:</span> {selectedCliente.sexo || '-'}
+                        </p>
+                        <p className="text-sm text-gray-900">
                           <span className="font-medium">Fecha de Nacimiento:</span> {selectedCliente.fechaNacimiento ? new Date(selectedCliente.fechaNacimiento).toLocaleDateString('es-ES', {
                             year: 'numeric',
                             month: 'long',
@@ -458,9 +453,45 @@ export function ClienteList({ clientes: initialClientes, onDelete, onCreate, onU
                     <p className="text-sm text-gray-900">
                       <span className="font-medium">Teléfono:</span> {selectedCliente.telefono || '-'}
                     </p>
-                    <p className="text-sm text-gray-900">
-                      <span className="font-medium">Dirección:</span> {selectedCliente.direccion || '-'}
-                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0">
+                  <FiHome className="h-4 w-4 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Direcciones</h3>
+                  <div className="mt-1 space-y-2">
+                    {selectedCliente.direcciones && selectedCliente.direcciones.length > 0 ? (
+                      selectedCliente.direcciones.map((direccion, index) => (
+                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                          <div className="text-sm text-gray-900">
+                            <span className="font-medium">Tipo:</span>{' '}
+                            <Badge variant="outline" className="ml-1">
+                              {direccion.tipo}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-gray-900 mt-1">
+                            <span className="font-medium">País:</span> {direccion.pais}
+                          </div>
+                          <div className="text-sm text-gray-900">
+                            <span className="font-medium">Ciudad:</span> {direccion.ciudad}
+                          </div>
+                          <div className="text-sm text-gray-900">
+                            <span className="font-medium">Dirección:</span> {direccion.direccion}
+                          </div>
+                          {direccion.referencia && (
+                            <div className="text-sm text-gray-900">
+                              <span className="font-medium">Referencia:</span> {direccion.referencia}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-500">No hay direcciones registradas</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -472,30 +503,29 @@ export function ClienteList({ clientes: initialClientes, onDelete, onCreate, onU
                 <div>
                   <h3 className="text-sm font-medium text-gray-500">Información Adicional</h3>
                   <div className="mt-1 space-y-1">
-                    <p className="text-sm text-gray-900">
+                    <div className="text-sm text-gray-900">
                       <span className="font-medium">Tipo:</span>{' '}
                       <Badge variant={selectedCliente.tipo === 'INDIVIDUAL' ? 'default' : 'secondary'} className="bg-blue-50 text-blue-700">
-                        {selectedCliente.tipo === 'INDIVIDUAL' ? 'Individual' : 'Empresa'}
+                        {selectedCliente.tipo === 'INDIVIDUAL' ? 'Persona Natural' : 'Empresa'}
                       </Badge>
-                    </p>
-                    <p className="text-sm text-gray-900">
+                    </div>
+                    <div className="text-sm text-gray-900">
                       <span className="font-medium">Estado:</span>{' '}
                       <Badge variant={
-                        selectedCliente.estado === 'ACTIVO' ? 'success' :
-                        selectedCliente.estado === 'INACTIVO' ? 'destructive' :
+                        selectedCliente.isActive ? 'success' :
                         'secondary'
                       }>
-                        {selectedCliente.estado}
+                        {selectedCliente.isActive ? 'ACTIVO' : 'INACTIVO'}
                       </Badge>
-                    </p>
-                    <p className="text-sm text-gray-900">
+                    </div>
+                    <div className="text-sm text-gray-900">
                       <span className="font-medium">Fecha de Registro:</span>{' '}
                       {new Date(selectedCliente.createdAt).toLocaleDateString('es-ES', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
                       })}
-                    </p>
+                    </div>
                   </div>
                 </div>
               </div>

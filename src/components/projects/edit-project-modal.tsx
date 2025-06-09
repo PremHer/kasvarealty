@@ -2,7 +2,7 @@
 
 import { FiX } from 'react-icons/fi'
 import { useProjectForm } from '@/hooks/useProjectForm'
-import toast from 'react-hot-toast'
+import { useToast } from '@/components/ui/use-toast'
 import ProjectTypeSelect from './components/ProjectTypeSelect'
 import DeveloperCompanySelect from './components/DeveloperCompanySelect'
 import dynamic from 'next/dynamic'
@@ -25,6 +25,7 @@ interface EditProjectModalProps {
 }
 
 export default function EditProjectModal({ project, onClose, onProjectUpdated }: EditProjectModalProps) {
+  const { toast } = useToast()
   const { formData, handleChange, handleSubmit, isSubmitting, error } = useProjectForm({
     initialData: {
       name: project.name || '',
@@ -54,20 +55,26 @@ export default function EditProjectModal({ project, onClose, onProjectUpdated }:
         })
 
         if (!response.ok) {
-          const errorData = await response.json()
-          console.error('Error en la respuesta:', errorData)
-          throw new Error(errorData.error || 'Error al actualizar el proyecto')
+          const error = await response.json()
+          throw new Error(error.message || 'Error al actualizar el proyecto')
         }
 
+        toast({
+          title: '¡Éxito!',
+          description: 'El proyecto se ha actualizado exitosamente',
+          variant: 'success'
+        })
         const updatedProject = await response.json()
         console.log('Proyecto actualizado:', updatedProject)
-
-        toast.success('Proyecto actualizado exitosamente')
         onProjectUpdated(updatedProject)
         onClose()
       } catch (error) {
-        console.error('Error al actualizar el proyecto:', error)
-        toast.error('No se pudo actualizar el proyecto')
+        console.error('Error al actualizar proyecto:', error)
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'No se pudo actualizar el proyecto',
+          variant: 'destructive'
+        })
         throw error
       }
     }

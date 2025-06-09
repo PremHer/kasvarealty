@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { formatCurrency } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import toast from 'react-hot-toast'
+import { useToast } from "@/components/ui/use-toast"
 import {
   Dialog,
   DialogContent,
@@ -108,6 +108,7 @@ const getProjectTypeLabel = (type: string) => {
 export default function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
   const router = useRouter()
   const { data: session } = useSession()
+  const { toast } = useToast()
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [errorDialogOpen, setErrorDialogOpen] = useState(false)
@@ -138,7 +139,11 @@ export default function ProjectCard({ project, onEdit, onDelete }: ProjectCardPr
       setDeleteDialogOpen(true)
     } catch (error) {
       console.error('Error al verificar relaciones:', error)
-      toast.error('Error al verificar relaciones del proyecto')
+      toast({
+        title: 'Error',
+        description: 'Error al verificar relaciones del proyecto',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -156,17 +161,30 @@ export default function ProjectCard({ project, onEdit, onDelete }: ProjectCardPr
         onDelete(project.id)
         // Luego cerramos el diálogo
         setDeleteDialogOpen(false)
+        toast({
+          title: '¡Éxito!',
+          description: 'El proyecto se ha eliminado exitosamente',
+          variant: 'success'
+        })
         return
       }
 
       if (!response.ok) {
         const data = await response.json()
-        toast.error(data.error || 'Error al eliminar el proyecto')
+        toast({
+          title: 'Error',
+          description: data.error || 'Error al eliminar el proyecto',
+          variant: 'destructive'
+        })
         return
       }
     } catch (error) {
       console.error('Error al eliminar:', error)
-      toast.error('Error al eliminar el proyecto')
+      toast({
+        title: 'Error',
+        description: 'Error al eliminar el proyecto',
+        variant: 'destructive'
+      })
     } finally {
       setIsDeleting(false)
     }
