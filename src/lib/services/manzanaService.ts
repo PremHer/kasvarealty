@@ -26,7 +26,11 @@ export class ManzanaService {
       where,
       include: {
         lotes: {
-          where: { isActive: true },
+          where: { 
+            estado: {
+              in: ['DISPONIBLE', 'RESERVADO', 'VENDIDO', 'ENTREGADO']
+            }
+          },
           select: {
             id: true,
             codigo: true,
@@ -57,8 +61,20 @@ export class ManzanaService {
       ]
     }) as ManzanaWithRelations[];
 
+    // Calcular área total y cantidad de lotes dinámicamente
+    const manzanasConEstadisticas = manzanas.map(manzana => {
+      const areaTotal = manzana.lotes.reduce((sum, lote) => sum + (lote.area || 0), 0);
+      const cantidadLotes = manzana.lotes.length;
+
+      return {
+        ...manzana,
+        areaTotal,
+        cantidadLotes
+      };
+    });
+
     // Asegurar que las manzanas estén ordenadas correctamente
-    return manzanas.sort((a, b) => {
+    return manzanasConEstadisticas.sort((a, b) => {
       if (a.codigo.length !== b.codigo.length) {
         return a.codigo.length - b.codigo.length;
       }
@@ -70,7 +86,7 @@ export class ManzanaService {
    * Obtiene una manzana por su ID
    */
   static async obtenerManzanaPorId(id: string): Promise<ManzanaWithRelations | null> {
-    return await prisma.manzana.findUnique({
+    const manzana = await prisma.manzana.findUnique({
       where: { id },
       include: {
         proyecto: {
@@ -87,6 +103,7 @@ export class ManzanaService {
             numero: true,
             area: true,
             estado: true,
+            isActive: true,
           }
         },
         creadoPorUsuario: {
@@ -105,6 +122,20 @@ export class ManzanaService {
         }
       }
     }) as ManzanaWithRelations | null;
+
+    if (!manzana) {
+      return null;
+    }
+
+    // Calcular área total y cantidad de lotes dinámicamente
+    const areaTotal = manzana.lotes.reduce((sum, lote) => sum + (lote.area || 0), 0);
+    const cantidadLotes = manzana.lotes.length;
+
+    return {
+      ...manzana,
+      areaTotal,
+      cantidadLotes
+    };
   }
 
   /**
@@ -417,6 +448,7 @@ export class ManzanaService {
    * Obtiene estadísticas de manzanas por proyecto
    */
   static async obtenerEstadisticasProyecto(proyectoId: string) {
+    // Obtener manzanas activas con lotes operativos para estadísticas comerciales
     const manzanas = await prisma.manzana.findMany({
       where: {
         proyectoId,
@@ -426,7 +458,11 @@ export class ManzanaService {
         areaTotal: true,
         cantidadLotes: true,
         lotes: {
-          where: { isActive: true },
+          where: { 
+            estado: {
+              in: ['DISPONIBLE', 'RESERVADO', 'VENDIDO', 'ENTREGADO']
+            }
+          },
           select: {
             estado: true,
             precio: true,
@@ -435,9 +471,35 @@ export class ManzanaService {
       }
     }) as ManzanaEstadisticas[];
 
+    // Obtener TODOS los lotes del proyecto para el total (incluyendo inactivos)
+    const todosLosLotes = await prisma.lote.findMany({
+      where: {
+        manzana: {
+          proyectoId: proyectoId,
+          isActive: true
+        }
+      },
+      select: {
+        estado: true
+      }
+    });
+
+    // Obtener TODOS los lotes con sus áreas para calcular el área total real
+    const todosLosLotesConArea = await prisma.lote.findMany({
+      where: {
+        manzana: {
+          proyectoId: proyectoId,
+          isActive: true
+        }
+      },
+      select: {
+        area: true
+      }
+    });
+
     const totalManzanas = manzanas.length;
-    const totalArea = manzanas.reduce((sum: number, m: ManzanaEstadisticas) => sum + m.areaTotal, 0);
-    const totalLotes = manzanas.reduce((sum: number, m: ManzanaEstadisticas) => sum + m.cantidadLotes, 0);
+    const totalArea = todosLosLotesConArea.reduce((sum, lote) => sum + (lote.area || 0), 0); // Suma de TODOS los lotes
+    const totalLotes = todosLosLotes.length; // Total de TODOS los lotes
     
     const lotesDisponibles = manzanas.flatMap(m => m.lotes).filter(l => l.estado === 'DISPONIBLE').length;
     const lotesVendidos = manzanas.flatMap(m => m.lotes).filter(l => l.estado === 'VENDIDO').length;
@@ -451,5 +513,36 @@ export class ManzanaService {
       lotesVendidos,
       lotesReservados,
     };
+  }
+
+  /**
+   * Actualiza las estadísticas de una manzana (área total y cantidad de lotes)
+   */
+  static async actualizarEstadisticasManzana(manzanaId: string): Promise<void> {
+    // Obtener todos los lotes operativos de la manzana
+    const lotes = await prisma.lote.findMany({
+      where: {
+        manzanaId,
+        estado: {
+          in: ['DISPONIBLE', 'RESERVADO', 'VENDIDO', 'ENTREGADO']
+        }
+      },
+      select: {
+        area: true
+      }
+    });
+
+    // Calcular estadísticas
+    const areaTotal = lotes.reduce((sum, lote) => sum + (lote.area || 0), 0);
+    const cantidadLotes = lotes.length;
+
+    // Actualizar la manzana
+    await prisma.manzana.update({
+      where: { id: manzanaId },
+      data: {
+        areaTotal,
+        cantidadLotes
+      }
+    });
   }
 } 

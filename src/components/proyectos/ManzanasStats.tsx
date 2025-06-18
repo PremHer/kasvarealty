@@ -13,7 +13,8 @@ import {
   Package,
   ChevronDown,
   ChevronUp,
-  BarChart3
+  BarChart3,
+  RefreshCw
 } from 'lucide-react';
 
 interface ManzanasStats {
@@ -33,15 +34,24 @@ interface ManzanasStatsProps {
 export default function ManzanasStats({ proyectoId, refreshTrigger }: ManzanasStatsProps) {
   const [stats, setStats] = useState<ManzanasStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [lastRefreshTrigger, setLastRefreshTrigger] = useState(refreshTrigger);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     cargarEstadisticas();
   }, [proyectoId, refreshTrigger]);
 
+  useEffect(() => {
+    if (refreshTrigger !== lastRefreshTrigger) {
+      setIsExpanded(true);
+      setLastRefreshTrigger(refreshTrigger);
+    }
+  }, [refreshTrigger, lastRefreshTrigger]);
+
   const cargarEstadisticas = async () => {
     try {
-      setLoading(true);
+      setIsRefreshing(true);
       const response = await fetch(`/api/proyectos/${proyectoId}/manzanas/estadisticas`);
       if (response.ok) {
         const data = await response.json();
@@ -51,6 +61,7 @@ export default function ManzanasStats({ proyectoId, refreshTrigger }: ManzanasSt
       console.error('Error al cargar estadísticas:', error);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -112,19 +123,37 @@ export default function ManzanasStats({ proyectoId, refreshTrigger }: ManzanasSt
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <BarChart3 className="h-5 w-5" />
           Estadísticas de Manzanas
-        </CardTitle>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="hover:bg-muted/50"
-        >
-          {isExpanded ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
+          {isRefreshing && (
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <RefreshCw className="h-3 w-3 animate-spin" />
+              <span>Actualizando...</span>
+            </div>
           )}
-        </Button>
+        </CardTitle>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={cargarEstadisticas}
+            className="hover:bg-muted/50"
+            title="Recargar estadísticas"
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="hover:bg-muted/50"
+          >
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </CardHeader>
       {isExpanded && (
         <CardContent>

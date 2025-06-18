@@ -43,7 +43,9 @@ import {
   Loader2,
   ChevronUp,
   ChevronDown,
-  Home
+  Home,
+  Ruler,
+  Info
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -137,6 +139,13 @@ const ManzanasList = ({ proyectoId, onManzanasChange }: ManzanasListProps) => {
 
   const cargarManzanasYNotificar = useCallback(async () => {
     await cargarManzanas();
+    onManzanasChange?.();
+  }, [cargarManzanas, onManzanasChange]);
+
+  const handleLotesChanged = useCallback(async () => {
+    // Recargar manzanas cuando cambien los lotes para actualizar estadísticas
+    await cargarManzanas();
+    // Notificar cambio para actualizar estadísticas generales
     onManzanasChange?.();
   }, [cargarManzanas, onManzanasChange]);
 
@@ -436,6 +445,7 @@ const ManzanasList = ({ proyectoId, onManzanasChange }: ManzanasListProps) => {
                           maximumFractionDigits: 2
                         })} m²
                       </span>
+                      <span className="text-xs text-muted-foreground">(activos)</span>
                     </div>
                     <span>•</span>
                     <div className="flex items-center gap-2">
@@ -443,8 +453,15 @@ const ManzanasList = ({ proyectoId, onManzanasChange }: ManzanasListProps) => {
                       <span>
                         {manzana.cantidadLotes} lotes
                       </span>
+                      <span className="text-xs text-muted-foreground">(activos)</span>
                     </div>
                   </div>
+                  {!manzana.isActive && (
+                    <div className="mt-2 text-xs text-orange-600 bg-orange-50 px-3 py-2 rounded-md border border-orange-200">
+                      <Info className="h-3 w-3 inline mr-1" />
+                      No se pueden administrar lotes en una manzana inactiva
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -507,7 +524,9 @@ const ManzanasList = ({ proyectoId, onManzanasChange }: ManzanasListProps) => {
                   <LoteCard 
                     proyectoId={proyectoId} 
                     manzanaId={manzana.id} 
-                    codigo={manzana.codigo}
+                    manzanaCodigo={manzana.codigo}
+                    manzanaIsActive={manzana.isActive}
+                    onLotesChanged={handleLotesChanged}
                   />
                 </CardContent>
               )}
