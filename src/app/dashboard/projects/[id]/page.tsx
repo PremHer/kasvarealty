@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Project } from '@/types/project'
-import { FiArrowLeft, FiMapPin, FiCalendar, FiDollarSign, FiHome, FiEdit2, FiUser, FiCheckCircle, FiAlertCircle, FiUserPlus, FiXCircle, FiClock, FiInfo, FiUsers, FiPlus } from 'react-icons/fi'
+import { FiArrowLeft, FiMapPin, FiCalendar, FiDollarSign, FiHome, FiEdit2, FiUser, FiCheckCircle, FiAlertCircle, FiUserPlus, FiXCircle, FiClock, FiInfo, FiUsers, FiPlus, FiGrid } from 'react-icons/fi'
 import { useToast } from '@/components/ui/use-toast'
 import EditProjectModal from '@/components/projects/edit-project-modal'
 import dynamic from 'next/dynamic'
@@ -13,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UnidadInmobiliaria } from '@prisma/client'
 import UnitList from '@/components/projects/units/UnitList'
 import UnitModal from '@/components/projects/units/UnitModal'
+import ManzanasList from '@/components/proyectos/ManzanasList'
+import ManzanasStats from '@/components/proyectos/ManzanasStats'
 
 const MapPicker = dynamic(() => import('@/components/MapPicker'), {
   ssr: false,
@@ -25,11 +27,12 @@ const MapPicker = dynamic(() => import('@/components/MapPicker'), {
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
   const [project, setProject] = useState<Project | null>(null)
-  const [units, setUnits] = useState<UnidadInmobiliaria[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [units, setUnits] = useState<UnidadInmobiliaria[]>([])
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState<UnidadInmobiliaria | undefined>()
+  const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0)
   const router = useRouter()
   const { toast } = useToast()
   const { data: session } = useSession()
@@ -61,7 +64,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           variant: 'destructive'
         })
       } finally {
-        setIsLoading(false)
+        setLoading(false)
       }
     }
 
@@ -269,7 +272,11 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     return 'Este proyecto está pendiente de asignación. Para acceder a la gestión completa del proyecto, primero debe ser asignado a un gerente.'
   }
 
-  if (isLoading) {
+  const handleManzanasChange = useCallback(() => {
+    setStatsRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -544,21 +551,37 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <TabsContent value="units">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-xl font-semibold text-blue-700">Unidades Inmobiliarias</CardTitle>
+                  <CardTitle className="text-xl font-semibold text-blue-700">
+                    {project.type === 'LOTIZACION' ? 'Manzanas y Lotes' : 'Unidades Inmobiliarias'}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <UnitList
-                    units={units}
-                    onEdit={(unit) => {
-                      setSelectedUnit(unit)
-                      setIsUnitModalOpen(true)
-                    }}
-                    onDelete={handleUnitDelete}
-                    onAdd={() => {
-                      setSelectedUnit(undefined)
-                      setIsUnitModalOpen(true)
-                    }}
-                  />
+                  {project.type === 'LOTIZACION' ? (
+                    <div className="space-y-6">
+                      <ManzanasStats proyectoId={params.id} refreshTrigger={statsRefreshTrigger} />
+                      <ManzanasList proyectoId={params.id} onManzanasChange={handleManzanasChange} />
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <FiGrid className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        Gestión de Unidades en Desarrollo
+                      </h3>
+                      <p className="text-gray-500 max-w-md mx-auto">
+                        La gestión de unidades para proyectos de tipo "{getProjectTypeLabel(project.type)}" 
+                        está en desarrollo. Próximamente estará disponible.
+                      </p>
+                      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-md mx-auto">
+                        <h4 className="text-sm font-medium text-blue-800 mb-2">
+                          Tipos de proyecto disponibles:
+                        </h4>
+                        <ul className="text-sm text-blue-700 space-y-1">
+                          <li>• Lotización - Manzanas y Lotes</li>
+                          <li>• Otros tipos - En desarrollo</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

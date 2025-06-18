@@ -60,6 +60,12 @@ model Usuario {
   empresas_desarrolladoras_GerenteGeneralEmpresas EmpresaDesarrolladora[] @relation("GerenteGeneralEmpresas")
   proyectosMiembro                                Proyecto[]              @relation("ProjectMembers")
   clientesCreados                                 Cliente[]               @relation("ClienteCreadoPor")
+  manzanasCreadas                                 Manzana[]               @relation("ManzanaCreadoPor")
+  manzanasActualizadas                            Manzana[]               @relation("ManzanaActualizadoPor")
+  lotesCreados                                    Lote[]                  @relation("LoteCreadoPor")
+  lotesActualizados                               Lote[]                  @relation("LoteActualizadoPor")
+  ventasLotesCreadas                              VentaLote[]             @relation("VentaLoteCreadoPor")
+  ventasLotesActualizadas                         VentaLote[]             @relation("VentaLoteActualizadoPor")
 
   @@map("usuarios")
 }
@@ -102,6 +108,7 @@ model Proyecto {
   gerente                 Usuario?              @relation("ProjectManager", fields: [gerenteId], references: [id], onUpdate: NoAction)
   unidades                UnidadInmobiliaria[]
   miembros                Usuario[]             @relation("ProjectMembers")
+  manzanas                Manzana[]
 
   @@index([latitud, longitud])
 }
@@ -167,6 +174,7 @@ model Cliente {
   isActive        Boolean       @default(true)
   direcciones     Direccion[]
   ventas          Venta[]
+  ventasLotes     VentaLote[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   creadoPorId     String?
@@ -211,6 +219,85 @@ model Documento {
   updatedAt  DateTime @updatedAt
   proyecto   Proyecto @relation(fields: [proyectoId], references: [id])
   usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+}
+
+model Manzana {
+  id                String   @id @default(cuid())
+  codigo            String   // A, B, C, ..., Z, AA, AB, AC, ...
+  nombre            String   // Nombre descriptivo de la manzana
+  areaTotal         Float    @default(0) // Suma de áreas de todos los lotes
+  cantidadLotes     Int      @default(0) // Cantidad de lotes en la manzana
+  proyectoId        String
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  updatedBy         String?
+  descripcion       String?
+  observaciones     String?
+  proyecto          Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  lotes             Lote[]
+  creadoPorUsuario  Usuario? @relation("ManzanaCreadoPor", fields: [createdBy], references: [id])
+  actualizadoPorUsuario Usuario? @relation("ManzanaActualizadoPor", fields: [updatedBy], references: [id])
+
+  @@unique([codigo, proyectoId])
+  @@index([proyectoId])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("manzanas")
+}
+
+model Lote {
+  id                String       @id @default(cuid())
+  codigo            String       // Código único del lote (ej: A-01, A-02, B-01, etc.)
+  numero            String       // Número del lote
+  area              Float        // Área del lote en m²
+  frente            Float?       // Frente del lote en metros
+  fondo             Float?       // Fondo del lote en metros
+  precio            Float?       // Precio del lote
+  estado            EstadoLote   @default(DISPONIBLE)
+  manzanaId         String
+  isActive          Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  createdBy         String?
+  updatedBy         String?
+  descripcion       String?
+  observaciones     String?
+  coordenadas       String?      // Coordenadas GPS del lote
+  manzana           Manzana      @relation(fields: [manzanaId], references: [id], onDelete: Cascade)
+  ventas            VentaLote[]
+  creadoPorUsuario  Usuario?     @relation("LoteCreadoPor", fields: [createdBy], references: [id])
+  actualizadoPorUsuario Usuario? @relation("LoteActualizadoPor", fields: [updatedBy], references: [id])
+
+  @@unique([codigo, manzanaId])
+  @@index([manzanaId])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("lotes")
+}
+
+model VentaLote {
+  id                   String             @id @default(cuid())
+  loteId               String
+  clienteId            String
+  fechaVenta           DateTime
+  precioVenta          Float
+  estado               EstadoVentaLote    @default(PENDIENTE)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  lote                 Lote               @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  cliente              Cliente            @relation(fields: [clienteId], references: [id])
+  createdBy            String?
+  updatedBy            String?
+  creadoPorUsuario     Usuario?           @relation("VentaLoteCreadoPor", fields: [createdBy], references: [id])
+  actualizadoPorUsuario Usuario?          @relation("VentaLoteActualizadoPor", fields: [updatedBy], references: [id])
+
+  @@index([loteId])
+  @@index([clienteId])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("ventas_lotes")
 }
 
 enum Rol {
@@ -328,4 +415,18 @@ enum Sexo {
 enum TipoDireccion {
   NACIONAL
   EXTRANJERA
+}
+
+enum EstadoLote {
+  DISPONIBLE
+  RESERVADO
+  VENDIDO
+  ENTREGADO
+}
+
+enum EstadoVentaLote {
+  PENDIENTE
+  APROBADA
+  CANCELADA
+  ENTREGADA
 }
