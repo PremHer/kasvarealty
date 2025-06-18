@@ -50,22 +50,22 @@ model Usuario {
   createdBy                                       String?
   updatedBy                                       String?
   actividades                                     Actividad[]
+  clientesCreados                                 Cliente[]               @relation("ClienteCreadoPor")
   comentarios                                     Comentario[]
   documentos                                      Documento[]
   proyectosAprobados                              Proyecto[]              @relation("ProjectApprover")
   proyectosCreados                                Proyecto[]              @relation("ProjectCreator")
   proyectosGestionados                            Proyecto[]              @relation("ProjectManager")
   empresasRepresentante                           EmpresaDesarrolladora[] @relation("RepresentanteLegal")
-  empresaDesarrolladora                           EmpresaDesarrolladora?  @relation("EmpresaUsuario", fields: [empresaDesarrolladoraId], references: [id])
-  empresas_desarrolladoras_GerenteGeneralEmpresas EmpresaDesarrolladora[] @relation("GerenteGeneralEmpresas")
-  proyectosMiembro                                Proyecto[]              @relation("ProjectMembers")
-  clientesCreados                                 Cliente[]               @relation("ClienteCreadoPor")
-  manzanasCreadas                                 Manzana[]               @relation("ManzanaCreadoPor")
-  manzanasActualizadas                            Manzana[]               @relation("ManzanaActualizadoPor")
   lotesCreados                                    Lote[]                  @relation("LoteCreadoPor")
   lotesActualizados                               Lote[]                  @relation("LoteActualizadoPor")
+  manzanasCreadas                                 Manzana[]               @relation("ManzanaCreadoPor")
+  manzanasActualizadas                            Manzana[]               @relation("ManzanaActualizadoPor")
+  empresaDesarrolladora                           EmpresaDesarrolladora?  @relation("EmpresaUsuario", fields: [empresaDesarrolladoraId], references: [id])
   ventasLotesCreadas                              VentaLote[]             @relation("VentaLoteCreadoPor")
   ventasLotesActualizadas                         VentaLote[]             @relation("VentaLoteActualizadoPor")
+  empresas_desarrolladoras_GerenteGeneralEmpresas EmpresaDesarrolladora[] @relation("GerenteGeneralEmpresas")
+  proyectosMiembro                                Proyecto[]              @relation("ProjectMembers")
 
   @@map("usuarios")
 }
@@ -107,8 +107,8 @@ model Proyecto {
   empresaDesarrolladora   EmpresaDesarrolladora @relation(fields: [empresaDesarrolladoraId], references: [id])
   gerente                 Usuario?              @relation("ProjectManager", fields: [gerenteId], references: [id], onUpdate: NoAction)
   unidades                UnidadInmobiliaria[]
-  miembros                Usuario[]             @relation("ProjectMembers")
   manzanas                Manzana[]
+  miembros                Usuario[]             @relation("ProjectMembers")
 
   @@index([latitud, longitud])
 }
@@ -141,44 +141,44 @@ model Venta {
 }
 
 model Direccion {
-  id              String        @id @default(cuid())
-  tipo            TipoDireccion
-  pais            String        // Para nacionales será "Perú", para extranjeros será el país ingresado
-  ciudad          String        // Ciudad o distrito
-  direccion       String
-  referencia      String?
-  cliente         Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  clienteId       String
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id         String        @id @default(cuid())
+  tipo       TipoDireccion
+  pais       String
+  ciudad     String
+  direccion  String
+  referencia String?
+  clienteId  String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  cliente    Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
   @@index([clienteId])
 }
 
 model Cliente {
-  id              String        @id @default(cuid())
-  tipo            TipoCliente
-  nombre          String?       // Para personas naturales
-  apellido        String?       // Para personas naturales
-  sexo            Sexo?         // Para personas naturales
-  razonSocial     String?       // Para empresas
-  ruc             String?       // Para empresas
-  dni             String?       // Para personas naturales
-  email           String        @unique
-  telefono        String?
-  fechaNacimiento DateTime?     // Para personas naturales
-  estadoCivil     EstadoCivil?  // Para personas naturales
-  ocupacion       String?       // Para personas naturales
-  representanteLegal String?    // Para empresas
-  cargoRepresentante String?    // Para empresas
-  isActive        Boolean       @default(true)
-  direcciones     Direccion[]
-  ventas          Venta[]
-  ventasLotes     VentaLote[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  creadoPorId     String?
-  creadoPor       Usuario?      @relation("ClienteCreadoPor", fields: [creadoPorId], references: [id])
+  id                 String       @id @default(cuid())
+  nombre             String?
+  apellido           String?
+  email              String       @unique
+  telefono           String?
+  tipo               TipoCliente
+  dni                String?
+  fechaNacimiento    DateTime?
+  estadoCivil        EstadoCivil?
+  ocupacion          String?
+  razonSocial        String?
+  ruc                String?
+  representanteLegal String?
+  cargoRepresentante String?
+  creadoPorId        String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  sexo               Sexo?
+  isActive           Boolean      @default(true)
+  creadoPor          Usuario?     @relation("ClienteCreadoPor", fields: [creadoPorId], references: [id])
+  direcciones        Direccion[]
+  ventas             Venta[]
+  ventasLotes        VentaLote[]
 
   @@index([email])
   @@index([ruc])
@@ -222,22 +222,22 @@ model Documento {
 }
 
 model Manzana {
-  id                String   @id @default(cuid())
-  codigo            String   // A, B, C, ..., Z, AA, AB, AC, ...
-  nombre            String   // Nombre descriptivo de la manzana
-  areaTotal         Float    @default(0) // Suma de áreas de todos los lotes
-  cantidadLotes     Int      @default(0) // Cantidad de lotes en la manzana
-  proyectoId        String
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  createdBy         String?
-  updatedBy         String?
-  descripcion       String?
-  observaciones     String?
-  proyecto          Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  lotes             Lote[]
-  creadoPorUsuario  Usuario? @relation("ManzanaCreadoPor", fields: [createdBy], references: [id])
+  id                    String   @id @default(cuid())
+  codigo                String
+  nombre                String
+  areaTotal             Float    @default(0)
+  cantidadLotes         Int      @default(0)
+  proyectoId            String
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  descripcion           String?
+  observaciones         String?
+  lotes                 Lote[]
+  creadoPorUsuario      Usuario? @relation("ManzanaCreadoPor", fields: [createdBy], references: [id])
+  proyecto              Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   actualizadoPorUsuario Usuario? @relation("ManzanaActualizadoPor", fields: [updatedBy], references: [id])
 
   @@unique([codigo, proyectoId])
@@ -248,50 +248,60 @@ model Manzana {
 }
 
 model Lote {
-  id                String       @id @default(cuid())
-  codigo            String       // Código único del lote (ej: A-01, A-02, B-01, etc.)
-  numero            String       // Número del lote
-  area              Float        // Área del lote en m²
-  frente            Float?       // Frente del lote en metros
-  fondo             Float?       // Fondo del lote en metros
-  precio            Float?       // Precio del lote
-  estado            EstadoLote   @default(DISPONIBLE)
-  manzanaId         String
-  isActive          Boolean      @default(true)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  createdBy         String?
-  updatedBy         String?
-  descripcion       String?
-  observaciones     String?
-  coordenadas       String?      // Coordenadas GPS del lote
-  manzana           Manzana      @relation(fields: [manzanaId], references: [id], onDelete: Cascade)
-  ventas            VentaLote[]
-  creadoPorUsuario  Usuario?     @relation("LoteCreadoPor", fields: [createdBy], references: [id])
-  actualizadoPorUsuario Usuario? @relation("LoteActualizadoPor", fields: [updatedBy], references: [id])
+  id                    String      @id @default(cuid())
+  codigo                String
+  numero                String
+  area                  Float
+  precio                Float?
+  estado                EstadoLote  @default(DISPONIBLE)
+  latitud               Float?
+  longitud              Float?
+  linderoFrente         String?
+  linderoFondo          String?
+  linderoIzquierda      String?
+  linderoDerecha        String?
+  dimensionFrente       Float?
+  dimensionFondo        Float?
+  dimensionIzquierda    Float?
+  dimensionDerecha      Float?
+  descripcion           String?
+  observaciones         String?
+  caracteristicas       String?
+  tipoTerreno           String?
+  servicios             String?
+  manzanaId             String
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  creadoPorUsuario      Usuario?    @relation("LoteCreadoPor", fields: [createdBy], references: [id])
+  manzana               Manzana     @relation(fields: [manzanaId], references: [id], onDelete: Cascade)
+  actualizadoPorUsuario Usuario?    @relation("LoteActualizadoPor", fields: [updatedBy], references: [id])
+  ventas                VentaLote[]
 
   @@unique([codigo, manzanaId])
   @@index([manzanaId])
   @@index([createdBy])
   @@index([updatedBy])
+  @@index([estado])
   @@map("lotes")
 }
 
 model VentaLote {
-  id                   String             @id @default(cuid())
-  loteId               String
-  clienteId            String
-  fechaVenta           DateTime
-  precioVenta          Float
-  estado               EstadoVentaLote    @default(PENDIENTE)
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  lote                 Lote               @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  cliente              Cliente            @relation(fields: [clienteId], references: [id])
-  createdBy            String?
-  updatedBy            String?
-  creadoPorUsuario     Usuario?           @relation("VentaLoteCreadoPor", fields: [createdBy], references: [id])
-  actualizadoPorUsuario Usuario?          @relation("VentaLoteActualizadoPor", fields: [updatedBy], references: [id])
+  id                    String          @id @default(cuid())
+  loteId                String
+  clienteId             String
+  fechaVenta            DateTime
+  precioVenta           Float
+  estado                EstadoVentaLote @default(PENDIENTE)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  cliente               Cliente         @relation(fields: [clienteId], references: [id])
+  creadoPorUsuario      Usuario?        @relation("VentaLoteCreadoPor", fields: [createdBy], references: [id])
+  lote                  Lote            @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  actualizadoPorUsuario Usuario?        @relation("VentaLoteActualizadoPor", fields: [updatedBy], references: [id])
 
   @@index([loteId])
   @@index([clienteId])
@@ -323,12 +333,12 @@ enum Rol {
 enum EstadoProyecto {
   DRAFT
   PENDING_APPROVAL
-  PENDING_ASSIGNMENT
   APPROVED
   REJECTED
   IN_PROGRESS
   COMPLETED
   CANCELLED
+  PENDING_ASSIGNMENT
 }
 
 enum TipoProyecto {
@@ -422,6 +432,8 @@ enum EstadoLote {
   RESERVADO
   VENDIDO
   ENTREGADO
+  INACTIVO
+  RETIRADO
 }
 
 enum EstadoVentaLote {
