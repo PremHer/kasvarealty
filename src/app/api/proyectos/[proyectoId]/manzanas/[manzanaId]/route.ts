@@ -52,6 +52,21 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    // Verificar permisos para editar manzanas
+    const userRole = session.user.role;
+    const canEditManzanas = [
+      'SUPER_ADMIN',
+      'GERENTE_GENERAL',
+      'PROJECT_MANAGER'
+    ].includes(userRole);
+
+    if (!canEditManzanas) {
+      return NextResponse.json(
+        { error: 'No tienes permisos para editar manzanas. Solo los Project Managers, Gerentes Generales y Super Admins pueden realizar esta acción.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { nombre, descripcion, observaciones, isActive } = body;
 
@@ -91,6 +106,21 @@ export async function PATCH(
     
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    // Verificar permisos para cambiar estado de manzanas
+    const userRole = session.user.role;
+    const canToggleManzanas = [
+      'SUPER_ADMIN',
+      'GERENTE_GENERAL',
+      'PROJECT_MANAGER'
+    ].includes(userRole);
+
+    if (!canToggleManzanas) {
+      return NextResponse.json(
+        { error: 'No tienes permisos para cambiar el estado de manzanas. Solo los Project Managers, Gerentes Generales y Super Admins pueden realizar esta acción.' },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
