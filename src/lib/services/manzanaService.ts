@@ -62,16 +62,18 @@ export class ManzanaService {
     }) as ManzanaWithRelations[];
 
     // Calcular área total y cantidad de lotes dinámicamente
-    const manzanasConEstadisticas = manzanas.map(manzana => {
+    const manzanasConEstadisticas = await Promise.all(manzanas.map(async (manzana) => {
       const areaTotal = manzana.lotes.reduce((sum, lote) => sum + (lote.area || 0), 0);
       const cantidadLotes = manzana.lotes.length;
+      const totalLotes = await this.obtenerConteoTotalLotes(manzana.id);
 
       return {
         ...manzana,
         areaTotal,
-        cantidadLotes
+        cantidadLotes,
+        totalLotes
       };
-    });
+    }));
 
     // Asegurar que las manzanas estén ordenadas correctamente
     return manzanasConEstadisticas.sort((a, b) => {
@@ -168,20 +170,17 @@ export class ManzanaService {
   static async eliminarManzana(id: string) {
     // Verificar que la manzana existe
     const manzana = await prisma.manzana.findUnique({
-      where: { id },
-      include: {
-        lotes: true
-      }
+      where: { id }
     });
 
     if (!manzana) {
       throw new Error('Manzana no encontrada');
     }
 
-    // Verificar que no tenga lotes activos
-    const lotesActivos = manzana.lotes.filter(lote => lote.isActive);
-    if (lotesActivos.length > 0) {
-      throw new Error('No se puede eliminar una manzana que tiene lotes activos');
+    // Verificar que no tenga lotes registrados (incluyendo inactivos)
+    const totalLotes = await this.obtenerConteoTotalLotes(id);
+    if (totalLotes > 0) {
+      throw new Error('No se puede eliminar una manzana que tiene lotes registrados. Primero debe eliminar todos los lotes de la manzana.');
     }
 
     // Eliminar físicamente la manzana
@@ -544,5 +543,18 @@ export class ManzanaService {
         cantidadLotes
       }
     });
+  }
+
+  /**
+   * Obtiene el conteo total de lotes de una manzana (incluyendo inactivos)
+   */
+  static async obtenerConteoTotalLotes(manzanaId: string): Promise<number> {
+    const conteo = await prisma.lote.count({
+      where: {
+        manzanaId: manzanaId
+      }
+    });
+    
+    return conteo;
   }
 } 

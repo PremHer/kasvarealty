@@ -39,6 +39,33 @@ export default function Navbar() {
     }
   }, [session])
 
+  // Función para obtener el nombre del rol en español
+  const getRoleDisplayName = (role: Rol | null): string => {
+    if (!role) return ''
+    
+    const roleNames: Record<Rol, string> = {
+      SUPER_ADMIN: 'Super Administrador',
+      ADMIN: 'Administrador',
+      GERENTE_GENERAL: 'Gerente General',
+      DEVELOPER: 'Desarrollador',
+      SALES_MANAGER: 'Gerente de Ventas',
+      SALES_REP: 'Representante de Ventas',
+      SALES_ASSISTANT: 'Asistente de Ventas',
+      SALES_COORDINATOR: 'Coordinador de Ventas',
+      PROJECT_MANAGER: 'Gerente de Proyectos',
+      CONSTRUCTION_SUPERVISOR: 'Supervisor de Construcción',
+      QUALITY_CONTROL: 'Control de Calidad',
+      PROJECT_ASSISTANT: 'Asistente de Proyectos',
+      FINANCE_MANAGER: 'Gerente Financiero',
+      ACCOUNTANT: 'Contador',
+      FINANCE_ASSISTANT: 'Asistente Financiero',
+      INVESTOR: 'Inversionista',
+      GUEST: 'Invitado'
+    }
+    
+    return roleNames[role] || role
+  }
+
   const canManageUsers = [
     'SUPER_ADMIN',
     'ADMIN',
@@ -66,7 +93,7 @@ export default function Navbar() {
 
             {/* Navegación Desktop */}
             <div className="hidden sm:flex sm:ml-10 sm:space-x-4 lg:space-x-8 flex-1 justify-center">
-              {navigation.map((item) => {
+              {navigation.slice(0, -1).map((item) => {
                 const isActive = pathname === item.href
                 return (
                   <Link
@@ -109,6 +136,23 @@ export default function Navbar() {
                   Empresas
                 </Link>
               )}
+              {navigation.slice(-1).map((item) => {
+                const isActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                      isActive
+                        ? 'border-primary-500 text-gray-900'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                  >
+                    <item.icon className="h-5 w-5 mr-2" />
+                    {item.name}
+                  </Link>
+                )
+              })}
             </div>
           </div>
 
@@ -123,7 +167,10 @@ export default function Navbar() {
                   <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white">
                     <FiUser className="h-5 w-5" />
                   </div>
-                  <span className="ml-2">{session?.user?.name}</span>
+                  <div className="ml-2 text-left">
+                    <div className="font-medium">{session?.user?.name}</div>
+                    <div className="text-xs text-gray-500">{getRoleDisplayName(userRole)}</div>
+                  </div>
                   <FiChevronDown className="ml-1 h-5 w-5 text-gray-400" />
                 </div>
               </button>
@@ -177,8 +224,21 @@ export default function Navbar() {
       {/* Menú móvil */}
       {isMobileMenuOpen && (
         <div className="sm:hidden">
+          {/* Información del usuario en móvil */}
+          <div className="px-3 py-4 border-b border-gray-200">
+            <div className="flex items-center">
+              <div className="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center text-white">
+                <FiUser className="h-6 w-6" />
+              </div>
+              <div className="ml-3">
+                <div className="text-base font-medium text-gray-800">{session?.user?.name}</div>
+                <div className="text-sm text-gray-500">{getRoleDisplayName(userRole)}</div>
+              </div>
+            </div>
+          </div>
+          
           <div className="pt-2 pb-3 space-y-1">
-            {navigation.map((item) => {
+            {navigation.slice(0, -1).map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
@@ -221,6 +281,23 @@ export default function Navbar() {
                 Empresas
               </Link>
             )}
+            {navigation.slice(-1).map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center px-3 py-2 text-base font-medium ${
+                    isActive
+                      ? 'bg-primary-50 border-l-4 border-primary-500 text-primary-700'
+                      : 'border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  <item.icon className="h-6 w-6 mr-3" />
+                  {item.name}
+                </Link>
+              )
+            })}
           </div>
         </div>
       )}

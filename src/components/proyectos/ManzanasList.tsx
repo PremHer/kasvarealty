@@ -68,11 +68,17 @@ interface Manzana {
   nombre: string;
   areaTotal: number;
   cantidadLotes: number;
+  totalLotes: number;
   isActive: boolean;
   descripcion?: string;
   observaciones?: string;
   createdAt: string;
   updatedAt: string;
+  lotes?: Array<{
+    id: string;
+    codigo: string;
+    estado: string;
+  }>;
 }
 
 interface ManzanasListProps {
@@ -86,10 +92,18 @@ const ManzanasList = ({ proyectoId, onManzanasChange }: ManzanasListProps) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [cantidadManzanas, setCantidadManzanas] = useState(0);
   const [expandedManzanas, setExpandedManzanas] = useState<Set<string>>(new Set());
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; manzanaId: string | null; manzanaName: string }>({
+  const [deleteDialog, setDeleteDialog] = useState<{ 
+    open: boolean; 
+    manzanaId: string | null; 
+    manzanaName: string;
+    tieneLotes: boolean;
+    cantidadLotes: number;
+  }>({
     open: false,
     manzanaId: null,
-    manzanaName: ''
+    manzanaName: '',
+    tieneLotes: false,
+    cantidadLotes: 0
   });
   const [infoManzanasACrear, setInfoManzanasACrear] = useState<any>(null);
   const [calculandoInfo, setCalculandoInfo] = useState(false);
@@ -196,11 +210,13 @@ const ManzanasList = ({ proyectoId, onManzanasChange }: ManzanasListProps) => {
     }
   };
 
-  const handleDeleteClick = (manzanaId: string, manzanaName: string) => {
+  const handleDeleteClick = (manzanaId: string, manzanaName: string, totalLotes: number) => {
     setDeleteDialog({
       open: true,
       manzanaId,
-      manzanaName
+      manzanaName,
+      tieneLotes: totalLotes > 0,
+      cantidadLotes: totalLotes
     });
   };
 
@@ -230,12 +246,12 @@ const ManzanasList = ({ proyectoId, onManzanasChange }: ManzanasListProps) => {
         variant: "destructive"
       });
     } finally {
-      setDeleteDialog({ open: false, manzanaId: null, manzanaName: '' });
+      setDeleteDialog({ open: false, manzanaId: null, manzanaName: '', tieneLotes: false, cantidadLotes: 0 });
     }
   };
 
   const handleDeleteCancel = () => {
-    setDeleteDialog({ open: false, manzanaId: null, manzanaName: '' });
+    setDeleteDialog({ open: false, manzanaId: null, manzanaName: '', tieneLotes: false, cantidadLotes: 0 });
   };
 
   const handleToggleStatus = async (manzanaId: string, currentStatus: boolean) => {
@@ -464,31 +480,47 @@ const ManzanasList = ({ proyectoId, onManzanasChange }: ManzanasListProps) => {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={cambiandoEstados.has(manzana.id)}
-                    className={`px-3 py-1 text-xs font-medium rounded-full transition-all duration-300 hover:scale-105 ${
+                  {canManageManzanas && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={cambiandoEstados.has(manzana.id)}
+                      className={`px-3 py-1 text-xs font-medium rounded-full transition-all duration-300 hover:scale-105 ${
+                        manzana.isActive 
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200 border border-green-300 shadow-sm' 
+                          : 'bg-red-100 text-red-800 hover:bg-red-200 border border-red-300 shadow-sm'
+                      } ${cambiandoEstados.has(manzana.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleStatus(manzana.id, manzana.isActive);
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {cambiandoEstados.has(manzana.id) ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                            manzana.isActive ? 'bg-green-600' : 'bg-red-600'
+                          }`} />
+                        )}
+                        {cambiandoEstados.has(manzana.id) ? 'Cambiando...' : (manzana.isActive ? 'Activa' : 'Inactiva')}
+                      </div>
+                    </Button>
+                  )}
+                  {!canManageManzanas && (
+                    <div className={`px-3 py-1 text-xs font-medium rounded-full ${
                       manzana.isActive 
-                        ? 'bg-green-100 text-green-800 hover:bg-green-200 border border-green-300 shadow-sm' 
-                        : 'bg-red-100 text-red-800 hover:bg-red-200 border border-red-300 shadow-sm'
-                    } ${cambiandoEstados.has(manzana.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleStatus(manzana.id, manzana.isActive);
-                    }}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      {cambiandoEstados.has(manzana.id) ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                        ? 'bg-green-100 text-green-800 border border-green-300' 
+                        : 'bg-red-100 text-red-800 border border-red-300'
+                    }`}>
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-2 h-2 rounded-full ${
                           manzana.isActive ? 'bg-green-600' : 'bg-red-600'
                         }`} />
-                      )}
-                      {cambiandoEstados.has(manzana.id) ? 'Cambiando...' : (manzana.isActive ? 'Activa' : 'Inactiva')}
+                        {manzana.isActive ? 'Activa' : 'Inactiva'}
+                      </div>
                     </div>
-                  </Button>
+                  )}
                   {canManageManzanas && (
                     <Button
                       variant="ghost"
@@ -496,7 +528,7 @@ const ManzanasList = ({ proyectoId, onManzanasChange }: ManzanasListProps) => {
                       className="hover:bg-destructive/10 hover:text-destructive"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteClick(manzana.id, manzana.nombre);
+                        handleDeleteClick(manzana.id, manzana.nombre, manzana.totalLotes);
                       }}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -626,30 +658,49 @@ const ManzanasList = ({ proyectoId, onManzanasChange }: ManzanasListProps) => {
       <AlertDialog open={deleteDialog.open} onOpenChange={handleDeleteCancel}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Eliminar Manzana</AlertDialogTitle>
+            <AlertDialogTitle className={deleteDialog.tieneLotes ? "text-orange-600" : "text-destructive"}>
+              {deleteDialog.tieneLotes ? 'No se puede eliminar' : 'Eliminar Manzana'}
+            </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="text-left">
-                <p>¿Estás seguro de que deseas eliminar la manzana <strong>"{deleteDialog.manzanaName}"</strong>?</p>
-                <br />
-                <p>Esta acción eliminará permanentemente:</p>
-                <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-                  <li>La manzana y todos sus datos</li>
-                  <li>Todos los lotes asociados a esta manzana</li>
-                  <li>Información de ventas relacionadas</li>
-                </ul>
-                <br />
-                <p className="text-destructive font-medium">Esta acción no se puede deshacer.</p>
+                {deleteDialog.tieneLotes ? (
+                  <>
+                    <div className="text-red-600 bg-red-50 p-4 rounded-md border border-red-200 mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Info className="h-5 w-5" />
+                        <span className="font-medium">No se puede eliminar esta manzana</span>
+                      </div>
+                      <p>La manzana <strong>"{deleteDialog.manzanaName}"</strong> tiene {deleteDialog.cantidadLotes} lote{deleteDialog.cantidadLotes !== 1 ? 's' : ''} registrado{deleteDialog.cantidadLotes !== 1 ? 's' : ''}.</p>
+                      <p className="mt-2">Para eliminar la manzana, primero debe eliminar todos los lotes asociados.</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p>¿Estás seguro de que deseas eliminar la manzana <strong>"{deleteDialog.manzanaName}"</strong>?</p>
+                    <br />
+                    <p>Esta acción eliminará permanentemente:</p>
+                    <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                      <li>La manzana y todos sus datos</li>
+                    </ul>
+                    <br />
+                    <p className="text-destructive font-medium">Esta acción no se puede deshacer.</p>
+                  </>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-2">Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteConfirm}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-            >
-              Eliminar Manzana
-            </AlertDialogAction>
+            <AlertDialogCancel className="border-2">
+              {deleteDialog.tieneLotes ? 'Entendido' : 'Cancelar'}
+            </AlertDialogCancel>
+            {!deleteDialog.tieneLotes && (
+              <AlertDialogAction 
+                onClick={handleDeleteConfirm}
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              >
+                Eliminar Manzana
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
