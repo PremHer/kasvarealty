@@ -191,6 +191,44 @@ export async function PUT(
       totalUnits
     } = data
 
+    // Validar cambio de tipo de proyecto si hay datos relacionados
+    if (type && type !== proyecto.tipo) {
+      // Verificar si hay manzanas o lotes (para proyectos de lotización)
+      const manzanasCount = await prisma.manzana.count({
+        where: { proyectoId: params.id }
+      })
+      
+      const lotesCount = await prisma.lote.count({
+        where: {
+          manzana: {
+            proyectoId: params.id
+          }
+        }
+      })
+
+      // Verificar si hay pabellones o unidades de cementerio (para proyectos de cementerio)
+      const pabellonesCount = await prisma.pabellon.count({
+        where: { proyectoId: params.id }
+      })
+
+      const unidadesCementerioCount = await prisma.unidadCementerio.count({
+        where: {
+          pabellon: {
+            proyectoId: params.id
+          }
+        }
+      })
+
+      // Si hay datos relacionados, impedir el cambio de tipo
+      if (manzanasCount > 0 || lotesCount > 0 || pabellonesCount > 0 || unidadesCementerioCount > 0) {
+        const totalRelatedData = manzanasCount + lotesCount + pabellonesCount + unidadesCementerioCount
+        
+        const errorMessage = `No se puede cambiar el tipo de proyecto porque ya tiene ${totalRelatedData} elemento(s) de datos relacionados. Para cambiar el tipo de proyecto, primero debe eliminar todos los datos asociados.`
+        
+        return NextResponse.json({ error: errorMessage }, { status: 400 })
+      }
+    }
+
     const proyectoActualizado = await prisma.proyecto.update({
       where: { id: params.id },
       data: {

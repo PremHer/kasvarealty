@@ -8,6 +8,7 @@ import DeveloperCompanySelect from './components/DeveloperCompanySelect'
 import dynamic from 'next/dynamic'
 import { Project, ProjectFormData } from '@/types/project'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useState, useEffect } from 'react'
 
 const MapPicker = dynamic(() => import('../MapPicker'), {
   ssr: false,
@@ -26,6 +27,9 @@ interface EditProjectModalProps {
 
 export default function EditProjectModal({ project, onClose, onProjectUpdated }: EditProjectModalProps) {
   const { toast } = useToast()
+  const [hasRelatedData, setHasRelatedData] = useState(false)
+  const [isCheckingData, setIsCheckingData] = useState(true)
+  
   const { formData, handleChange, handleSubmit, isSubmitting, error } = useProjectForm({
     initialData: {
       name: project.name || '',
@@ -80,6 +84,55 @@ export default function EditProjectModal({ project, onClose, onProjectUpdated }:
     }
   })
 
+  // Verificar si el proyecto tiene datos relacionados
+  useEffect(() => {
+    const checkRelatedData = async () => {
+      try {
+        setIsCheckingData(true)
+        
+        // Verificar manzanas y lotes
+        const manzanasResponse = await fetch(`/api/proyectos/${project.id}/manzanas`)
+        const pabellonesResponse = await fetch(`/api/proyectos/${project.id}/pabellones`)
+        
+        const manzanas = manzanasResponse.ok ? await manzanasResponse.json() : []
+        const pabellones = pabellonesResponse.ok ? await pabellonesResponse.json() : []
+        
+        // Contar lotes si hay manzanas
+        let lotesCount = 0
+        if (manzanas.length > 0) {
+          for (const manzana of manzanas) {
+            const lotesResponse = await fetch(`/api/proyectos/${project.id}/manzanas/${manzana.id}/lotes`)
+            if (lotesResponse.ok) {
+              const lotes = await lotesResponse.json()
+              lotesCount += lotes.length
+            }
+          }
+        }
+        
+        // Contar unidades de cementerio si hay pabellones
+        let unidadesCount = 0
+        if (pabellones.length > 0) {
+          for (const pabellon of pabellones) {
+            const unidadesResponse = await fetch(`/api/proyectos/${project.id}/pabellones/${pabellon.id}/unidades-cementerio`)
+            if (unidadesResponse.ok) {
+              const unidades = await unidadesResponse.json()
+              unidadesCount += unidades.length
+            }
+          }
+        }
+        
+        setHasRelatedData(manzanas.length > 0 || lotesCount > 0 || pabellones.length > 0 || unidadesCount > 0)
+      } catch (error) {
+        console.error('Error al verificar datos relacionados:', error)
+        setHasRelatedData(false)
+      } finally {
+        setIsCheckingData(false)
+      }
+    }
+    
+    checkRelatedData()
+  }, [project.id])
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent 
@@ -123,12 +176,31 @@ export default function EditProjectModal({ project, onClose, onProjectUpdated }:
                 <div className="space-y-2">
                   <label htmlFor="type" className="block text-sm font-medium text-gray-700">
                     Tipo de Proyecto
+                    {hasRelatedData && (
+                      <span className="ml-2 text-xs text-orange-600 font-normal">
+                        (No se puede cambiar)
+                      </span>
+                    )}
                   </label>
-                  <ProjectTypeSelect
-                    value={formData.type}
-                    onChange={(value) => handleChange({ target: { name: 'type', value } } as any)}
-                    required
-                  />
+                  {isCheckingData ? (
+                    <div className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-gray-50 text-gray-500">
+                      Verificando datos relacionados...
+                    </div>
+                  ) : (
+                    <>
+                      <ProjectTypeSelect
+                        value={formData.type}
+                        onChange={(value) => handleChange({ target: { name: 'type', value } } as any)}
+                        required
+                        disabled={hasRelatedData}
+                      />
+                      {hasRelatedData && (
+                        <p className="text-xs text-orange-600 mt-1">
+                          El tipo de proyecto no se puede cambiar porque ya tiene datos relacionados. Para cambiar el tipo, primero debe eliminar todos los datos asociados al proyecto.
+                        </p>
+                      )}
+                    </>
+                  )}
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700">
