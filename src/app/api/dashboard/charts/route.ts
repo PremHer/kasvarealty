@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
-import { getRecentActivity } from '@/lib/db-utils'
+import { getChartData } from '@/lib/db-utils'
 
 export async function GET() {
   try {
@@ -13,12 +13,12 @@ export async function GET() {
     // Obtener empresaId de la sesión del usuario
     const empresaId = (session.user as any).empresaId || null
     
-    const activity = await getRecentActivity(empresaId)
-    return NextResponse.json(activity)
+    const chartData = await getChartData(empresaId)
+    return NextResponse.json(chartData)
   } catch (error) {
-    console.error('Error obteniendo actividad:', error)
+    console.error('Error obteniendo datos de gráficos:', error)
     return NextResponse.json(
-      { error: 'Error al obtener actividad' },
+      { error: 'Error al obtener datos de gráficos' },
       { status: 500 }
     )
   }

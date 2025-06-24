@@ -6,14 +6,16 @@ interface ProjectTypeSelectProps {
   value: string
   onChange: (value: TipoProyecto) => void
   required?: boolean
+  disabled?: boolean
 }
 
-export default function ProjectTypeSelect({ value, onChange, required }: ProjectTypeSelectProps) {
+export default function ProjectTypeSelect({ value, onChange, required, disabled }: ProjectTypeSelectProps) {
   return (
     <Select
       value={value}
       onValueChange={(value) => onChange(value as TipoProyecto)}
       required={required}
+      disabled={disabled}
     >
       <SelectTrigger className="w-full">
         <SelectValue placeholder="Selecciona un tipo" />
