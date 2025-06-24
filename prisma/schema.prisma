@@ -61,6 +61,10 @@ model Usuario {
   lotesActualizados                               Lote[]                  @relation("LoteActualizadoPor")
   manzanasCreadas                                 Manzana[]               @relation("ManzanaCreadoPor")
   manzanasActualizadas                            Manzana[]               @relation("ManzanaActualizadoPor")
+  pabellonesCreados                               Pabellon[]              @relation("PabellonCreadoPor")
+  pabellonesActualizados                          Pabellon[]              @relation("PabellonActualizadoPor")
+  unidadesCementerioCreadas                       UnidadCementerio[]      @relation("UnidadCementerioCreadoPor")
+  unidadesCementerioActualizadas                  UnidadCementerio[]      @relation("UnidadCementerioActualizadoPor")
   empresaDesarrolladora                           EmpresaDesarrolladora?  @relation("EmpresaUsuario", fields: [empresaDesarrolladoraId], references: [id])
   ventasLotesCreadas                              VentaLote[]             @relation("VentaLoteCreadoPor")
   ventasLotesActualizadas                         VentaLote[]             @relation("VentaLoteActualizadoPor")
@@ -108,6 +112,7 @@ model Proyecto {
   gerente                 Usuario?              @relation("ProjectManager", fields: [gerenteId], references: [id], onUpdate: NoAction)
   unidades                UnidadInmobiliaria[]
   manzanas                Manzana[]
+  pabellones              Pabellon[]
   miembros                Usuario[]             @relation("ProjectMembers")
 
   @@index([latitud, longitud])
@@ -310,6 +315,109 @@ model VentaLote {
   @@map("ventas_lotes")
 }
 
+model Pabellon {
+  id                    String   @id @default(cuid())
+  codigo                String
+  nombre                String
+  areaTotal             Float    @default(0)
+  cantidadUnidades      Int      @default(0)
+  proyectoId            String
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  descripcion           String?
+  observaciones         String?
+  unidades              UnidadCementerio[]
+  creadoPorUsuario      Usuario? @relation("PabellonCreadoPor", fields: [createdBy], references: [id])
+  proyecto              Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  actualizadoPorUsuario Usuario? @relation("PabellonActualizadoPor", fields: [updatedBy], references: [id])
+
+  @@unique([codigo, proyectoId])
+  @@index([proyectoId])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("pabellones")
+}
+
+model UnidadCementerio {
+  id                    String              @id @default(cuid())
+  codigo                String
+  tipoUnidad            TipoUnidadCementerio
+  precio                Float
+  estado                EstadoUnidadCementerio @default(DISPONIBLE)
+  latitud               Float?
+  longitud              Float?
+  descripcion           String?
+  observaciones         String?
+  pabellonId            String
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  creadoPorUsuario      Usuario?            @relation("UnidadCementerioCreadoPor", fields: [createdBy], references: [id])
+  pabellon              Pabellon            @relation(fields: [pabellonId], references: [id], onDelete: Cascade)
+  actualizadoPorUsuario Usuario?            @relation("UnidadCementerioActualizadoPor", fields: [updatedBy], references: [id])
+  parcela               Parcela?
+  nicho                 Nicho?
+  mausoleo              Mausoleo?
+
+  @@unique([codigo, pabellonId])
+  @@index([pabellonId])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@index([estado])
+  @@index([tipoUnidad])
+  @@map("unidades_cementerio")
+}
+
+model Parcela {
+  id                    String        @id @default(cuid())
+  unidadCementerioId    String        @unique
+  dimensionLargo        Float
+  dimensionAncho        Float
+  capacidad             Int
+  tipoTerreno           TipoTerreno
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  unidadCementerio      UnidadCementerio @relation(fields: [unidadCementerioId], references: [id], onDelete: Cascade)
+
+  @@map("parcelas")
+}
+
+model Nicho {
+  id                    String        @id @default(cuid())
+  unidadCementerioId    String        @unique
+  nivelVertical         Int
+  capacidadUrnas        Int
+  material              MaterialNicho
+  medidaAlto            Float
+  medidaAncho           Float
+  medidaProfundidad     Float
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  unidadCementerio      UnidadCementerio @relation(fields: [unidadCementerioId], references: [id], onDelete: Cascade)
+
+  @@map("nichos")
+}
+
+model Mausoleo {
+  id                    String              @id @default(cuid())
+  unidadCementerioId    String              @unique
+  dimensionLargo        Float
+  dimensionAncho        Float
+  capacidadPersonas     Int
+  tipoConstruccion      TipoConstruccionMausoleo
+  material              MaterialMausoleo
+  niveles               Int
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  unidadCementerio      UnidadCementerio    @relation(fields: [unidadCementerioId], references: [id], onDelete: Cascade)
+
+  @@map("mausoleos")
+}
+
 enum Rol {
   SUPER_ADMIN
   ADMIN
@@ -441,4 +549,45 @@ enum EstadoVentaLote {
   APROBADA
   CANCELADA
   ENTREGADA
+}
+
+enum TipoUnidadCementerio {
+  PARCELA
+  NICHO
+  MAUSOLEO
+}
+
+enum EstadoUnidadCementerio {
+  DISPONIBLE
+  RESERVADO
+  VENDIDO
+  OCUPADO
+  INACTIVO
+  RETIRADO
+}
+
+enum TipoTerreno {
+  TIERRA
+  CEMENTO
+  JARDIN
+  CESPED
+}
+
+enum MaterialNicho {
+  CONCRETO
+  MARMOL
+  OTROS
+}
+
+enum MaterialMausoleo {
+  LADRILLO
+  CONCRETO
+  GRANITO
+  OTRO
+}
+
+enum TipoConstruccionMausoleo {
+  FAMILIAR
+  COLECTIVO
+  OTRO
 }
