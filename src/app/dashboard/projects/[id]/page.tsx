@@ -15,6 +15,8 @@ import UnitList from '@/components/projects/units/UnitList'
 import UnitModal from '@/components/projects/units/UnitModal'
 import ManzanasList from '@/components/proyectos/ManzanasList'
 import ManzanasStats from '@/components/proyectos/ManzanasStats'
+import PabellonesList from '@/components/proyectos/PabellonesList'
+import PabellonesStats from '@/components/proyectos/PabellonesStats'
 
 const MapPicker = dynamic(() => import('@/components/MapPicker'), {
   ssr: false,
@@ -273,6 +275,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   }
 
   const handleManzanasChange = useCallback(() => {
+    setStatsRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  const handlePabellonesChange = useCallback(() => {
     setStatsRefreshTrigger(prev => prev + 1);
   }, []);
 
@@ -552,7 +558,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xl font-semibold text-blue-700">
-                    {project.type === 'LOTIZACION' ? 'Manzanas y Lotes' : 'Unidades Inmobiliarias'}
+                    {project.type === 'LOTIZACION' ? 'Manzanas y Lotes' : 
+                     project.type === 'CEMENTERIO' ? 'Pabellones y Unidades' : 
+                     'Unidades Inmobiliarias'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -560,6 +568,11 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                     <div className="space-y-6">
                       <ManzanasStats proyectoId={params.id} refreshTrigger={statsRefreshTrigger} />
                       <ManzanasList proyectoId={params.id} onManzanasChange={handleManzanasChange} />
+                    </div>
+                  ) : project.type === 'CEMENTERIO' ? (
+                    <div className="space-y-6">
+                      <PabellonesStats proyectoId={params.id} refreshTrigger={statsRefreshTrigger} />
+                      <PabellonesList proyectoId={params.id} onPabellonesChange={handlePabellonesChange} />
                     </div>
                   ) : (
                     <div className="text-center py-12">
@@ -577,6 +590,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                         </h4>
                         <ul className="text-sm text-blue-700 space-y-1">
                           <li>• Lotización - Manzanas y Lotes</li>
+                          <li>• Cementerio - Pabellones y Unidades</li>
                           <li>• Otros tipos - En desarrollo</li>
                         </ul>
                       </div>
