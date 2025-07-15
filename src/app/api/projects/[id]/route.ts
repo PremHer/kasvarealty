@@ -158,7 +158,8 @@ export async function PUT(
     // Verificar si el usuario tiene permiso para editar
     const canEdit = 
       ['SUPER_ADMIN', 'ADMIN'].includes(usuario.rol) || // Super Admin y Admin pueden editar cualquier proyecto
-      (usuario.rol === 'PROJECT_MANAGER' && proyecto.gerenteId === usuario.id) || // Project Manager solo puede editar sus proyectos
+      (usuario.rol === 'PROJECT_MANAGER') || // Project Manager puede editar cualquier proyecto del sistema
+      (usuario.rol === 'SALES_MANAGER') || // Sales Manager puede editar cualquier proyecto del sistema
       (usuario.rol === 'GERENTE_GENERAL' && proyecto.empresaDesarrolladora?.representanteLegalId === usuario.id) // Gerente General solo puede editar proyectos de su empresa
 
     if (!canEdit) {
@@ -382,6 +383,8 @@ export async function DELETE(
     // Verificar si el usuario tiene permiso para eliminar
     const canDelete = 
       ['SUPER_ADMIN', 'ADMIN'].includes(usuario.rol) || // Super Admin y Admin pueden eliminar cualquier proyecto
+      (usuario.rol === 'PROJECT_MANAGER') || // Project Manager puede eliminar cualquier proyecto del sistema
+      (usuario.rol === 'SALES_MANAGER') || // Sales Manager puede eliminar cualquier proyecto del sistema
       (usuario.rol === 'GERENTE_GENERAL' && proyecto.empresaDesarrolladora?.representanteLegalId === usuario.id) // Gerente General solo puede eliminar proyectos de su empresa
 
     if (!canDelete) {

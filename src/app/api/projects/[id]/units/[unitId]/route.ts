@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { Rol } from '@prisma/client'
+
+// Definir roles que pueden editar unidades
+const CAN_EDIT_UNITS: Rol[] = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'PROJECT_MANAGER',
+  'GERENTE_GENERAL'
+]
 
 export async function PUT(
   request: Request,
@@ -12,6 +21,13 @@ export async function PUT(
 
     if (!session?.user) {
       return new NextResponse('No autorizado', { status: 401 })
+    }
+
+    const userRole = session.user.role as Rol
+    
+    // Verificar si el usuario tiene permisos para editar unidades
+    if (!CAN_EDIT_UNITS.includes(userRole)) {
+      return new NextResponse('No tienes permisos para editar unidades', { status: 403 })
     }
 
     const body = await request.json()
@@ -65,6 +81,13 @@ export async function DELETE(
 
     if (!session?.user) {
       return new NextResponse('No autorizado', { status: 401 })
+    }
+
+    const userRole = session.user.role as Rol
+    
+    // Verificar si el usuario tiene permisos para eliminar unidades
+    if (!CAN_EDIT_UNITS.includes(userRole)) {
+      return new NextResponse('No tienes permisos para eliminar unidades', { status: 403 })
     }
 
     // Verificar si la unidad existe y pertenece al proyecto

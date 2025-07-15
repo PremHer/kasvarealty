@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { UnidadCementerioService } from '@/lib/services/unidadCementerioService'
+import { Rol } from '@prisma/client'
+
+// Definir roles que pueden crear/editar unidades de cementerio
+const CAN_EDIT_CEMENTERIO_UNITS: Rol[] = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'PROJECT_MANAGER',
+  'GERENTE_GENERAL'
+]
+
+// Definir roles que pueden ver unidades de cementerio (solo lectura)
+const CAN_VIEW_CEMENTERIO_UNITS: Rol[] = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'PROJECT_MANAGER',
+  'SALES_MANAGER',
+  'GERENTE_GENERAL'
+]
 
 export async function GET(
   request: NextRequest,
@@ -11,6 +29,13 @@ export async function GET(
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return new NextResponse('No autorizado', { status: 401 })
+    }
+
+    const userRole = session.user.role as Rol
+    
+    // Verificar si el usuario tiene permisos para ver unidades de cementerio
+    if (!CAN_VIEW_CEMENTERIO_UNITS.includes(userRole)) {
+      return new NextResponse('No tienes permisos para ver unidades de cementerio', { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -62,6 +87,13 @@ export async function POST(
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return new NextResponse('No autorizado', { status: 401 })
+    }
+
+    const userRole = session.user.role as Rol
+    
+    // Verificar si el usuario tiene permisos para crear unidades de cementerio
+    if (!CAN_EDIT_CEMENTERIO_UNITS.includes(userRole)) {
+      return new NextResponse('No tienes permisos para crear unidades de cementerio', { status: 403 })
     }
 
     const body = await request.json()

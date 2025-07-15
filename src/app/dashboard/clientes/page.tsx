@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { ClienteList } from '@/components/clientes/ClienteList'
-import { ClienteModal } from '@/components/clientes/ClienteModal'
+import ClienteModal from '@/components/clientes/ClienteModal'
 import { Breadcrumb } from "@/components/ui/breadcrumb"
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

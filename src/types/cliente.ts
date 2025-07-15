@@ -31,7 +31,7 @@ export interface Direccion {
 
 export interface Cliente {
   id: string
-  tipo: TIPO_CLIENTE
+  tipoCliente: TIPO_CLIENTE
   nombre?: string
   apellido?: string
   sexo?: Sexo
@@ -53,7 +53,7 @@ export interface Cliente {
 }
 
 export interface ClienteFormData {
-  tipo: TIPO_CLIENTE
+  tipoCliente: TIPO_CLIENTE
   nombre?: string
   apellido?: string
   sexo?: Sexo
@@ -83,7 +83,7 @@ export const ESTADO_CLIENTE = {
 
 export interface ClienteFilters {
   search?: string
-  tipo?: TIPO_CLIENTE
+  tipoCliente?: TIPO_CLIENTE
   estado?: EstadoCliente
   empresaId?: string
 }

@@ -3,76 +3,57 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { Rol } from '@prisma/client'
 
+// Definir roles permitidos para ver usuarios
+const USER_VIEW_ROLES: Rol[] = [
+  'SUPER_ADMIN',
+  'SALES_MANAGER',
+  'FINANCE_MANAGER'
+]
+
+// GET /api/usuarios - Obtener todos los usuarios activos
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-
-    if (!session?.user?.email) {
-      return new NextResponse(
-        JSON.stringify({ message: 'No autorizado' }),
-        { status: 401 }
-      )
+    if (!session?.user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Obtener el usuario actual
-    const currentUser = await prisma.usuario.findUnique({
-      where: { email: session.user.email }
-    })
-
-    if (!currentUser) {
-      return new NextResponse(
-        JSON.stringify({ message: 'No autorizado' }),
-        { status: 401 }
-      )
+    const userRole = session.user.role as Rol
+    
+    // Verificar si el usuario tiene permisos para ver usuarios
+    if (!USER_VIEW_ROLES.includes(userRole)) {
+      return NextResponse.json({ error: 'No tienes permisos para ver usuarios' }, { status: 403 })
     }
 
-    // Verificar si el usuario tiene permiso para ver usuarios
-    const canViewUsers = [
-      'SUPER_ADMIN',
-      'ADMIN',
-      'GERENTE_GENERAL'
-    ].includes(currentUser.rol)
-
-    if (!canViewUsers) {
-      return new NextResponse(
-        JSON.stringify({ message: 'No tiene permisos para ver usuarios' }),
-        { status: 403 }
-      )
-    }
-
-    // Obtener el parámetro de rol de la URL
-    const { searchParams } = new URL(request.url)
-    const rol = searchParams.get('rol')
-
-    // Construir el where clause
-    const where = rol ? { rol: rol as any } : {}
-
+    // Obtener todos los usuarios activos
     const usuarios = await prisma.usuario.findMany({
-      where,
+      where: {
+        isActive: true
+      },
       select: {
         id: true,
         nombre: true,
         email: true,
         rol: true,
         isActive: true,
-        lastLogin: true,
-        createdAt: true,
-        updatedAt: true
+        createdAt: true
       },
       orderBy: {
         nombre: 'asc'
       }
     })
 
-    return new NextResponse(
-      JSON.stringify(usuarios),
-      { status: 200 }
-    )
+    return NextResponse.json({
+      usuarios,
+      total: usuarios.length
+    })
+
   } catch (error) {
     console.error('Error al obtener usuarios:', error)
-    return new NextResponse(
-      JSON.stringify({ message: 'Error al obtener usuarios' }),
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
       { status: 500 }
     )
   }
