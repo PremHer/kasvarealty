@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
-import { CreateClienteData } from '@/types/cliente'
 import { Prisma, TipoCliente, Sexo, EstadoCivil, TipoDireccion } from '@prisma/client'
 
 // GET /api/clientes - Obtener lista de clientes
@@ -11,6 +10,22 @@ export async function GET(request: Request) {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Verificar permisos para ver clientes
+    const allowedRoles = [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'GERENTE_GENERAL',
+      'SALES_MANAGER',
+      'SALES_REP',
+      'SALES_ASSISTANT',
+      'PROJECT_MANAGER',
+      'FINANCE_MANAGER'
+    ]
+    
+    if (!allowedRoles.includes(session.user.role)) {
+      return NextResponse.json({ error: 'No tienes permisos para ver clientes' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -30,7 +45,7 @@ export async function GET(request: Request) {
             }
           : {},
         // Filtro por tipo
-        tipo ? { tipo: tipo as TipoCliente } : {},
+        tipo ? { tipoCliente: tipo as TipoCliente } : {},
       ],
     }
 
@@ -40,12 +55,6 @@ export async function GET(request: Request) {
       include: {
         direcciones: true,
         ventas: true,
-        creadoPor: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
       },
     })
 
@@ -67,17 +76,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Verificar permisos para crear clientes
+    const allowedRoles = [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'GERENTE_GENERAL',
+      'SALES_MANAGER',
+      'SALES_REP',
+      'SALES_ASSISTANT'
+    ]
+    
+    if (!allowedRoles.includes(session.user.role)) {
+      return NextResponse.json({ error: 'No tienes permisos para crear clientes' }, { status: 403 })
+    }
+
     const body = await request.json()
+    console.log('API recibió:', body)
     const {
       nombre,
       apellido,
       email,
       telefono,
-      tipo,
+      tipoCliente,
       dni,
       fechaNacimiento,
       estadoCivil,
-      ocupacion,
       razonSocial,
       ruc,
       representanteLegal,
@@ -85,16 +108,18 @@ export async function POST(request: Request) {
       sexo,
       direcciones,
     } = body
+    
+    console.log('tipoCliente extraído:', tipoCliente)
 
     // Validar campos requeridos según el tipo
-    if (tipo === 'INDIVIDUAL') {
+    if (tipoCliente === 'INDIVIDUAL') {
       if (!nombre || !apellido) {
         return NextResponse.json(
           { error: 'Nombre y apellido son requeridos para clientes individuales' },
           { status: 400 }
         )
       }
-    } else if (tipo === 'EMPRESA') {
+    } else if (tipoCliente === 'EMPRESA') {
       if (!razonSocial || !ruc) {
         return NextResponse.json(
           { error: 'Razón social y RUC son requeridos para empresas' },
@@ -104,19 +129,21 @@ export async function POST(request: Request) {
     }
 
     // Verificar si el email ya existe
-    const existingEmail = await prisma.cliente.findUnique({
-      where: { email },
-    })
+    if (email) {
+      const existingEmail = await prisma.cliente.findUnique({
+        where: { email },
+      })
 
-    if (existingEmail) {
-      return NextResponse.json(
-        { error: 'El email ya está registrado' },
-        { status: 400 }
-      )
+      if (existingEmail) {
+        return NextResponse.json(
+          { error: 'El email ya está registrado' },
+          { status: 400 }
+        )
+      }
     }
 
     // Verificar si el DNI o RUC ya existe según el tipo
-    if (tipo === 'INDIVIDUAL' && dni) {
+    if (tipoCliente === 'INDIVIDUAL' && dni) {
       const existingDNI = await prisma.cliente.findFirst({
         where: { dni },
       })
@@ -128,7 +155,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (tipo === 'EMPRESA' && ruc) {
+    if (tipoCliente === 'EMPRESA' && ruc) {
       const existingRUC = await prisma.cliente.findFirst({
         where: { ruc },
       })
@@ -142,24 +169,23 @@ export async function POST(request: Request) {
 
     const cliente = await prisma.cliente.create({
       data: {
-        tipo: tipo as TipoCliente,
-        email,
+        tipoCliente: tipoCliente as TipoCliente,
+        email: email || undefined,
         telefono: telefono || undefined,
         // Campos para cliente individual
-        nombre: tipo === 'INDIVIDUAL' ? nombre : '',
-        apellido: tipo === 'INDIVIDUAL' ? apellido : '',
-        sexo: tipo === 'INDIVIDUAL' ? sexo as Sexo : undefined,
-        dni: tipo === 'INDIVIDUAL' ? dni || undefined : undefined,
-        fechaNacimiento: tipo === 'INDIVIDUAL' && fechaNacimiento ? new Date(fechaNacimiento) : undefined,
-        estadoCivil: tipo === 'INDIVIDUAL' ? estadoCivil as EstadoCivil : undefined,
-        ocupacion: tipo === 'INDIVIDUAL' ? ocupacion || undefined : undefined,
+        nombre: tipoCliente === 'INDIVIDUAL' ? nombre : '',
+        apellido: tipoCliente === 'INDIVIDUAL' ? apellido : '',
+        sexo: tipoCliente === 'INDIVIDUAL' ? sexo as Sexo : undefined,
+        dni: tipoCliente === 'INDIVIDUAL' ? dni || undefined : undefined,
+        fechaNacimiento: tipoCliente === 'INDIVIDUAL' && fechaNacimiento ? new Date(fechaNacimiento) : undefined,
+        estadoCivil: tipoCliente === 'INDIVIDUAL' ? estadoCivil as EstadoCivil : undefined,
         // Campos para empresa
-        razonSocial: tipo === 'EMPRESA' ? razonSocial : '',
-        ruc: tipo === 'EMPRESA' ? ruc : undefined,
-        representanteLegal: tipo === 'EMPRESA' ? representanteLegal : '',
-        cargoRepresentante: tipo === 'EMPRESA' ? cargoRepresentante || undefined : undefined,
+        razonSocial: tipoCliente === 'EMPRESA' ? razonSocial : undefined,
+        ruc: tipoCliente === 'EMPRESA' ? ruc : undefined,
+        representanteLegal: tipoCliente === 'EMPRESA' ? representanteLegal : undefined,
+        cargoRepresentante: tipoCliente === 'EMPRESA' ? cargoRepresentante : undefined,
         // Relaciones
-        creadoPorId: session.user.id,
+        createdBy: session.user.id,
         direcciones: {
           create: direcciones?.map((dir: any) => ({
             tipo: dir.tipo as TipoDireccion,
@@ -173,12 +199,6 @@ export async function POST(request: Request) {
       include: {
         direcciones: true,
         ventas: true,
-        creadoPor: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
       },
     })
 

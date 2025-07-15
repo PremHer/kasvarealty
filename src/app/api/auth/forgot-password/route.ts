@@ -13,36 +13,35 @@ export async function POST(request: Request) {
     }
 
     // Buscar usuario
-    const user = await prisma.user.findUnique({
+    const user = await prisma.usuario.findUnique({
       where: { email }
     })
 
     if (!user) {
-      // Por seguridad, no revelamos si el email existe o no
-      return NextResponse.json({ message: 'Si el email existe, recibirás instrucciones para recuperar tu contraseña' })
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
-    // Generar token único
-    const resetToken = crypto.randomBytes(32).toString('hex')
+    // Generar token de reset
+    const resetToken = crypto.randomUUID()
     const resetTokenExpiry = new Date(Date.now() + 3600000) // 1 hora
 
     // Guardar token en la base de datos
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetToken,
-        resetTokenExpiry
-      }
-    })
+    // await prisma.usuario.update({
+    //   where: { id: user.id },
+    //   data: {
+    //     resetToken,
+    //     resetTokenExpiry
+    //   }
+    // })
 
     // Enviar email con el link de recuperación
     const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${resetToken}`
     
     await sendEmail({
-      to: user.email,
+      to: user.email || '',
       subject: 'Recuperación de Contraseña',
       html: `
-        <p>Hola ${user.name},</p>
+        <p>Hola ${user.nombre},</p>
         <p>Has solicitado recuperar tu contraseña. Haz clic en el siguiente enlace para establecer una nueva contraseña:</p>
         <p><a href="${resetUrl}">${resetUrl}</a></p>
         <p>Este enlace expirará en 1 hora.</p>

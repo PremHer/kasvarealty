@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { DataTable } from '@/components/ui/data-table'
 import { columns } from './columns'
-import { ClienteModal } from './ClienteModal'
+import ClienteModal from './ClienteModal'
 import { Cliente, TIPO_CLIENTE, EstadoCliente } from '@/types/cliente'
 // import { TipoCliente, EstadoCliente } from '@prisma/client' // Eliminar
 import { Plus } from 'lucide-react'
@@ -243,7 +243,7 @@ export function ClienteList({ clientes: initialClientes, onUpdate, onDelete }: C
   }
 
   const getNombreCompleto = (cliente: Cliente) => {
-    if (cliente.tipo === 'EMPRESA') {
+    if (cliente.tipoCliente === 'EMPRESA') {
       return cliente.representanteLegal || cliente.razonSocial || 'Sin representante legal'
     }
     return `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim() || 'Sin nombre'
@@ -287,7 +287,7 @@ export function ClienteList({ clientes: initialClientes, onUpdate, onDelete }: C
                         </div>
                         <div>
                           <div className="font-medium text-gray-900 truncate" title={getNombreCompleto(cliente)}>
-                            {cliente.tipo === 'EMPRESA' ? cliente.razonSocial : `${cliente.nombre} ${cliente.apellido}`}
+                            {cliente.tipoCliente === 'EMPRESA' ? cliente.razonSocial : `${cliente.nombre} ${cliente.apellido}`}
                           </div>
                           <div className="text-sm text-gray-500 truncate" title={cliente.email}>
                             {cliente.email}
@@ -296,8 +296,8 @@ export function ClienteList({ clientes: initialClientes, onUpdate, onDelete }: C
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge variant={cliente.tipo === 'INDIVIDUAL' ? 'default' : 'secondary'} className="bg-blue-50 text-blue-700 hover:bg-blue-100">
-                        {cliente.tipo === 'INDIVIDUAL' ? 'Persona Natural' : 'Empresa'}
+                      <Badge variant={cliente.tipoCliente === 'INDIVIDUAL' ? 'default' : 'secondary'} className="bg-blue-50 text-blue-700 hover:bg-blue-100">
+                        {cliente.tipoCliente === 'INDIVIDUAL' ? 'Persona Natural' : 'Empresa'}
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
@@ -361,7 +361,7 @@ export function ClienteList({ clientes: initialClientes, onUpdate, onDelete }: C
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">
-                    {selectedCliente.tipo === 'EMPRESA' ? selectedCliente.razonSocial : `${selectedCliente.nombre} ${selectedCliente.apellido}`}
+                    {selectedCliente.tipoCliente === 'EMPRESA' ? selectedCliente.razonSocial : `${selectedCliente.nombre} ${selectedCliente.apellido}`}
                   </h2>
                   <p className="text-sm text-gray-500">{selectedCliente.email}</p>
                 </div>
@@ -378,7 +378,7 @@ export function ClienteList({ clientes: initialClientes, onUpdate, onDelete }: C
           </div>
           <div className="p-6 space-y-6">
             <div className="space-y-4">
-              {selectedCliente.tipo === 'INDIVIDUAL' ? (
+              {selectedCliente.tipoCliente === 'INDIVIDUAL' ? (
                 <>
                   <div className="flex items-start space-x-3">
                     <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -505,8 +505,8 @@ export function ClienteList({ clientes: initialClientes, onUpdate, onDelete }: C
                   <div className="mt-1 space-y-1">
                     <div className="text-sm text-gray-900">
                       <span className="font-medium">Tipo:</span>{' '}
-                      <Badge variant={selectedCliente.tipo === 'INDIVIDUAL' ? 'default' : 'secondary'} className="bg-blue-50 text-blue-700">
-                        {selectedCliente.tipo === 'INDIVIDUAL' ? 'Persona Natural' : 'Empresa'}
+                      <Badge variant={selectedCliente.tipoCliente === 'INDIVIDUAL' ? 'default' : 'secondary'} className="bg-blue-50 text-blue-700">
+                        {selectedCliente.tipoCliente === 'INDIVIDUAL' ? 'Persona Natural' : 'Empresa'}
                       </Badge>
                     </div>
                     <div className="text-sm text-gray-900">
@@ -562,7 +562,7 @@ export function ClienteList({ clientes: initialClientes, onUpdate, onDelete }: C
             <AlertDialogDescription>
               Esta acción no se puede deshacer. Se eliminará permanentemente el cliente{' '}
               <span className="font-medium">
-                {clienteToDelete?.tipo === 'EMPRESA' 
+                {clienteToDelete?.tipoCliente === 'EMPRESA' 
                   ? clienteToDelete.razonSocial 
                   : `${clienteToDelete?.nombre} ${clienteToDelete?.apellido}`}
               </span>

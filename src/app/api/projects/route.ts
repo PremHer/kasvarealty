@@ -62,18 +62,16 @@ export async function GET(request: Request) {
     }
 
     // Verificar si el usuario tiene permiso para ver proyectos
-    if (!['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER'].includes(usuario.rol)) {
+    if (!['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER', 'SALES_MANAGER'].includes(usuario.rol)) {
       return NextResponse.json([], { status: 200 })
     }
 
     // Construir la condición where según el rol
     let whereClause = {}
     
-    if (usuario.rol === 'PROJECT_MANAGER') {
-      // Project Manager solo ve sus proyectos asignados
-      whereClause = {
-        gerenteId: usuario.id
-      }
+    if (usuario.rol === 'PROJECT_MANAGER' || usuario.rol === 'SALES_MANAGER') {
+      // Project Manager y Sales Manager ven todos los proyectos del sistema
+      whereClause = {}
     } else if (usuario.rol === 'GERENTE_GENERAL') {
       // Gerente General ve proyectos de su empresa donde es representante legal
       // y también ve los proyectos pendientes de asignación
@@ -146,6 +144,7 @@ export async function GET(request: Request) {
       // Los proyectos pendientes de asignación se manejarán en el frontend
       filteredProjects = proyectos
     }
+    // PROJECT_MANAGER, SALES_MANAGER, SUPER_ADMIN y ADMIN ven todos los proyectos sin filtros adicionales
 
     const projects = filteredProjects.map((proyecto) => ({
       id: proyecto.id,
@@ -223,7 +222,7 @@ export async function POST(request: Request) {
     }
 
     // Solo los roles autorizados pueden crear proyectos
-    if (!['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER'].includes(usuario.rol)) {
+    if (!['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER', 'SALES_MANAGER'].includes(usuario.rol)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 

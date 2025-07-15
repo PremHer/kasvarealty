@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { UnidadCementerioService } from '@/lib/services/unidadCementerioService'
+import { Rol } from '@prisma/client'
+
+// Definir roles que pueden editar unidades de cementerio
+const CAN_EDIT_CEMENTERIO_UNITS: Rol[] = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'PROJECT_MANAGER',
+  'GERENTE_GENERAL'
+]
+
+// Definir roles que pueden ver unidades de cementerio (solo lectura)
+const CAN_VIEW_CEMENTERIO_UNITS: Rol[] = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'PROJECT_MANAGER',
+  'SALES_MANAGER',
+  'GERENTE_GENERAL'
+]
 
 export async function GET(
   request: NextRequest,
@@ -11,6 +29,13 @@ export async function GET(
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return new NextResponse('No autorizado', { status: 401 })
+    }
+
+    const userRole = session.user.role as Rol
+    
+    // Verificar si el usuario tiene permisos para ver unidades de cementerio
+    if (!CAN_VIEW_CEMENTERIO_UNITS.includes(userRole)) {
+      return new NextResponse('No tienes permisos para ver unidades de cementerio', { status: 403 })
     }
 
     const unidad = await UnidadCementerioService.obtenerUnidadPorId(params.unidadId)
@@ -34,6 +59,13 @@ export async function PUT(
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return new NextResponse('No autorizado', { status: 401 })
+    }
+
+    const userRole = session.user.role as Rol
+    
+    // Verificar si el usuario tiene permisos para editar unidades de cementerio
+    if (!CAN_EDIT_CEMENTERIO_UNITS.includes(userRole)) {
+      return new NextResponse('No tienes permisos para editar unidades de cementerio', { status: 403 })
     }
 
     const body = await request.json()
@@ -89,6 +121,13 @@ export async function DELETE(
       return new NextResponse('No autorizado', { status: 401 })
     }
 
+    const userRole = session.user.role as Rol
+    
+    // Verificar si el usuario tiene permisos para eliminar unidades de cementerio
+    if (!CAN_EDIT_CEMENTERIO_UNITS.includes(userRole)) {
+      return new NextResponse('No tienes permisos para eliminar unidades de cementerio', { status: 403 })
+    }
+
     await UnidadCementerioService.eliminarUnidad(params.unidadId, session.user.id)
     return new NextResponse('Unidad eliminada correctamente', { status: 200 })
   } catch (error) {
@@ -111,12 +150,8 @@ export async function PATCH(
     }
 
     // Verificar permisos para editar unidades
-    const userRole = session.user?.role;
-    const canEditUnidades = [
-      'SUPER_ADMIN',
-      'GERENTE_GENERAL',
-      'PROJECT_MANAGER'
-    ].includes(userRole);
+    const userRole = session.user?.role as Rol;
+    const canEditUnidades = CAN_EDIT_CEMENTERIO_UNITS.includes(userRole);
 
     if (!canEditUnidades) {
       return new NextResponse(

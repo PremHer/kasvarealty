@@ -15,7 +15,7 @@ export async function PUT(
     }
 
     // Obtener el usuario actual
-    const currentUser = await prisma.user.findUnique({
+    const currentUser = await prisma.usuario.findUnique({
       where: { email: session.user?.email! }
     })
 
@@ -36,13 +36,13 @@ export async function PUT(
 
     // Si no es su propia contraseña, verificar permisos
     if (!isOwnPassword) {
-      const canChangePassword = (() => {
-        if (currentUser.role === 'SUPER_ADMIN') return true
-        if (currentUser.role === 'ADMIN') {
-          const targetUser = await prisma.user.findUnique({
+      const canChangePassword = await (async () => {
+        if (currentUser.rol === 'SUPER_ADMIN') return true
+        if (currentUser.rol === 'ADMIN') {
+          const targetUser = await prisma.usuario.findUnique({
             where: { id: params.userId }
           })
-          return targetUser?.role !== 'SUPER_ADMIN'
+          return targetUser?.rol !== 'SUPER_ADMIN'
         }
         return false
       })()
@@ -52,7 +52,7 @@ export async function PUT(
       }
     } else {
       // Si es su propia contraseña, verificar la contraseña actual
-      const user = await prisma.user.findUnique({
+      const user = await prisma.usuario.findUnique({
         where: { id: params.userId }
       })
 
@@ -70,7 +70,7 @@ export async function PUT(
     const hashedPassword = await bcrypt.hash(newPassword, 10)
 
     // Actualizar contraseña
-    await prisma.user.update({
+    await prisma.usuario.update({
       where: { id: params.userId },
       data: { password: hashedPassword }
     })

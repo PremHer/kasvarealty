@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Project } from '@/types/project'
-import { FiArrowLeft, FiMapPin, FiCalendar, FiDollarSign, FiHome, FiEdit2, FiUser, FiCheckCircle, FiAlertCircle, FiUserPlus, FiXCircle, FiClock, FiInfo, FiUsers, FiPlus, FiGrid } from 'react-icons/fi'
+import { FiArrowLeft, FiMapPin, FiCalendar, FiDollarSign, FiHome, FiEdit2, FiUser, FiCheckCircle, FiAlertCircle, FiUserPlus, FiXCircle, FiClock, FiInfo, FiUsers, FiPlus, FiGrid, FiCreditCard } from 'react-icons/fi'
 import { useToast } from '@/components/ui/use-toast'
 import EditProjectModal from '@/components/projects/edit-project-modal'
 import dynamic from 'next/dynamic'
@@ -17,6 +17,8 @@ import ManzanasList from '@/components/proyectos/ManzanasList'
 import ManzanasStats from '@/components/proyectos/ManzanasStats'
 import PabellonesList from '@/components/proyectos/PabellonesList'
 import PabellonesStats from '@/components/proyectos/PabellonesStats'
+import ProjectVentas from '@/components/projects/ProjectVentas'
+import ProjectComisiones from '@/components/projects/ProjectComisiones'
 
 const MapPicker = dynamic(() => import('@/components/MapPicker'), {
   ssr: false,
@@ -307,13 +309,24 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => router.back()}
-          className="flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-200"
-        >
-          <FiArrowLeft className="w-5 h-5 mr-2" />
-          Volver
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-200"
+          >
+            <FiArrowLeft className="w-5 h-5 mr-2" />
+            Volver
+          </button>
+          {project && (
+            <div className="flex items-center">
+              <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
+              <span className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
+                {getStatusIcon(project.status)}
+                <span className="ml-1">{getStatusLabel(project.status)}</span>
+              </span>
+            </div>
+          )}
+        </div>
         {project && canEditProject(project) && (
           <button
             onClick={() => setIsEditModalOpen(true)}
@@ -341,6 +354,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 <FiDollarSign className="w-4 h-4" />
                 Ventas
               </TabsTrigger>
+              <TabsTrigger value="comisiones" className="flex items-center gap-2">
+                <FiCreditCard className="w-4 h-4" />
+                Comisiones
+              </TabsTrigger>
               <TabsTrigger value="clients" className="flex items-center gap-2">
                 <FiUsers className="w-4 h-4" />
                 Clientes
@@ -367,13 +384,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <div className="md:col-span-2">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-xl font-semibold text-blue-700">{project.name}</CardTitle>
-                  <div className="flex items-center mt-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
-                      {getStatusIcon(project.status)}
-                      <span className="ml-1">{getStatusLabel(project.status)}</span>
-                    </span>
-                  </div>
+                  <CardTitle className="text-xl font-semibold text-blue-700">Información del Proyecto</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
@@ -601,22 +612,22 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             </TabsContent>
 
             <TabsContent value="sales">
+              <ProjectVentas 
+                proyectoId={params.id} 
+                tipoProyecto={project.type} 
+              />
+            </TabsContent>
+
+            <TabsContent value="comisiones">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-xl font-semibold text-blue-700">Ventas</CardTitle>
+                  <CardTitle className="text-xl font-semibold text-blue-700">Comisiones del Proyecto</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex justify-end mb-4">
-                    <button
-                      onClick={() => {/* TODO: Implementar registro de ventas */}}
-                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-                    >
-                      <FiPlus className="w-5 h-5 mr-2" />
-                      Nueva Venta
-                    </button>
-                  </div>
-                  {/* TODO: Implementar lista de ventas */}
-                  <p className="text-gray-500 text-center py-8">No hay ventas registradas</p>
+                  <ProjectComisiones 
+                    proyectoId={params.id} 
+                    tipoProyecto={project.type} 
+                  />
                 </CardContent>
               </Card>
             </TabsContent>

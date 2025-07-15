@@ -127,11 +127,11 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* Header */}
       <div className="bg-white shadow-sm rounded-lg p-6">
-        <div className="md:flex md:items-center md:justify-between">
-          <div className="flex-1 min-w-0">
+      <div className="md:flex md:items-center md:justify-between">
+        <div className="flex-1 min-w-0">
             <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl">
-              Bienvenido, {session?.user?.name}
-            </h2>
+            Bienvenido, {session?.user?.name}
+          </h2>
             <p className="mt-2 text-sm text-gray-600">
               {isSuperAdmin ? 'Panel de control del sistema' : 'Panel de control y estadísticas del sistema'}
             </p>
@@ -362,31 +362,31 @@ export default function DashboardPage() {
         <>
           {/* Estadísticas principales */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Proyectos Activos"
+        <StatCard
+          title="Proyectos Activos"
               value={(stats as DashboardStats)?.proyectosActivos || 0}
-              icon={FiHome}
-              description="Total de proyectos en desarrollo"
-            />
-            <StatCard
-              title="Unidades Disponibles"
+          icon={FiHome}
+          description="Total de proyectos en desarrollo"
+        />
+        <StatCard
+          title="Unidades Disponibles"
               value={(stats as DashboardStats)?.unidadesDisponibles || 0}
-              icon={FiCalendar}
-              description="Unidades listas para venta"
-            />
-            <StatCard
-              title="Ventas del Mes"
+          icon={FiCalendar}
+          description="Unidades listas para venta"
+        />
+        <StatCard
+          title="Ventas del Mes"
               value={(stats as DashboardStats)?.ventasMes || 0}
-              icon={FiDollarSign}
-              description="Total de ventas realizadas"
-            />
-            <StatCard
-              title="Ingresos del Mes"
+          icon={FiDollarSign}
+          description="Total de ventas realizadas"
+        />
+        <StatCard
+          title="Ingresos del Mes"
               value={`$${(stats as DashboardStats)?.ingresosMes.toLocaleString() || 0}`}
-              icon={FiTrendingUp}
-              description="Ingresos totales del mes"
-            />
-          </div>
+          icon={FiTrendingUp}
+          description="Ingresos totales del mes"
+        />
+      </div>
 
           {/* Gráficos para usuarios normales */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -523,12 +523,12 @@ export default function DashboardPage() {
               }
 
               return (
-                <ActivityCard
-                  key={item.id}
-                  title={item.descripcion}
+            <ActivityCard
+              key={item.id}
+              title={item.descripcion}
                   description={`Proyecto: ${item.proyecto}${item.cliente ? ` | Cliente: ${item.cliente}` : ''}`}
                   icon={icon}
-                  date={new Date(item.fecha)}
+              date={new Date(item.fecha)}
                   status={status}
                 />
               )

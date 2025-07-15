@@ -7,14 +7,14 @@ async function main() {
   try {
     // Crear usuario SUPER_ADMIN
     const hashedPassword = await hash('admin123', 12)
-    const superAdmin = await prisma.user.upsert({
+    const superAdmin = await prisma.usuario.upsert({
       where: { email: 'admin@kasvarealty.com' },
       update: {},
       create: {
-        name: 'Super Admin',
+        nombre: 'Super Admin',
         email: 'admin@kasvarealty.com',
         password: hashedPassword,
-        role: 'SUPER_ADMIN',
+        rol: 'SUPER_ADMIN',
         isActive: true
       }
     })

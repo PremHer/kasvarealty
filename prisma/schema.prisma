@@ -13,7 +13,7 @@ model EmpresaDesarrolladora {
   ruc                             String                 @unique
   direccion                       String
   telefono                        String?
-  email                           String?
+  email                           String?  @unique
   website                         String?
   logo                            String?
   descripcion                     String?
@@ -26,6 +26,8 @@ model EmpresaDesarrolladora {
   bancos                          TipoBanco[]
   billeterasVirtuales             TipoBilleteraVirtual[]
   numeroProyectos                 Int                    @default(0)
+  
+  // Relaciones
   proyectos                       Proyecto[]
   representanteLegal              Usuario?               @relation("RepresentanteLegal", fields: [representanteLegalId], references: [id])
   usuarios                        Usuario[]              @relation("EmpresaUsuario")
@@ -35,42 +37,94 @@ model EmpresaDesarrolladora {
 }
 
 model Usuario {
-  id                                              String                  @id @default(cuid())
-  email                                           String                  @unique
-  password                                        String
-  nombre                                          String
-  rol                                             Rol                     @default(GUEST)
-  createdAt                                       DateTime                @default(now())
-  updatedAt                                       DateTime                @updatedAt
-  resetToken                                      String?
-  resetTokenExpiry                                DateTime?
-  isActive                                        Boolean                 @default(true)
-  lastLogin                                       DateTime?
-  empresaDesarrolladoraId                         String?
-  createdBy                                       String?
-  updatedBy                                       String?
-  actividades                                     Actividad[]
-  clientesCreados                                 Cliente[]               @relation("ClienteCreadoPor")
-  comentarios                                     Comentario[]
-  documentos                                      Documento[]
-  proyectosAprobados                              Proyecto[]              @relation("ProjectApprover")
-  proyectosCreados                                Proyecto[]              @relation("ProjectCreator")
-  proyectosGestionados                            Proyecto[]              @relation("ProjectManager")
-  empresasRepresentante                           EmpresaDesarrolladora[] @relation("RepresentanteLegal")
-  lotesCreados                                    Lote[]                  @relation("LoteCreadoPor")
-  lotesActualizados                               Lote[]                  @relation("LoteActualizadoPor")
-  manzanasCreadas                                 Manzana[]               @relation("ManzanaCreadoPor")
-  manzanasActualizadas                            Manzana[]               @relation("ManzanaActualizadoPor")
-  pabellonesCreados                               Pabellon[]              @relation("PabellonCreadoPor")
-  pabellonesActualizados                          Pabellon[]              @relation("PabellonActualizadoPor")
-  unidadesCementerioCreadas                       UnidadCementerio[]      @relation("UnidadCementerioCreadoPor")
-  unidadesCementerioActualizadas                  UnidadCementerio[]      @relation("UnidadCementerioActualizadoPor")
-  empresaDesarrolladora                           EmpresaDesarrolladora?  @relation("EmpresaUsuario", fields: [empresaDesarrolladoraId], references: [id])
-  ventasLotesCreadas                              VentaLote[]             @relation("VentaLoteCreadoPor")
-  ventasLotesActualizadas                         VentaLote[]             @relation("VentaLoteActualizadoPor")
-  empresas_desarrolladoras_GerenteGeneralEmpresas EmpresaDesarrolladora[] @relation("GerenteGeneralEmpresas")
-  proyectosMiembro                                Proyecto[]              @relation("ProjectMembers")
-
+  id                    String   @id @default(cuid())
+  nombre                String
+  email                 String?  @unique
+  password              String
+  rol                   Rol
+  isActive              Boolean  @default(true)
+  lastLogin             DateTime?
+  empresaDesarrolladoraId String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relaciones con empresa
+  empresaDesarrolladora EmpresaDesarrolladora? @relation("EmpresaUsuario", fields: [empresaDesarrolladoraId], references: [id])
+  empresasRepresentante EmpresaDesarrolladora[] @relation("RepresentanteLegal")
+  empresasGerenteGeneral EmpresaDesarrolladora[] @relation("GerenteGeneralEmpresas")
+  
+  // Relaciones de ventas como vendedor
+  ventasLotesVendedor   VentaLote[] @relation("VentaLoteVendedor")
+  ventasUnidadesCementerioVendedor VentaUnidadCementerio[] @relation("VentaUnidadCementerioVendedor")
+  
+  // Relaciones de ventas como aprobador
+  ventasLotesAprobador  VentaLote[] @relation("VentaLoteAprobador")
+  ventasUnidadesCementerioAprobador VentaUnidadCementerio[] @relation("VentaUnidadCementerioAprobador")
+  
+  // Relaciones de creación/actualización
+  ventasLotesCreadoPor  VentaLote[] @relation("VentaLoteCreadoPor")
+  ventasLotesActualizadoPor VentaLote[] @relation("VentaLoteActualizadoPor")
+  ventasUnidadesCementerioCreadoPor VentaUnidadCementerio[] @relation("VentaUnidadCementerioCreadoPor")
+  ventasUnidadesCementerioActualizadoPor VentaUnidadCementerio[] @relation("VentaUnidadCementerioActualizadoPor")
+  
+  // Relaciones de proyectos
+  proyectosCreadoPor    Proyecto[] @relation("ProjectCreator")
+  proyectosAprobadoPor  Proyecto[] @relation("ProjectApprover")
+  proyectosGerente      Proyecto[] @relation("ProjectManager")
+  proyectosMiembro      Proyecto[] @relation("ProjectMembers")
+  
+  // Relaciones de creación/actualización
+  manzanasCreadoPor     Manzana[] @relation("ManzanaCreadoPor")
+  manzanasActualizadoPor Manzana[] @relation("ManzanaActualizadoPor")
+  lotesCreadoPor        Lote[] @relation("LoteCreadoPor")
+  lotesActualizadoPor   Lote[] @relation("LoteActualizadoPor")
+  pabellonesCreadoPor   Pabellon[] @relation("PabellonCreadoPor")
+  pabellonesActualizadoPor Pabellon[] @relation("PabellonActualizadoPor")
+  unidadesCementerioCreadoPor UnidadCementerio[] @relation("UnidadCementerioCreadoPor")
+  unidadesCementerioActualizadoPor UnidadCementerio[] @relation("UnidadCementerioActualizadoPor")
+  clientesCreadoPor     Cliente[] @relation("ClienteCreadoPor")
+  clientesActualizadoPor Cliente[] @relation("ClienteActualizadoPor")
+  
+  // Relaciones de otros modelos
+  actividades          Actividad[]
+  comentarios          Comentario[]
+  documentos           Documento[]
+  
+  // Relación con perfil de vendedor
+  perfilVendedor       PerfilVendedor?
+  
+  // Relaciones de creación/actualización de perfiles de vendedor
+  perfilesVendedorCreadoPor PerfilVendedor[] @relation("PerfilVendedorCreadoPor")
+  perfilesVendedorActualizadoPor PerfilVendedor[] @relation("PerfilVendedorActualizadoPor")
+  
+  // Relaciones de auditoría
+  auditoria              Auditoria[]
+  auditoriaCreadaPor     Auditoria[] @relation("AuditoriaCreadaPor")
+  
+  // Relaciones de notificaciones
+  notificaciones         Notificacion[]
+  notificacionesCreadaPor Notificacion[] @relation("NotificacionCreadaPor")
+  
+  // Relaciones de cuotas
+  cuotasCreadoPor        Cuota[] @relation("CuotaCreadoPor")
+  cuotasActualizadoPor   Cuota[] @relation("CuotaActualizadoPor")
+  
+  // Relaciones de pagos de cuotas
+  pagosCuotasCreadoPor   PagoCuota[] @relation("PagoCuotaCreadoPor")
+  pagosCuotasActualizadoPor PagoCuota[] @relation("PagoCuotaActualizadoPor")
+  
+  // Relaciones de pagos de comisiones
+  pagosComisionesCreadoPor PagoComision[] @relation("PagoComisionCreadoPor")
+  pagosComisionesActualizadoPor PagoComision[] @relation("PagoComisionActualizadoPor")
+  
+  // Relaciones de contratos
+  contratosCreadoPor      Contrato[] @relation("ContratoCreadoPor")
+  contratosActualizadoPor Contrato[] @relation("ContratoActualizadoPor")
+  
+  @@index([email])
+  @@index([rol])
+  @@index([empresaDesarrolladoraId])
+  @@index([isActive])
   @@map("usuarios")
 }
 
@@ -103,19 +157,32 @@ model Proyecto {
   longitud                Float?
   precioTerreno           Float?                @map("precio_terreno")
   provincia               String?
+  
+  // Relaciones
+  empresaDesarrolladora   EmpresaDesarrolladora @relation(fields: [empresaDesarrolladoraId], references: [id])
+  creadoPor               Usuario               @relation("ProjectCreator", fields: [creadoPorId], references: [id])
+  aprobadoPor             Usuario?              @relation("ProjectApprover", fields: [aprobadoPorId], references: [id])
+  gerente                 Usuario?              @relation("ProjectManager", fields: [gerenteId], references: [id], onUpdate: NoAction)
+  miembros                Usuario[]             @relation("ProjectMembers")
+  
+  // Relaciones con otros modelos
   actividades             Actividad[]
   comentarios             Comentario[]
   documentos              Documento[]
-  aprobadoPor             Usuario?              @relation("ProjectApprover", fields: [aprobadoPorId], references: [id])
-  creadoPor               Usuario               @relation("ProjectCreator", fields: [creadoPorId], references: [id])
-  empresaDesarrolladora   EmpresaDesarrolladora @relation(fields: [empresaDesarrolladoraId], references: [id])
-  gerente                 Usuario?              @relation("ProjectManager", fields: [gerenteId], references: [id], onUpdate: NoAction)
   unidades                UnidadInmobiliaria[]
   manzanas                Manzana[]
   pabellones              Pabellon[]
-  miembros                Usuario[]             @relation("ProjectMembers")
+  ventasLotes             VentaLote[]
+  ventasUnidadesCementerio VentaUnidadCementerio[]
 
   @@index([latitud, longitud])
+  @@index([empresaDesarrolladoraId])
+  @@index([creadoPorId])
+  @@index([aprobadoPorId])
+  @@index([gerenteId])
+  @@index([tipo])
+  @@index([estado])
+  @@map("proyectos")
 }
 
 model UnidadInmobiliaria {
@@ -128,8 +195,13 @@ model UnidadInmobiliaria {
   proyectoId String
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+  
+  // Relaciones
   proyecto   Proyecto     @relation(fields: [proyectoId], references: [id])
   ventas     Venta[]
+
+  @@index([proyectoId])
+  @@map("unidades_inmobiliarias")
 }
 
 model Venta {
@@ -141,8 +213,16 @@ model Venta {
   estado               EstadoVenta
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
+  
+  // Relaciones
   cliente              Cliente            @relation(fields: [clienteId], references: [id])
   unidadInmobiliaria   UnidadInmobiliaria @relation(fields: [unidadInmobiliariaId], references: [id])
+
+  @@index([clienteId])
+  @@index([unidadInmobiliariaId])
+  @@index([estado])
+  @@index([fechaVenta])
+  @@map("ventas")
 }
 
 model Direccion {
@@ -155,51 +235,70 @@ model Direccion {
   clienteId  String
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
+  
+  // Relaciones
   cliente    Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
   @@index([clienteId])
+  @@map("direcciones")
 }
 
 model Cliente {
-  id                 String       @id @default(cuid())
-  nombre             String?
-  apellido           String?
-  email              String       @unique
-  telefono           String?
-  tipo               TipoCliente
-  dni                String?
-  fechaNacimiento    DateTime?
-  estadoCivil        EstadoCivil?
-  ocupacion          String?
-  razonSocial        String?
-  ruc                String?
-  representanteLegal String?
-  cargoRepresentante String?
-  creadoPorId        String?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  sexo               Sexo?
-  isActive           Boolean      @default(true)
-  creadoPor          Usuario?     @relation("ClienteCreadoPor", fields: [creadoPorId], references: [id])
-  direcciones        Direccion[]
-  ventas             Venta[]
-  ventasLotes        VentaLote[]
+  id                    String   @id @default(cuid())
+  nombre                String
+  apellido              String?
+  email                 String?  @unique
+  telefono              String?
+  dni                   String?  @unique
+  ruc                   String?  @unique
+  tipoCliente           TipoCliente @default(INDIVIDUAL)
+  estadoCivil           EstadoCivil?
+  sexo                  Sexo?
+  fechaNacimiento       DateTime?
+  // Campos específicos para empresas
+  razonSocial           String?
+  representanteLegal    String?
+  cargoRepresentante    String?
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  
+  // Relaciones
+  direcciones           Direccion[]
+  ventas                Venta[]
+  ventasLotes           VentaLote[]
+  ventasUnidadesCementerio VentaUnidadCementerio[]
+  ventasLotesClientes   VentaLoteCliente[] @relation("VentaLoteCliente")
+  ventasUnidadesCementerioClientes VentaUnidadCementerioCliente[] @relation("VentaUnidadCementerioCliente")
+  creadoPorUsuario      Usuario? @relation("ClienteCreadoPor", fields: [createdBy], references: [id])
+  actualizadoPorUsuario Usuario? @relation("ClienteActualizadoPor", fields: [updatedBy], references: [id])
 
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@index([isActive])
   @@index([email])
-  @@index([ruc])
   @@index([dni])
-  @@index([creadoPorId])
+  @@index([ruc])
+  @@map("clientes")
 }
 
 model Actividad {
-  id          String   @id @default(cuid())
-  tipo        String
+  id         String   @id @default(cuid())
+  tipo       String
   descripcion String
-  proyectoId  String
-  usuarioId   String
-  createdAt   DateTime @default(now())
-  proyecto    Proyecto @relation(fields: [proyectoId], references: [id])
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  proyectoId String
+  usuarioId  String
+  createdAt  DateTime @default(now())
+  
+  // Relaciones
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id])
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@index([proyectoId])
+  @@index([usuarioId])
+  @@map("actividades")
 }
 
 model Comentario {
@@ -209,8 +308,14 @@ model Comentario {
   usuarioId  String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  
+  // Relaciones
   proyecto   Proyecto @relation(fields: [proyectoId], references: [id])
   usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@index([proyectoId])
+  @@index([usuarioId])
+  @@map("comentarios")
 }
 
 model Documento {
@@ -222,8 +327,14 @@ model Documento {
   usuarioId  String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  
+  // Relaciones
   proyecto   Proyecto @relation(fields: [proyectoId], references: [id])
   usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@index([proyectoId])
+  @@index([usuarioId])
+  @@map("documentos")
 }
 
 model Manzana {
@@ -240,9 +351,12 @@ model Manzana {
   updatedBy             String?
   descripcion           String?
   observaciones         String?
-  lotes                 Lote[]
-  creadoPorUsuario      Usuario? @relation("ManzanaCreadoPor", fields: [createdBy], references: [id])
+  
+  // Relaciones
   proyecto              Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  lotes                 Lote[]
+  ventasLotes           VentaLote[]
+  creadoPorUsuario      Usuario? @relation("ManzanaCreadoPor", fields: [createdBy], references: [id])
   actualizadoPorUsuario Usuario? @relation("ManzanaActualizadoPor", fields: [updatedBy], references: [id])
 
   @@unique([codigo, proyectoId])
@@ -279,10 +393,12 @@ model Lote {
   updatedAt             DateTime    @updatedAt
   createdBy             String?
   updatedBy             String?
-  creadoPorUsuario      Usuario?    @relation("LoteCreadoPor", fields: [createdBy], references: [id])
+  
+  // Relaciones
   manzana               Manzana     @relation(fields: [manzanaId], references: [id], onDelete: Cascade)
+  ventasLotes           VentaLote[]
+  creadoPorUsuario      Usuario?    @relation("LoteCreadoPor", fields: [createdBy], references: [id])
   actualizadoPorUsuario Usuario?    @relation("LoteActualizadoPor", fields: [updatedBy], references: [id])
-  ventas                VentaLote[]
 
   @@unique([codigo, manzanaId])
   @@index([manzanaId])
@@ -295,24 +411,217 @@ model Lote {
 model VentaLote {
   id                    String          @id @default(cuid())
   loteId                String
-  clienteId             String
+  manzanaId             String
+  proyectoId            String
+  clienteId             String          // Mantener para compatibilidad, pero usar la relación muchos a muchos
+  vendedorId            String
+  aprobadorId           String?
   fechaVenta            DateTime
+  fechaAprobacion       DateTime?
+  fechaEntrega          DateTime?
+  
+  // Información de precios
+  precioOriginal        Float
   precioVenta           Float
+  montoDescuento        Float           @default(0)
+  motivoDescuento       String?
+  
+  // Información de tipo de venta
+  tipoVenta             TipoVenta       @default(CONTADO)
+  
+  // Información de cuotas (solo si es a cuotas)
+  numeroCuotas          Int?            @default(1)
+  montoCuota            Float?
+  frecuenciaCuota       FrecuenciaCuota? @default(MENSUAL)
+  fechaPrimeraCuota     DateTime?
+  
+  // Información de pago
+  formaPago             FormaPago?
+  metodoPago            String?
+  montoInicial          Float?          @default(0)
+  saldoPendiente         Float?          @default(0)
+  
+  // Información financiera
+  comisionVendedor      Float?          @default(0)
+  porcentajeComision    Float?          @default(0)
+  
+  // Estado y documentación
   estado                EstadoVentaLote @default(PENDIENTE)
+  estadoDocumentacion   EstadoDocumentacion @default(PENDIENTE)
+  
+  // Información adicional
+  observaciones         String?
+  condicionesEspeciales String?
+  documentosRequeridos  String?
+  
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
   createdBy             String?
   updatedBy             String?
+  
+  // Relaciones
   cliente               Cliente         @relation(fields: [clienteId], references: [id])
-  creadoPorUsuario      Usuario?        @relation("VentaLoteCreadoPor", fields: [createdBy], references: [id])
   lote                  Lote            @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  manzana               Manzana         @relation(fields: [manzanaId], references: [id])
+  proyecto              Proyecto        @relation(fields: [proyectoId], references: [id])
+  vendedor              Usuario         @relation("VentaLoteVendedor", fields: [vendedorId], references: [id])
+  aprobador             Usuario?        @relation("VentaLoteAprobador", fields: [aprobadorId], references: [id])
+  creadoPorUsuario      Usuario?        @relation("VentaLoteCreadoPor", fields: [createdBy], references: [id])
   actualizadoPorUsuario Usuario?        @relation("VentaLoteActualizadoPor", fields: [updatedBy], references: [id])
+  
+  // Nueva relación muchos a muchos con clientes
+  clientes              VentaLoteCliente[]
+  
+  // Relación con cuotas
+  cuotas                Cuota[]
+  
+  // Relación con comprobantes de pago
+  comprobantesPago      ComprobantePago[]
+
+  // Relación con contratos
+  contratos              Contrato[]
+
+  // Relaciones de pagos de comisiones
+  pagosComisiones       PagoComision[]
 
   @@index([loteId])
+  @@index([manzanaId])
+  @@index([proyectoId])
   @@index([clienteId])
+  @@index([vendedorId])
+  @@index([aprobadorId])
   @@index([createdBy])
   @@index([updatedBy])
+  @@index([estado])
+  @@index([fechaVenta])
+  @@index([tipoVenta])
+  @@index([estadoDocumentacion])
   @@map("ventas_lotes")
+}
+
+// Tabla intermedia para relación muchos a muchos entre VentaLote y Cliente
+model VentaLoteCliente {
+  id          String    @id @default(cuid())
+  ventaLoteId String
+  clienteId   String
+  createdAt   DateTime  @default(now())
+  
+  // Relaciones
+  ventaLote   VentaLote @relation(fields: [ventaLoteId], references: [id], onDelete: Cascade)
+  cliente     Cliente   @relation("VentaLoteCliente", fields: [clienteId], references: [id], onDelete: Cascade)
+  
+  @@unique([ventaLoteId, clienteId])
+  @@index([ventaLoteId])
+  @@index([clienteId])
+  @@map("ventas_lotes_clientes")
+}
+
+model VentaUnidadCementerio {
+  id                    String                    @id @default(cuid())
+  unidadCementerioId    String
+  pabellonId            String
+  proyectoId            String
+  clienteId             String                    // Mantener para compatibilidad, pero usar la relación muchos a muchos
+  vendedorId            String
+  aprobadorId           String?
+  fechaVenta            DateTime
+  fechaAprobacion       DateTime?
+  fechaEntrega          DateTime?
+  
+  // Información de precios
+  precioOriginal        Float
+  precioVenta           Float
+  montoDescuento        Float           @default(0)
+  motivoDescuento       String?
+  
+  // Información de tipo de venta
+  tipoVenta             TipoVenta       @default(CONTADO)
+  
+  // Información de cuotas (solo si es a cuotas)
+  numeroCuotas          Int?            @default(1)
+  montoCuota            Float?
+  frecuenciaCuota       FrecuenciaCuota? @default(MENSUAL)
+  fechaPrimeraCuota     DateTime?
+  
+  // Información de pago
+  formaPago             FormaPago?
+  metodoPago            String?
+  montoInicial          Float?          @default(0)
+  saldoPendiente         Float?          @default(0)
+  
+  // Información financiera
+  comisionVendedor      Float?          @default(0)
+  porcentajeComision    Float?          @default(0)
+  
+  // Estado y documentación
+  estado                EstadoVentaUnidadCementerio @default(PENDIENTE)
+  estadoDocumentacion   EstadoDocumentacion @default(PENDIENTE)
+  
+  // Información adicional
+  observaciones         String?
+  condicionesEspeciales String?
+  documentosRequeridos  String?
+  
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  
+  // Relaciones
+  cliente               Cliente                   @relation(fields: [clienteId], references: [id])
+  unidadCementerio      UnidadCementerio          @relation(fields: [unidadCementerioId], references: [id], onDelete: Cascade)
+  pabellon              Pabellon                  @relation(fields: [pabellonId], references: [id])
+  proyecto              Proyecto                  @relation(fields: [proyectoId], references: [id])
+  vendedor              Usuario                   @relation("VentaUnidadCementerioVendedor", fields: [vendedorId], references: [id])
+  aprobador             Usuario?                  @relation("VentaUnidadCementerioAprobador", fields: [aprobadorId], references: [id])
+  creadoPorUsuario      Usuario?                  @relation("VentaUnidadCementerioCreadoPor", fields: [createdBy], references: [id])
+  actualizadoPorUsuario Usuario?                  @relation("VentaUnidadCementerioActualizadoPor", fields: [updatedBy], references: [id])
+  
+  // Nueva relación muchos a muchos con clientes
+  clientes              VentaUnidadCementerioCliente[]
+  
+  // Relación con cuotas
+  cuotas                Cuota[]
+  
+  // Relación con comprobantes de pago
+  comprobantesPago      ComprobantePago[]
+
+  // Relación con contratos
+  contratos              Contrato[]
+
+  // Relaciones de pagos de comisiones
+  pagosComisiones       PagoComision[]
+
+  @@index([unidadCementerioId])
+  @@index([pabellonId])
+  @@index([proyectoId])
+  @@index([clienteId])
+  @@index([vendedorId])
+  @@index([aprobadorId])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@index([estado])
+  @@index([fechaVenta])
+  @@index([tipoVenta])
+  @@index([estadoDocumentacion])
+  @@map("ventas_unidades_cementerio")
+}
+
+// Tabla intermedia para relación muchos a muchos entre VentaUnidadCementerio y Cliente
+model VentaUnidadCementerioCliente {
+  id                      String                @id @default(cuid())
+  ventaUnidadCementerioId String
+  clienteId               String
+  createdAt               DateTime              @default(now())
+  
+  // Relaciones
+  ventaUnidadCementerio   VentaUnidadCementerio @relation(fields: [ventaUnidadCementerioId], references: [id], onDelete: Cascade)
+  cliente                 Cliente               @relation("VentaUnidadCementerioCliente", fields: [clienteId], references: [id], onDelete: Cascade)
+  
+  @@unique([ventaUnidadCementerioId, clienteId])
+  @@index([ventaUnidadCementerioId])
+  @@index([clienteId])
+  @@map("ventas_unidades_cementerio_clientes")
 }
 
 model Pabellon {
@@ -329,9 +638,12 @@ model Pabellon {
   updatedBy             String?
   descripcion           String?
   observaciones         String?
-  unidades              UnidadCementerio[]
-  creadoPorUsuario      Usuario? @relation("PabellonCreadoPor", fields: [createdBy], references: [id])
+  
+  // Relaciones
   proyecto              Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  unidades              UnidadCementerio[]
+  ventasUnidadesCementerio VentaUnidadCementerio[]
+  creadoPorUsuario      Usuario? @relation("PabellonCreadoPor", fields: [createdBy], references: [id])
   actualizadoPorUsuario Usuario? @relation("PabellonActualizadoPor", fields: [updatedBy], references: [id])
 
   @@unique([codigo, proyectoId])
@@ -348,7 +660,7 @@ model UnidadCementerio {
   precio                Float
   estado                EstadoUnidadCementerio @default(DISPONIBLE)
   latitud               Float?
-  longitud              Float?
+  longitud               Float?
   descripcion           String?
   observaciones         String?
   pabellonId            String
@@ -356,8 +668,11 @@ model UnidadCementerio {
   updatedAt             DateTime            @updatedAt
   createdBy             String?
   updatedBy             String?
-  creadoPorUsuario      Usuario?            @relation("UnidadCementerioCreadoPor", fields: [createdBy], references: [id])
+  
+  // Relaciones
   pabellon              Pabellon            @relation(fields: [pabellonId], references: [id], onDelete: Cascade)
+  ventasUnidadesCementerio VentaUnidadCementerio[]
+  creadoPorUsuario      Usuario?            @relation("UnidadCementerioCreadoPor", fields: [createdBy], references: [id])
   actualizadoPorUsuario Usuario?            @relation("UnidadCementerioActualizadoPor", fields: [updatedBy], references: [id])
   parcela               Parcela?
   nicho                 Nicho?
@@ -381,6 +696,8 @@ model Parcela {
   tipoTerreno           TipoTerreno
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
+  
+  // Relaciones
   unidadCementerio      UnidadCementerio @relation(fields: [unidadCementerioId], references: [id], onDelete: Cascade)
 
   @@map("parcelas")
@@ -397,6 +714,8 @@ model Nicho {
   medidaProfundidad     Float
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
+  
+  // Relaciones
   unidadCementerio      UnidadCementerio @relation(fields: [unidadCementerioId], references: [id], onDelete: Cascade)
 
   @@map("nichos")
@@ -413,9 +732,57 @@ model Mausoleo {
   niveles               Int
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
+  
+  // Relaciones
   unidadCementerio      UnidadCementerio    @relation(fields: [unidadCementerioId], references: [id], onDelete: Cascade)
 
   @@map("mausoleos")
+}
+
+// Modelo para perfiles de vendedores
+model PerfilVendedor {
+  id                    String   @id @default(cuid())
+  usuarioId             String   @unique
+  codigoVendedor        String   @unique
+  especialidad          String?  // Ej: "Lotes", "Unidades Cementerio", "Ambos"
+  experienciaAnos       Int?     @default(0)
+  telefono              String?
+  direccion             String?
+  fechaContratacion     DateTime?
+  fechaTerminacion      DateTime?
+  estado                EstadoVendedor @default(ACTIVO)
+  
+  // Información de comisiones
+  comisionBase          Float    @default(0) // Comisión base por venta
+  comisionPorcentaje    Float    @default(0) // Porcentaje de comisión
+  comisionMinima        Float    @default(0) // Comisión mínima por venta
+  comisionMaxima        Float?   // Comisión máxima por venta (opcional)
+  
+  // Metas y objetivos
+  metaMensual           Float?   // Meta de ventas mensual
+  metaAnual             Float?   // Meta de ventas anual
+  
+  // Información adicional
+  observaciones         String?
+  habilidades           String?  // Habilidades especiales
+  certificaciones       String?  // Certificaciones del vendedor
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  
+  // Relaciones
+  usuario               Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  creadoPorUsuario      Usuario? @relation("PerfilVendedorCreadoPor", fields: [createdBy], references: [id])
+  actualizadoPorUsuario Usuario? @relation("PerfilVendedorActualizadoPor", fields: [updatedBy], references: [id])
+
+  @@index([usuarioId])
+  @@index([codigoVendedor])
+  @@index([estado])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("perfiles_vendedores")
 }
 
 enum Rol {
@@ -538,6 +905,7 @@ enum TipoDireccion {
 enum EstadoLote {
   DISPONIBLE
   RESERVADO
+  EN_VENTA
   VENDIDO
   ENTREGADO
   INACTIVO
@@ -547,6 +915,7 @@ enum EstadoLote {
 enum EstadoVentaLote {
   PENDIENTE
   APROBADA
+  DESAPROBADA
   CANCELADA
   ENTREGADA
 }
@@ -590,4 +959,347 @@ enum TipoConstruccionMausoleo {
   FAMILIAR
   COLECTIVO
   OTRO
+}
+
+enum EstadoVentaUnidadCementerio {
+  PENDIENTE
+  APROBADA
+  DESAPROBADA
+  CANCELADA
+  ENTREGADA
+}
+
+enum TipoVenta {
+  CONTADO
+  CUOTAS
+}
+
+enum FormaPago {
+  EFECTIVO
+  TRANSFERENCIA
+  DEPOSITO
+  CHEQUE
+  TARJETA_CREDITO
+  TARJETA_DEBITO
+  YAPE
+  PLIN
+  OTRO
+}
+
+enum FrecuenciaCuota {
+  MENSUAL
+  BIMESTRAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+  PERSONALIZADA
+}
+
+enum EstadoDocumentacion {
+  PENDIENTE
+  EN_PROCESO
+  COMPLETA
+  INCOMPLETA
+  VENCIDA
+}
+
+enum EstadoVendedor {
+  ACTIVO
+  INACTIVO
+}
+
+enum EstadoCuota {
+  PENDIENTE
+  PAGADA
+  VENCIDA
+  CANCELADA
+  PARCIAL
+}
+
+enum TipoContrato {
+  COMPRA_VENTA_LOTE
+  COMPRA_VENTA_UNIDAD_CEMENTERIO
+  PROMESA_COMPRA_VENTA
+  CONTRATO_ARRIENDO
+  CONTRATO_ADMINISTRACION
+}
+
+enum EstadoContrato {
+  BORRADOR
+  EN_REVISION
+  APROBADO
+  FIRMADO
+  ENTREGADO
+  ANULADO
+}
+
+model Cuota {
+  id                    String      @id @default(cuid())
+  numeroCuota           Int         // Número de cuota (1, 2, 3, etc.)
+  monto                 Float       // Monto de la cuota
+  fechaVencimiento      DateTime    // Fecha límite de pago
+  fechaPago             DateTime?   // Fecha en que se pagó (si se pagó)
+  montoPagado           Float       @default(0) // Monto pagado hasta el momento
+  estado                EstadoCuota @default(PENDIENTE)
+  observaciones         String?     // Observaciones sobre la cuota
+  
+  // Relaciones con ventas
+  ventaLoteId           String?     // ID de la venta de lote (si aplica)
+  ventaUnidadCementerioId String?   // ID de la venta de unidad de cementerio (si aplica)
+  
+  // Relaciones
+  ventaLote             VentaLote?  @relation(fields: [ventaLoteId], references: [id], onDelete: Cascade)
+  ventaUnidadCementerio VentaUnidadCementerio? @relation(fields: [ventaUnidadCementerioId], references: [id], onDelete: Cascade)
+  
+  // Relación con pagos
+  pagos                 PagoCuota[]
+  
+  // Información de auditoría
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  
+  // Relaciones de auditoría
+  creadoPorUsuario      Usuario?    @relation("CuotaCreadoPor", fields: [createdBy], references: [id])
+  actualizadoPorUsuario Usuario?    @relation("CuotaActualizadoPor", fields: [updatedBy], references: [id])
+
+  @@index([ventaLoteId])
+  @@index([ventaUnidadCementerioId])
+  @@index([estado])
+  @@index([fechaVencimiento])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("cuotas")
+}
+
+model Auditoria {
+  id          String   @id @default(cuid())
+  tipo        String   // VENTA, USUARIO, SISTEMA, SEGURIDAD, FINANZAS
+  accion      String   // CREAR, ACTUALIZAR, ELIMINAR, INICIAR_SESION, etc.
+  detalles    String?  // Detalles adicionales del evento
+  entidad     String?  // Nombre de la entidad afectada
+  entidadId   String?  // ID de la entidad afectada
+  ip          String?  // IP del usuario
+  userAgent   String?  // User agent del navegador
+  fecha       DateTime @default(now())
+  leida       Boolean  @default(false)
+  fechaLectura DateTime?
+  
+  // Relaciones
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId   String
+  
+  creadoPor   Usuario? @relation("AuditoriaCreadaPor", fields: [creadoPorId], references: [id])
+  creadoPorId String?
+
+  @@index([fecha])
+  @@index([tipo])
+  @@index([usuarioId])
+  @@index([entidad, entidadId])
+}
+
+model Notificacion {
+  id          String   @id @default(cuid())
+  titulo      String
+  mensaje     String
+  tipo        String   // VENTAS_PENDIENTES, META_VENDEDOR, COMISIONES, SISTEMA
+  leida       Boolean  @default(false)
+  fechaLectura DateTime?
+  destinatarios String[] // Roles que pueden ver esta notificación
+  fecha       DateTime @default(now())
+  
+  // Relaciones
+  usuario     Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  usuarioId   String?
+  
+  creadoPor   Usuario? @relation("NotificacionCreadaPor", fields: [creadoPorId], references: [id])
+  creadoPorId String?
+
+  @@index([fecha])
+  @@index([tipo])
+  @@index([usuarioId])
+  @@index([leida])
+}
+
+model ComprobantePago {
+  id                    String   @id @default(cuid())
+  tipo                  String   // INICIAL, CUOTA, CONTADO
+  monto                 Float
+  fecha                 DateTime
+  descripcion           String?
+  
+  // Información del archivo en Google Drive
+  nombreArchivo         String
+  driveFileId           String?   // ID del archivo en Google Drive (opcional)
+  driveFileUrl          String?   // URL de visualización del archivo (opcional)
+  driveDownloadUrl      String?   // URL de descarga del archivo (opcional)
+  mimeType              String    // Tipo MIME del archivo
+  tamanio               Int       // Tamaño del archivo en bytes
+  
+  // Información del archivo local (fallback)
+  localFilePath         String?   // Ruta del archivo guardado localmente
+  guardadoLocal         Boolean   @default(false) // Indica si se guardó localmente
+  
+  // Relaciones con ventas
+  ventaLoteId           String?   // ID de la venta de lote (si aplica)
+  ventaUnidadCementerioId String? // ID de la venta de unidad de cementerio (si aplica)
+  
+  // Relaciones
+  ventaLote             VentaLote? @relation(fields: [ventaLoteId], references: [id], onDelete: Cascade)
+  ventaUnidadCementerio VentaUnidadCementerio? @relation(fields: [ventaUnidadCementerioId], references: [id], onDelete: Cascade)
+  
+  // Relación con pagos de cuotas
+  pagosCuotas           PagoCuota[]
+  
+  // Relación con pagos de comisiones
+  pagosComisiones       PagoComision[]
+  
+  // Información de auditoría
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  createdBy             String?
+  updatedBy             String?
+
+  @@index([ventaLoteId])
+  @@index([ventaUnidadCementerioId])
+  @@index([tipo])
+  @@index([fecha])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("comprobantes_pago")
+}
+
+model PagoCuota {
+  id                    String   @id @default(cuid())
+  cuotaId               String
+  comprobantePagoId     String?
+  monto                 Float
+  fechaPago             DateTime
+  metodoPago            String?
+  observaciones         String?
+  
+  // Relaciones
+  cuota                 Cuota    @relation(fields: [cuotaId], references: [id], onDelete: Cascade)
+  comprobantePago       ComprobantePago? @relation(fields: [comprobantePagoId], references: [id])
+  
+  // Información de auditoría
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  
+  // Relaciones de auditoría
+  creadoPorUsuario      Usuario? @relation("PagoCuotaCreadoPor", fields: [createdBy], references: [id])
+  actualizadoPorUsuario Usuario? @relation("PagoCuotaActualizadoPor", fields: [updatedBy], references: [id])
+
+  @@index([cuotaId])
+  @@index([comprobantePagoId])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("pagos_cuotas")
+}
+
+model PagoComision {
+  id                    String      @id @default(cuid())
+  monto                 Float       // Monto pagado
+  fechaPago             DateTime    // Fecha del pago
+  formaPago             FormaPago   // Forma de pago utilizada
+  tipoPago              TipoPagoComision @default(PARCIAL) // PARCIAL o COMPLETO
+  observaciones         String?     // Observaciones sobre el pago
+  
+  // Relaciones con ventas
+  ventaLoteId           String?     // ID de la venta de lote (si aplica)
+  ventaUnidadCementerioId String?   // ID de la venta de unidad de cementerio (si aplica)
+  
+  // Relaciones
+  ventaLote             VentaLote?  @relation(fields: [ventaLoteId], references: [id], onDelete: Cascade)
+  ventaUnidadCementerio VentaUnidadCementerio? @relation(fields: [ventaUnidadCementerioId], references: [id], onDelete: Cascade)
+  
+  // Relación con comprobantes de pago
+  comprobantes          ComprobantePago[]
+  
+  // Información de auditoría
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  
+  // Relaciones de auditoría
+  creadoPorUsuario      Usuario?    @relation("PagoComisionCreadoPor", fields: [createdBy], references: [id])
+  actualizadoPorUsuario Usuario?    @relation("PagoComisionActualizadoPor", fields: [updatedBy], references: [id])
+
+  @@index([ventaLoteId])
+  @@index([ventaUnidadCementerioId])
+  @@index([fechaPago])
+  @@index([tipoPago])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("pagos_comisiones")
+}
+
+enum TipoPagoComision {
+  PARCIAL
+  COMPLETO
+}
+
+model Contrato {
+  id                    String   @id @default(cuid())
+  numeroContrato        String   @unique
+  tipoContrato          TipoContrato
+  estado                EstadoContrato @default(BORRADOR)
+  
+  // Relaciones con ventas
+  ventaLoteId           String?
+  ventaUnidadCementerioId String?
+  
+  // Información del contrato
+  fechaContrato         DateTime
+  fechaFirma            DateTime?
+  fechaEntrega          DateTime?
+  lugarFirma            String?
+  
+  // Información legal
+  notario               String?
+  registroPublico       String?
+  numeroEscritura       String?
+  fechaInscripcion      DateTime?
+  
+  // Información financiera
+  precioTotal           Float
+  montoInicial          Float?
+  saldoPendiente        Float?
+  numeroCuotas          Int?
+  montoCuota            Float?
+  frecuenciaCuota       FrecuenciaCuota?
+  
+  // Condiciones especiales
+  condicionesEspeciales String?
+  observaciones         String?
+  
+  // Documentos del contrato
+  contratoPDF           String? // URL del PDF generado
+  contratoWord          String? // URL del documento Word original
+  
+  // Información de auditoría
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  
+  // Relaciones
+  ventaLote             VentaLote? @relation(fields: [ventaLoteId], references: [id], onDelete: Cascade)
+  ventaUnidadCementerio VentaUnidadCementerio? @relation(fields: [ventaUnidadCementerioId], references: [id], onDelete: Cascade)
+  
+  // Relaciones de auditoría
+  creadoPorUsuario      Usuario? @relation("ContratoCreadoPor", fields: [createdBy], references: [id])
+  actualizadoPorUsuario Usuario? @relation("ContratoActualizadoPor", fields: [updatedBy], references: [id])
+
+  @@index([ventaLoteId])
+  @@index([ventaUnidadCementerioId])
+  @@index([tipoContrato])
+  @@index([estado])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("contratos")
 }

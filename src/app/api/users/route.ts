@@ -48,7 +48,7 @@ const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
 }
 
 // GET /api/users - Listar usuarios
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
@@ -69,17 +69,34 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
+    // Obtener parámetros de consulta
+    const { searchParams } = new URL(request.url)
+    const rolFilter = searchParams.get('rol')
+
     // Obtener los roles permitidos según la jerarquía
     const allowedRoles = ROLE_HIERARCHY[userRole] || []
 
     // Construir la condición where para filtrar usuarios
-    const where = userRole === 'SUPER_ADMIN' 
+    let where: any = userRole === 'SUPER_ADMIN' 
       ? {} // SUPER_ADMIN puede ver todos los usuarios
       : {
           rol: {
             in: allowedRoles
           }
         }
+
+    // Aplicar filtro por rol si se especifica
+    if (rolFilter) {
+      // Verificar que el rol solicitado está permitido
+      if (!allowedRoles.includes(rolFilter as Rol) && userRole !== 'SUPER_ADMIN') {
+        return NextResponse.json({ error: 'No autorizado para ver usuarios con este rol' }, { status: 403 })
+      }
+      
+      where = {
+        ...where,
+        rol: rolFilter
+      }
+    }
 
     const users = await prisma.usuario.findMany({
       where,
@@ -166,8 +183,7 @@ export async function POST(request: Request) {
         nombre,
         email,
         password: hashedPassword,
-        rol,
-        createdBy: session.user.id
+        rol
       }
     })
 

@@ -33,7 +33,7 @@ export default function ProjectsPage() {
     }
 
     // Verificar si el usuario tiene permiso para ver proyectos
-    const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER']
+    const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER', 'SALES_MANAGER']
     if (!allowedRoles.includes(session.user.role || '')) {
       router.push('/dashboard')
       return
@@ -43,7 +43,7 @@ export default function ProjectsPage() {
   }, [session, router])
 
   // Permitir crear proyectos a todos los roles que pueden ver proyectos
-  const canCreateProject = ['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER'].includes(session?.user?.role || '')
+  const canCreateProject = ['SUPER_ADMIN', 'ADMIN', 'GERENTE_GENERAL', 'PROJECT_MANAGER', 'SALES_MANAGER'].includes(session?.user?.role || '')
 
   const fetchProjects = async () => {
     try {

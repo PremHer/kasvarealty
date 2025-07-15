@@ -2,6 +2,24 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { Rol } from '@prisma/client'
+
+// Definir roles que pueden crear/editar unidades
+const CAN_EDIT_UNITS: Rol[] = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'PROJECT_MANAGER',
+  'GERENTE_GENERAL'
+]
+
+// Definir roles que pueden ver unidades (solo lectura)
+const CAN_VIEW_UNITS: Rol[] = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'PROJECT_MANAGER',
+  'SALES_MANAGER',
+  'GERENTE_GENERAL'
+]
 
 export async function GET(
   request: Request,
@@ -12,6 +30,13 @@ export async function GET(
 
     if (!session?.user) {
       return new NextResponse('No autorizado', { status: 401 })
+    }
+
+    const userRole = session.user.role as Rol
+    
+    // Verificar si el usuario tiene permisos para ver unidades
+    if (!CAN_VIEW_UNITS.includes(userRole)) {
+      return new NextResponse('No tienes permisos para ver unidades', { status: 403 })
     }
 
     const units = await prisma.unidadInmobiliaria.findMany({
@@ -39,6 +64,13 @@ export async function POST(
 
     if (!session?.user) {
       return new NextResponse('No autorizado', { status: 401 })
+    }
+
+    const userRole = session.user.role as Rol
+    
+    // Verificar si el usuario tiene permisos para crear unidades
+    if (!CAN_EDIT_UNITS.includes(userRole)) {
+      return new NextResponse('No tienes permisos para crear unidades', { status: 403 })
     }
 
     const body = await request.json()

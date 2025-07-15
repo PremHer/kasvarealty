@@ -26,6 +26,7 @@ interface NewEmpresaModalProps {
 
 export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: NewEmpresaModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingGerentes, setIsLoadingGerentes] = useState(false)
   const [gerentesGenerales, setGerentesGenerales] = useState<Usuario[]>([])
   const { toast } = useToast()
   const [formData, setFormData] = useState({
@@ -41,21 +42,29 @@ export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: N
 
   useEffect(() => {
     const fetchGerentesGenerales = async () => {
+      setIsLoadingGerentes(true)
       try {
-        const response = await fetch('/api/usuarios?rol=GERENTE_GENERAL')
+        const response = await fetch('/api/users?rol=GERENTE_GENERAL')
         if (response.ok) {
           const data = await response.json()
           setGerentesGenerales(data)
         }
       } catch (error) {
         console.error('Error al cargar gerentes generales:', error)
+        toast({
+          title: 'Error',
+          description: 'No se pudieron cargar los gerentes generales',
+          variant: 'destructive'
+        })
+      } finally {
+        setIsLoadingGerentes(false)
       }
     }
 
     if (isOpen) {
       fetchGerentesGenerales()
     }
-  }, [isOpen])
+  }, [isOpen, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -233,16 +242,27 @@ export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: N
                   value={formData.representanteLegalId}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, representanteLegalId: value }))}
                   required
+                  disabled={isLoadingGerentes}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccione un representante legal" />
+                    <SelectValue placeholder={isLoadingGerentes ? "Cargando..." : "Seleccione un representante legal"} />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    {gerentesGenerales.map((gerente) => (
-                      <SelectItem key={gerente.id} value={gerente.id} className="hover:bg-gray-100">
-                        {gerente.nombre} - {gerente.email}
+                    {isLoadingGerentes ? (
+                      <SelectItem value="loading" disabled>
+                        Cargando gerentes generales...
                       </SelectItem>
-                    ))}
+                    ) : Array.isArray(gerentesGenerales) && gerentesGenerales.length > 0 ? (
+                      gerentesGenerales.map((gerente) => (
+                        <SelectItem key={gerente.id} value={gerente.id} className="hover:bg-gray-100">
+                          {gerente.nombre} - {gerente.email}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-gerentes" disabled>
+                        No hay gerentes generales disponibles
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

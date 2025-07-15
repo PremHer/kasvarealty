@@ -16,16 +16,32 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Verificar permisos para ver clientes
+    const allowedRoles = [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'GERENTE_GENERAL',
+      'SALES_MANAGER',
+      'SALES_REP',
+      'SALES_ASSISTANT',
+      'PROJECT_MANAGER',
+      'FINANCE_MANAGER'
+    ]
+    
+    if (!allowedRoles.includes(session.user.role)) {
+      return NextResponse.json({ error: 'No tienes permisos para ver clientes' }, { status: 403 })
+    }
+
     const cliente = await prisma.cliente.findUnique({
       where: { id: params.id },
-      include: {
-        empresa: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
-      },
+      // include: {
+      //   empresa: {
+      //     select: {
+      //       id: true,
+      //       nombre: true,
+      //     },
+      //   },
+      // },
     })
 
     if (!cliente) {
@@ -53,6 +69,20 @@ export async function PATCH(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Verificar permisos para actualizar clientes
+    const allowedRoles = [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'GERENTE_GENERAL',
+      'SALES_MANAGER',
+      'SALES_REP',
+      'SALES_ASSISTANT'
+    ]
+    
+    if (!allowedRoles.includes(session.user.role)) {
+      return NextResponse.json({ error: 'No tienes permisos para actualizar clientes' }, { status: 403 })
+    }
+
     const body = await request.json()
     const { isActive } = body
 
@@ -76,14 +106,7 @@ export async function PATCH(
         updatedAt: new Date(), // Asegurar que se actualice la fecha de modificación
       },
       include: {
-        direcciones: true,
-        creadoPor: {
-          select: {
-            id: true,
-            nombre: true,
-            email: true
-          }
-        }
+        direcciones: true
       }
     })
 
@@ -106,6 +129,20 @@ export async function PUT(
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Verificar permisos para actualizar clientes
+    const allowedRoles = [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'GERENTE_GENERAL',
+      'SALES_MANAGER',
+      'SALES_REP',
+      'SALES_ASSISTANT'
+    ]
+    
+    if (!allowedRoles.includes(session.user.role)) {
+      return NextResponse.json({ error: 'No tienes permisos para actualizar clientes' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -194,12 +231,12 @@ export async function PUT(
         apellido,
         email,
         telefono: telefono || null,
-        tipo,
+        // tipo, // Quitar este campo porque no existe en el modelo
         // Campos para cliente individual
         dni: dni || null,
         fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null,
         estadoCivil: estadoCivil || null,
-        ocupacion: ocupacion || null,
+        // ocupacion: ocupacion || null, // Quitar este campo porque no existe en el modelo
         sexo: tipo === 'INDIVIDUAL' ? sexo : null,
         // Campos para empresa
         razonSocial: razonSocial || null,
@@ -220,13 +257,7 @@ export async function PUT(
       },
       include: {
         direcciones: true,
-        ventas: true,
-        creadoPor: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
+        ventas: true
       },
     })
 
@@ -249,6 +280,18 @@ export async function DELETE(
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Verificar permisos para eliminar clientes
+    const allowedRoles = [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'GERENTE_GENERAL',
+      'SALES_MANAGER'
+    ]
+    
+    if (!allowedRoles.includes(session.user.role)) {
+      return NextResponse.json({ error: 'No tienes permisos para eliminar clientes' }, { status: 403 })
     }
 
     // Verificar si el cliente existe
