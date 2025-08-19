@@ -27,6 +27,13 @@ interface Empresa {
   representanteLegalId: string
   bancos: TipoBanco[]
   billeterasVirtuales: TipoBilleteraVirtual[]
+  // Nuevos campos bancarios
+  bancoPrincipal?: string
+  tipoCuenta?: string
+  numeroCuenta?: string
+  cci?: string
+  titularCuenta?: string
+  emailPagos?: string
 }
 
 interface EditEmpresaModalProps {
@@ -252,8 +259,85 @@ export default function EditEmpresaModal({
                 <h3 className="font-semibold text-gray-900">Información Bancaria</h3>
               </div>
               <div className="space-y-4">
+                {/* Campos bancarios específicos */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bancoPrincipal">Banco Principal</Label>
+                    <Input
+                      id="bancoPrincipal"
+                      value={formData.bancoPrincipal || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, bancoPrincipal: e.target.value }))}
+                      placeholder="Ej: Banco de Crédito del Perú"
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tipoCuenta">Tipo de Cuenta</Label>
+                    <Select
+                      value={formData.tipoCuenta || ''}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, tipoCuenta: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione tipo de cuenta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cuenta Corriente">Cuenta Corriente</SelectItem>
+                        <SelectItem value="Cuenta de Ahorros">Cuenta de Ahorros</SelectItem>
+                        <SelectItem value="Cuenta Sueldo">Cuenta Sueldo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="numeroCuenta">Número de Cuenta</Label>
+                    <Input
+                      id="numeroCuenta"
+                      value={formData.numeroCuenta || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, numeroCuenta: e.target.value }))}
+                      placeholder="Ej: 193-12345678-0-12"
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cci">CCI</Label>
+                    <Input
+                      id="cci"
+                      value={formData.cci || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, cci: e.target.value }))}
+                      placeholder="Ej: 002-193-123456789012-12"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="titularCuenta">Titular de la Cuenta</Label>
+                    <Input
+                      id="titularCuenta"
+                      value={formData.titularCuenta || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, titularCuenta: e.target.value }))}
+                      placeholder="Nombre del titular"
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="emailPagos">Email para Pagos</Label>
+                    <Input
+                      id="emailPagos"
+                      type="email"
+                      value={formData.emailPagos || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, emailPagos: e.target.value }))}
+                      placeholder="pagos@empresa.com"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <Label>Bancos</Label>
+                  <Label>Bancos Aceptados</Label>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     {Object.values(TipoBanco).map((banco) => (
                       <div key={banco} className="flex items-center space-x-2">

@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions)
 
     if (!session) {
-      return new NextResponse('No autorizado', { status: 401 })
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
     const body = await request.json()
@@ -84,13 +84,20 @@ export async function POST(request: Request) {
       telefono, 
       email,
       bancos,
-      billeterasVirtuales
+      billeterasVirtuales,
+      // Nuevos campos bancarios
+      bancoPrincipal,
+      tipoCuenta,
+      numeroCuenta,
+      cci,
+      titularCuenta,
+      emailPagos
     } = body
 
     // Validar RUC
     if (!/^\d{11}$/.test(ruc)) {
-      return new NextResponse(
-        JSON.stringify({ message: 'El RUC debe tener exactamente 11 dígitos' }),
+      return NextResponse.json(
+        { error: 'El RUC debe tener exactamente 11 dígitos' },
         { status: 400 }
       )
     }
@@ -101,15 +108,27 @@ export async function POST(request: Request) {
     })
 
     if (!representanteLegal) {
-      return new NextResponse(
-        JSON.stringify({ message: 'Representante legal no encontrado' }),
+      return NextResponse.json(
+        { error: 'Representante legal no encontrado' },
         { status: 404 }
       )
     }
 
     if (representanteLegal.rol !== 'GERENTE_GENERAL') {
-      return new NextResponse(
-        JSON.stringify({ message: 'El representante legal debe tener el rol de Gerente General' }),
+      return NextResponse.json(
+        { error: 'El representante legal debe tener el rol de Gerente General' },
+        { status: 400 }
+      )
+    }
+
+    // Verificar si ya existe una empresa con el mismo RUC
+    const empresaExistente = await prisma.empresaDesarrolladora.findUnique({
+      where: { ruc }
+    })
+
+    if (empresaExistente) {
+      return NextResponse.json(
+        { error: 'Ya existe una empresa con este RUC' },
         { status: 400 }
       )
     }
@@ -124,6 +143,13 @@ export async function POST(request: Request) {
         email,
         bancos,
         billeterasVirtuales,
+        // Nuevos campos bancarios
+        bancoPrincipal,
+        tipoCuenta,
+        numeroCuenta,
+        cci,
+        titularCuenta,
+        emailPagos,
         numeroProyectos: 0
       },
       include: {
@@ -138,8 +164,28 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json(empresa)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error al crear empresa:', error)
-    return new NextResponse('Error interno del servidor', { status: 500 })
+    
+    // Manejar específicamente el error de RUC duplicado
+    if (error.code === 'P2002' && error.meta?.target?.includes('ruc')) {
+      return NextResponse.json(
+        { error: 'Ya existe una empresa con este RUC' },
+        { status: 400 }
+      )
+    }
+    
+    // Manejar otros errores de Prisma
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'Ya existe un registro con estos datos' },
+        { status: 400 }
+      )
+    }
+    
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    )
   }
 } 

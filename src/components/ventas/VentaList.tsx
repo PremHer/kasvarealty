@@ -10,6 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/components/ui/use-toast'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import VentaAmortizacionModal from './VentaAmortizacionModal'
+import CuotasModal from './CuotasModal'
 import { 
   FiSearch, 
   FiFilter, 
@@ -29,7 +31,8 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiDownload,
-  FiRefreshCw
+  FiRefreshCw,
+  FiEdit
 } from 'react-icons/fi'
 
 interface Venta {
@@ -83,6 +86,9 @@ export default function VentaList({ userRole, userId, estado }: VentaListProps) 
     totalPages: 0
   })
   const [showFilters, setShowFilters] = useState(false)
+  const [showAmortizacionModal, setShowAmortizacionModal] = useState(false)
+  const [showCuotasModal, setShowCuotasModal] = useState(false)
+  const [selectedVentaId, setSelectedVentaId] = useState<string>('')
   const { toast } = useToast()
 
   const fetchVentas = async () => {
@@ -104,6 +110,13 @@ export default function VentaList({ userRole, userId, estado }: VentaListProps) 
       }
 
       const data = await response.json()
+      console.log('🔍 Datos de ventas recibidos:', data.ventas.map((v: any) => ({
+        id: v.id,
+        metodoPago: v.metodoPago,
+        tipoVenta: v.tipoVenta,
+        estado: v.estado,
+        tieneCuotas: v.cuotas?.length > 0
+      })))
       setVentas(data.ventas)
       setPagination(data.pagination)
     } catch (error) {
@@ -515,6 +528,71 @@ export default function VentaList({ userRole, userId, estado }: VentaListProps) 
                                 <FiEye className="h-3 w-3" />
                                 Ver
                               </Button>
+                              
+                              {/* Botón de cuotas - para ventas a cuotas */}
+                              {(venta.metodoPago === 'CUOTAS' || venta.metodoPago === 'cuotas') && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    console.log('🔍 Abriendo cuotas para venta:', venta.id)
+                                    setSelectedVentaId(venta.id)
+                                    setShowCuotasModal(true)
+                                  }}
+                                  className="flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                                  title="Ver Cuotas"
+                                >
+                                  <FiDollarSign className="h-3 w-3" />
+                                  Cuotas
+                                </Button>
+                              )}
+                              
+                              {/* Botón de tabla de amortización - para todas las ventas con cuotas */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  console.log('🔍 Abriendo amortización para venta:', venta.id, 'metodoPago:', venta.metodoPago, 'tipoVenta:', venta.tipoVenta)
+                                  setSelectedVentaId(venta.id)
+                                  setShowAmortizacionModal(true)
+                                }}
+                                className="flex items-center gap-1 bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                                title="Ver Tabla de Amortización"
+                              >
+                                <FiTrendingUp className="h-3 w-3" />
+                                Amortización
+                              </Button>
+                              
+                              {/* Botón de editar */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  console.log('Editar venta:', venta.id)
+                                  // TODO: Implementar edición
+                                }}
+                                className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                                title="Editar Venta"
+                              >
+                                <FiEdit className="h-3 w-3" />
+                                Editar
+                              </Button>
+                              
+                              {/* Botón de eliminar */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  console.log('Eliminar venta:', venta.id)
+                                  // TODO: Implementar eliminación
+                                }}
+                                className="flex items-center gap-1 bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                                title="Eliminar Venta"
+                              >
+                                <FiX className="h-3 w-3" />
+                                Eliminar
+                              </Button>
+                              
                               {canApprove(venta) && venta.estado === 'PENDIENTE' && (
                                 <Button
                                   size="sm"
@@ -637,6 +715,20 @@ export default function VentaList({ userRole, userId, estado }: VentaListProps) 
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Tabla de Amortización */}
+      <VentaAmortizacionModal
+        isOpen={showAmortizacionModal}
+        onClose={() => setShowAmortizacionModal(false)}
+        ventaId={selectedVentaId}
+      />
+
+      {/* Modal de Cuotas */}
+      <CuotasModal
+        isOpen={showCuotasModal}
+        onClose={() => setShowCuotasModal(false)}
+        ventaId={selectedVentaId}
+      />
     </div>
   )
 } 

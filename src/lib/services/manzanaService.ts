@@ -98,14 +98,13 @@ export class ManzanaService {
           }
         },
         lotes: {
-          where: { isActive: true },
+          where: { estado: 'DISPONIBLE' },
           select: {
             id: true,
             codigo: true,
             numero: true,
             area: true,
             estado: true,
-            isActive: true,
           }
         },
         creadoPorUsuario: {

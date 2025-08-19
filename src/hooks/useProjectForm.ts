@@ -29,7 +29,12 @@ const initialFormData: ProjectFormData = {
   longitud: '',
   precioTerreno: '',
   inversionInicial: '',
-  totalArea: ''
+  totalArea: '',
+  // Campos del predio matriz para contratos
+  extensionTotal: '',
+  unidadCatastral: '',
+  partidaRegistral: '',
+  plazoIndependizacion: ''
 }
 
 export function useProjectForm({ initialData, onSubmit }: UseProjectFormProps) {

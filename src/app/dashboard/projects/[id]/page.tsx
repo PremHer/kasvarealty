@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Project } from '@/types/project'
-import { FiArrowLeft, FiMapPin, FiCalendar, FiDollarSign, FiHome, FiEdit2, FiUser, FiCheckCircle, FiAlertCircle, FiUserPlus, FiXCircle, FiClock, FiInfo, FiUsers, FiPlus, FiGrid, FiCreditCard } from 'react-icons/fi'
+import { FiArrowLeft, FiMapPin, FiCalendar, FiDollarSign, FiHome, FiEdit2, FiUser, FiCheckCircle, FiAlertCircle, FiUserPlus, FiXCircle, FiClock, FiInfo, FiUsers, FiPlus, FiGrid, FiCreditCard, FiFileText, FiMap } from 'react-icons/fi'
 import { useToast } from '@/components/ui/use-toast'
 import EditProjectModal from '@/components/projects/edit-project-modal'
 import dynamic from 'next/dynamic'
@@ -19,6 +19,9 @@ import PabellonesList from '@/components/proyectos/PabellonesList'
 import PabellonesStats from '@/components/proyectos/PabellonesStats'
 import ProjectVentas from '@/components/projects/ProjectVentas'
 import ProjectComisiones from '@/components/projects/ProjectComisiones'
+import ProjectContratos from '@/components/projects/ProjectContratos'
+import PlanoDisponibilidad from '@/components/projects/PlanoDisponibilidad'
+import CaracteristicasTab from '@/components/projects/tabs/CaracteristicasTab'
 
 const MapPicker = dynamic(() => import('@/components/MapPicker'), {
   ssr: false,
@@ -344,6 +347,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <FiInfo className="w-4 h-4" />
             Detalles
           </TabsTrigger>
+          <TabsTrigger value="caracteristicas" className="flex items-center gap-2">
+            <FiGrid className="w-4 h-4" />
+            Características
+          </TabsTrigger>
           {!isProjectPending(project) && (
             <>
               <TabsTrigger value="units" className="flex items-center gap-2">
@@ -357,6 +364,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               <TabsTrigger value="comisiones" className="flex items-center gap-2">
                 <FiCreditCard className="w-4 h-4" />
                 Comisiones
+              </TabsTrigger>
+              <TabsTrigger value="contratos" className="flex items-center gap-2">
+                <FiFileText className="w-4 h-4" />
+                Contratos
+              </TabsTrigger>
+              <TabsTrigger value="plano" className="flex items-center gap-2">
+                <FiMap className="w-4 h-4" />
+                Plano
               </TabsTrigger>
               <TabsTrigger value="clients" className="flex items-center gap-2">
                 <FiUsers className="w-4 h-4" />
@@ -521,7 +536,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                     <div className="flex items-start text-gray-600">
                       <FiUser className="w-5 h-5 mr-3 mt-1 text-primary-500" />
                       <div>
-                        <p className="font-medium">Gerente</p>
+                        <p className="font-medium">Gerente del Proyecto</p>
                         <p className="text-sm">{project.manager.name}</p>
                         <p className="text-sm text-gray-500">{project.manager.email}</p>
                       </div>
@@ -561,6 +576,19 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="caracteristicas">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-blue-700">
+                Características del Proyecto
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CaracteristicasTab proyectoId={params.id} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {!isProjectPending(project) && (
@@ -630,6 +658,23 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                   />
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="contratos">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl font-semibold text-blue-700">Contratos del Proyecto</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ProjectContratos 
+                    proyectoId={params.id} 
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="plano">
+              <PlanoDisponibilidad proyectoId={params.id} />
             </TabsContent>
 
             <TabsContent value="clients">

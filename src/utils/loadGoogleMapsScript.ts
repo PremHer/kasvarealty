@@ -1,6 +1,6 @@
 export function loadGoogleMapsScript(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (window.google) {
+    if ((window as any).google) {
       resolve()
       return
     }

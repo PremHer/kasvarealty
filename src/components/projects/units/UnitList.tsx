@@ -29,9 +29,9 @@ const getStatusConfig = (status: string) => {
       color: 'bg-blue-50 text-blue-700 border-blue-100',
       label: 'Vendido'
     },
-    'NO_DISPONIBLE': {
+    'ENTREGADO': {
       color: 'bg-slate-50 text-slate-600 border-slate-200',
-      label: 'No Disponible'
+      label: 'Entregado'
     }
   }
   return configs[status] || { color: 'bg-gray-50 text-gray-600 border-gray-200', label: status }
@@ -62,7 +62,7 @@ export default function UnitList({ units, onEdit, onDelete, onAdd }: UnitListPro
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {units.map((unit) => {
-          const statusConfig = getStatusConfig(unit.status)
+          const statusConfig = getStatusConfig(unit.estado)
           return (
             <Card key={unit.id} className="overflow-hidden">
               <CardHeader className="pb-2">
@@ -81,7 +81,7 @@ export default function UnitList({ units, onEdit, onDelete, onAdd }: UnitListPro
                   </div>
                   <div className="flex items-center text-gray-600">
                     <FiMapPin className="w-4 h-4 mr-2 text-primary-500" />
-                    <span className="text-sm">{unit.ubicacion || 'Ubicación no especificada'}</span>
+                    <span className="text-sm">Área: {unit.area} m²</span>
                   </div>
                   <div className="flex items-center text-gray-600">
                     <FiDollarSign className="w-4 h-4 mr-2 text-primary-500" />

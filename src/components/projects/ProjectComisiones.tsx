@@ -243,7 +243,7 @@ export default function ProjectComisiones({ proyectoId, tipoProyecto }: ProjectC
                     <FiHome className="h-4 w-4 text-gray-500" />
                     <span className="font-medium">{venta.unidad.codigo}</span>
                   </div>
-                  {getEstadoComisionBadge(venta.estadoComision)}
+                  {getEstadoComisionBadge(venta.porcentajePagado >= 100 ? 'PAGADA' : 'PENDIENTE')}
                 </div>
                 <div className="flex items-center gap-2">
                   {venta.montoPendiente > 0 && (

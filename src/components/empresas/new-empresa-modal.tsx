@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,7 +37,14 @@ export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: N
     telefono: '',
     representanteLegalId: '',
     bancos: [] as TipoBanco[],
-    billeterasVirtuales: [] as TipoBilleteraVirtual[]
+    billeterasVirtuales: [] as TipoBilleteraVirtual[],
+    // Nuevos campos bancarios
+    bancoPrincipal: '',
+    tipoCuenta: '',
+    numeroCuenta: '',
+    cci: '',
+    titularCuenta: '',
+    emailPagos: ''
   })
 
   useEffect(() => {
@@ -91,11 +98,8 @@ export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: N
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        if (error.code === 'P2002' && error.meta?.target?.includes('ruc')) {
-          throw new Error('Ya existe una empresa registrada con este RUC')
-        }
-        throw new Error(error.message || 'Error al crear la empresa')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al crear la empresa')
       }
 
       const newEmpresa = await response.json()
@@ -117,7 +121,13 @@ export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: N
         telefono: '',
         representanteLegalId: '',
         bancos: [],
-        billeterasVirtuales: []
+        billeterasVirtuales: [],
+        bancoPrincipal: '',
+        tipoCuenta: '',
+        numeroCuenta: '',
+        cci: '',
+        titularCuenta: '',
+        emailPagos: ''
       })
     } catch (error) {
       console.error('Error al crear empresa:', error)
@@ -158,6 +168,9 @@ export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: N
             <FiUser className="h-6 w-6 text-primary-600" />
             <span>Nueva Empresa Desarrolladora</span>
           </DialogTitle>
+          <DialogDescription>
+            Complete la información de la nueva empresa desarrolladora. Todos los campos marcados con * son obligatorios.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 overflow-y-auto pr-2">
@@ -274,8 +287,85 @@ export default function NewEmpresaModal({ isOpen, onClose, onEmpresaCreated }: N
                 <h3 className="font-semibold text-gray-900">Información Bancaria</h3>
               </div>
               <div className="space-y-4">
+                {/* Campos bancarios específicos */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bancoPrincipal">Banco Principal</Label>
+                    <Input
+                      id="bancoPrincipal"
+                      value={formData.bancoPrincipal}
+                      onChange={(e) => setFormData(prev => ({ ...prev, bancoPrincipal: e.target.value }))}
+                      placeholder="Ej: Banco de Crédito del Perú"
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tipoCuenta">Tipo de Cuenta</Label>
+                    <Select
+                      value={formData.tipoCuenta}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, tipoCuenta: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione tipo de cuenta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cuenta Corriente">Cuenta Corriente</SelectItem>
+                        <SelectItem value="Cuenta de Ahorros">Cuenta de Ahorros</SelectItem>
+                        <SelectItem value="Cuenta Sueldo">Cuenta Sueldo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="numeroCuenta">Número de Cuenta</Label>
+                    <Input
+                      id="numeroCuenta"
+                      value={formData.numeroCuenta}
+                      onChange={(e) => setFormData(prev => ({ ...prev, numeroCuenta: e.target.value }))}
+                      placeholder="Ej: 193-12345678-0-12"
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cci">CCI</Label>
+                    <Input
+                      id="cci"
+                      value={formData.cci}
+                      onChange={(e) => setFormData(prev => ({ ...prev, cci: e.target.value }))}
+                      placeholder="Ej: 002-193-123456789012-12"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="titularCuenta">Titular de la Cuenta</Label>
+                    <Input
+                      id="titularCuenta"
+                      value={formData.titularCuenta}
+                      onChange={(e) => setFormData(prev => ({ ...prev, titularCuenta: e.target.value }))}
+                      placeholder="Nombre del titular"
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="emailPagos">Email para Pagos</Label>
+                    <Input
+                      id="emailPagos"
+                      type="email"
+                      value={formData.emailPagos}
+                      onChange={(e) => setFormData(prev => ({ ...prev, emailPagos: e.target.value }))}
+                      placeholder="pagos@empresa.com"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <Label>Bancos</Label>
+                  <Label>Bancos Aceptados</Label>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     {Object.values(TipoBanco).map((banco) => (
                       <div key={banco} className="flex items-center space-x-2">

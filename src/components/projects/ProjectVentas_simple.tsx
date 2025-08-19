@@ -25,6 +25,7 @@ interface Venta {
   montoInicial?: number
   saldoPendiente?: number
   proyectoId?: string
+  tipoVentaVenta: 'CONTADO' | 'CUOTAS'
   cliente: {
     id: string
     nombre: string
@@ -588,7 +589,6 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
         isOpen={isCuotasModalOpen}
         onClose={() => setIsCuotasModalOpen(false)}
         ventaId={selectedVentaForCuotas?.id || ''}
-        tipoVenta={selectedVentaForCuotas?.tipo || 'LOTE'}
       />
 
       {/* Modal para aprobar venta */}
@@ -596,7 +596,7 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
         isOpen={approveAlertOpen}
         onClose={() => setApproveAlertOpen(false)}
         onConfirm={handleConfirmApprove}
-        isApproving={isApproving}
+        isLoading={isApproving}
         venta={selectedVentaForApprove}
       />
     </div>

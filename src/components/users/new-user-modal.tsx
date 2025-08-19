@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -56,6 +56,16 @@ const formSchema = z.object({
     .regex(/[0-9]/, 'La contraseña debe contener al menos un número')
     .regex(/[^A-Za-z0-9]/, 'La contraseña debe contener al menos un carácter especial'),
   rol: z.string().min(1, 'Debe seleccionar un rol'),
+  // Nuevos campos
+  dni: z.string().optional(),
+  sexo: z.string().optional(),
+  fechaNacimiento: z.string().optional(),
+  estadoCivil: z.string().optional(),
+  profesion: z.string().optional(),
+  direccion: z.string().optional(),
+  distrito: z.string().optional(),
+  provincia: z.string().optional(),
+  departamento: z.string().optional(),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -141,6 +151,15 @@ export default function NewUserModal({
     }
   })
 
+  // Limpiar formulario cuando se abra el modal
+  useEffect(() => {
+    if (isOpen) {
+      form.reset()
+      setFormError(null)
+      setShowPassword(false)
+    }
+  }, [isOpen, form])
+
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true)
     setFormError(null)
@@ -173,6 +192,10 @@ export default function NewUserModal({
         variant: 'success',
         duration: 3000
       })
+      
+      // Limpiar el formulario después de crear exitosamente
+      form.reset()
+      
       onClose()
       onUserCreated()
     } catch (error) {
@@ -294,6 +317,282 @@ export default function NewUserModal({
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="dni"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold text-gray-900">DNI</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="12345678"
+                            maxLength={8}
+                            className={cn(
+                              "h-11 text-base",
+                              form.formState.errors.dni && "border-red-500 focus-visible:ring-red-500"
+                            )}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-sm text-gray-500">
+                          Número de DNI (8 dígitos)
+                        </FormDescription>
+                        {form.formState.errors.dni && (
+                          <div className="flex items-center gap-2 text-red-500 text-sm mt-1">
+                            <FiInfo className="h-4 w-4" />
+                            <span>{form.formState.errors.dni.message}</span>
+                          </div>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="sexo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold text-gray-900">Sexo</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className={cn(
+                              "h-11 text-base",
+                              form.formState.errors.sexo && "border-red-500 focus-visible:ring-red-500"
+                            )}>
+                              <SelectValue placeholder="Seleccione sexo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="MASCULINO">Masculino</SelectItem>
+                            <SelectItem value="FEMENINO">Femenino</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="text-sm text-gray-500">
+                          Sexo del usuario
+                        </FormDescription>
+                        {form.formState.errors.sexo && (
+                          <div className="flex items-center gap-2 text-red-500 text-sm mt-1">
+                            <FiInfo className="h-4 w-4" />
+                            <span>{form.formState.errors.sexo.message}</span>
+                          </div>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="fechaNacimiento"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-semibold text-gray-900">Fecha de Nacimiento</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="date"
+                          className={cn(
+                            "h-11 text-base",
+                            form.formState.errors.fechaNacimiento && "border-red-500 focus-visible:ring-red-500"
+                          )}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-sm text-gray-500">
+                        Fecha de nacimiento del usuario
+                      </FormDescription>
+                      {form.formState.errors.fechaNacimiento && (
+                        <div className="flex items-center gap-2 text-red-500 text-sm mt-1">
+                          <FiInfo className="h-4 w-4" />
+                          <span>{form.formState.errors.fechaNacimiento.message}</span>
+                        </div>
+                      )}
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="estadoCivil"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold text-gray-900">Estado Civil</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className={cn(
+                              "h-11 text-base",
+                              form.formState.errors.estadoCivil && "border-red-500 focus-visible:ring-red-500"
+                            )}>
+                              <SelectValue placeholder="Seleccione estado civil" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="SOLTERO">Soltero</SelectItem>
+                            <SelectItem value="CASADO">Casado</SelectItem>
+                            <SelectItem value="DIVORCIADO">Divorciado</SelectItem>
+                            <SelectItem value="VIUDO">Viudo</SelectItem>
+                            <SelectItem value="CONVIVIENTE">Conviviente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription className="text-sm text-gray-500">
+                          Estado civil del usuario
+                        </FormDescription>
+                        {form.formState.errors.estadoCivil && (
+                          <div className="flex items-center gap-2 text-red-500 text-sm mt-1">
+                            <FiInfo className="h-4 w-4" />
+                            <span>{form.formState.errors.estadoCivil.message}</span>
+                          </div>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="profesion"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold text-gray-900">Profesión</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="Ingeniero, Abogado, etc."
+                            className={cn(
+                              "h-11 text-base",
+                              form.formState.errors.profesion && "border-red-500 focus-visible:ring-red-500"
+                            )}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-sm text-gray-500">
+                          Profesión u ocupación del usuario
+                        </FormDescription>
+                        {form.formState.errors.profesion && (
+                          <div className="flex items-center gap-2 text-red-500 text-sm mt-1">
+                            <FiInfo className="h-4 w-4" />
+                            <span>{form.formState.errors.profesion.message}</span>
+                          </div>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="direccion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-semibold text-gray-900">Dirección</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Av. Principal 123"
+                          className={cn(
+                            "h-11 text-base",
+                            form.formState.errors.direccion && "border-red-500 focus-visible:ring-red-500"
+                          )}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-sm text-gray-500">
+                        Dirección exacta del usuario
+                      </FormDescription>
+                      {form.formState.errors.direccion && (
+                        <div className="flex items-center gap-2 text-red-500 text-sm mt-1">
+                          <FiInfo className="h-4 w-4" />
+                          <span>{form.formState.errors.direccion.message}</span>
+                        </div>
+                      )}
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="distrito"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold text-gray-900">Distrito</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="Distrito"
+                            className={cn(
+                              "h-11 text-base",
+                              form.formState.errors.distrito && "border-red-500 focus-visible:ring-red-500"
+                            )}
+                          />
+                        </FormControl>
+                        {form.formState.errors.distrito && (
+                          <div className="flex items-center gap-2 text-red-500 text-sm mt-1">
+                            <FiInfo className="h-4 w-4" />
+                            <span>{form.formState.errors.distrito.message}</span>
+                          </div>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="provincia"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold text-gray-900">Provincia</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="Provincia"
+                            className={cn(
+                              "h-11 text-base",
+                              form.formState.errors.provincia && "border-red-500 focus-visible:ring-red-500"
+                            )}
+                          />
+                        </FormControl>
+                        {form.formState.errors.provincia && (
+                          <div className="flex items-center gap-2 text-red-500 text-sm mt-1">
+                            <FiInfo className="h-4 w-4" />
+                            <span>{form.formState.errors.provincia.message}</span>
+                          </div>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="departamento"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold text-gray-900">Departamento</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="Departamento"
+                            className={cn(
+                              "h-11 text-base",
+                              form.formState.errors.departamento && "border-red-500 focus-visible:ring-red-500"
+                            )}
+                          />
+                        </FormControl>
+                        {form.formState.errors.departamento && (
+                          <div className="flex items-center gap-2 text-red-500 text-sm mt-1">
+                            <FiInfo className="h-4 w-4" />
+                            <span>{form.formState.errors.departamento.message}</span>
+                          </div>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}

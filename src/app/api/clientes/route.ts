@@ -71,8 +71,15 @@ export async function GET(request: Request) {
 // POST /api/clientes - Crear nuevo cliente
 export async function POST(request: Request) {
   try {
+    console.log('🔍 API clientes - Iniciando POST request')
+    
     const session = await getServerSession(authOptions)
+    console.log('🔍 API clientes - Session obtenida:', session ? 'SÍ' : 'NO')
+    console.log('🔍 API clientes - Session user:', session?.user)
+    console.log('🔍 API clientes - Session user role:', session?.user?.role)
+    
     if (!session?.user) {
+      console.log('❌ API clientes - No hay sesión válida')
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
@@ -190,7 +197,9 @@ export async function POST(request: Request) {
           create: direcciones?.map((dir: any) => ({
             tipo: dir.tipo as TipoDireccion,
             pais: dir.pais,
-            ciudad: dir.ciudad,
+            distrito: dir.distrito,
+            provincia: dir.provincia,
+            departamento: dir.departamento,
             direccion: dir.direccion,
             referencia: dir.referencia,
           })) || [],
@@ -207,7 +216,7 @@ export async function POST(request: Request) {
     console.error('Error al crear cliente:', error)
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
-        const field = error.meta?.target?.[0]
+        const field = (error.meta?.target as string[])?.[0]
         if (field === 'ruc') {
           return NextResponse.json(
             { error: 'El RUC ya está registrado en el sistema' },

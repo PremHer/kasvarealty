@@ -135,7 +135,7 @@ export default function DashboardVentasPage() {
               <FiDollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(metricas.totalVentas.toString())}</div>
+              <div className="text-2xl font-bold">{formatCurrency(metricas.totalVentas)}</div>
               <p className="text-xs text-muted-foreground">
                 {metricas.cantidadVentas} transacciones
               </p>
@@ -148,9 +148,9 @@ export default function DashboardVentasPage() {
               <FiTrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(metricas.totalComisiones.toString())}</div>
+              <div className="text-2xl font-bold">{formatCurrency(metricas.totalComisiones)}</div>
               <p className="text-xs text-muted-foreground">
-                Promedio: {formatCurrency(metricas.promedioComision.toString())}
+                Promedio: {formatCurrency(metricas.promedioComision)}
               </p>
             </CardContent>
           </Card>
@@ -174,7 +174,7 @@ export default function DashboardVentasPage() {
               <FiBarChart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(metricas.promedioVenta.toString())}</div>
+              <div className="text-2xl font-bold">{formatCurrency(metricas.promedioVenta)}</div>
               <p className="text-xs text-muted-foreground">
                 Valor promedio por transacción
               </p>
@@ -203,7 +203,7 @@ export default function DashboardVentasPage() {
                   <div className="text-right">
                     <div className="font-medium">{metricas.ventasLotes}</div>
                     <div className="text-sm text-gray-500">
-                      {formatCurrency((metricas.ventasLotes * metricas.promedioVenta).toString())}
+                      {formatCurrency(metricas.ventasLotes * metricas.promedioVenta)}
                     </div>
                   </div>
                 </div>
@@ -215,7 +215,7 @@ export default function DashboardVentasPage() {
                   <div className="text-right">
                     <div className="font-medium">{metricas.ventasUnidadesCementerio}</div>
                     <div className="text-sm text-gray-500">
-                      {formatCurrency((metricas.ventasUnidadesCementerio * metricas.promedioVenta).toString())}
+                      {formatCurrency(metricas.ventasUnidadesCementerio * metricas.promedioVenta)}
                     </div>
                   </div>
                 </div>
@@ -239,7 +239,7 @@ export default function DashboardVentasPage() {
                       <span className="font-medium">{vendedor.nombre}</span>
                     </div>
                     <div className="text-right">
-                      <div className="font-medium">{formatCurrency(vendedor.totalVentas.toString())}</div>
+                      <div className="font-medium">{formatCurrency(vendedor.totalVentas)}</div>
                       <div className="text-sm text-gray-500">{vendedor.cantidadVentas} ventas</div>
                     </div>
                   </div>
@@ -268,7 +268,7 @@ export default function DashboardVentasPage() {
                     <Badge variant="outline">{mes.cantidad} ventas</Badge>
                   </div>
                   <div className="text-right">
-                    <div className="font-medium">{formatCurrency(mes.total.toString())}</div>
+                    <div className="font-medium">{formatCurrency(mes.total)}</div>
                     {index > 0 && (
                       <div className={`text-sm ${getTendenciaColor(mes.total, metricas.ventasPorMes[index - 1].total)}`}>
                         {getTendenciaIcon(mes.total, metricas.ventasPorMes[index - 1].total)}

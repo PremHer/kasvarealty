@@ -20,19 +20,17 @@ export function ClienteCard({ cliente }: ClienteCardProps) {
             {cliente.nombre} {cliente.apellido}
           </CardTitle>
           <div className="flex gap-2">
-            <Badge variant={cliente.tipo === 'INDIVIDUAL' ? 'default' : 'secondary'}>
-              {cliente.tipo === 'INDIVIDUAL' ? 'Individual' : 'Empresa'}
+            <Badge variant={cliente.tipoCliente === 'INDIVIDUAL' ? 'default' : 'secondary'}>
+              {cliente.tipoCliente === 'INDIVIDUAL' ? 'Individual' : 'Empresa'}
             </Badge>
             <Badge
               variant={
-                cliente.estado === 'ACTIVO'
+                cliente.isActive
                   ? 'success'
-                  : cliente.estado === 'INACTIVO'
-                  ? 'destructive'
-                  : 'secondary'
+                  : 'destructive'
               }
             >
-              {cliente.estado}
+              {cliente.isActive ? 'ACTIVO' : 'INACTIVO'}
             </Badge>
           </div>
         </div>
@@ -61,10 +59,10 @@ export function ClienteCard({ cliente }: ClienteCardProps) {
               <FiMapPin className="h-4 w-4" />
               <span>Dirección</span>
             </div>
-            <p>{cliente.direccion || '-'}</p>
+            <p>{cliente.direcciones && cliente.direcciones.length > 0 ? cliente.direcciones[0].direccion : '-'}</p>
           </div>
 
-          {cliente.tipo === 'INDIVIDUAL' && (
+          {cliente.tipoCliente === 'INDIVIDUAL' && (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -106,7 +104,7 @@ export function ClienteCard({ cliente }: ClienteCardProps) {
             </>
           )}
 
-          {cliente.tipo === 'EMPRESA' && (
+          {cliente.tipoCliente === 'EMPRESA' && (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

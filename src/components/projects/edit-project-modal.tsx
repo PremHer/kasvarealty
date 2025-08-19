@@ -10,6 +10,7 @@ import { Project, ProjectFormData } from '@/types/project'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useState, useEffect } from 'react'
 
+
 const MapPicker = dynamic(() => import('../MapPicker'), {
   ssr: false,
   loading: () => (
@@ -29,6 +30,7 @@ export default function EditProjectModal({ project, onClose, onProjectUpdated }:
   const { toast } = useToast()
   const [hasRelatedData, setHasRelatedData] = useState(false)
   const [isCheckingData, setIsCheckingData] = useState(true)
+
   
   const { formData, handleChange, handleSubmit, isSubmitting, error } = useProjectForm({
     initialData: {
@@ -45,7 +47,12 @@ export default function EditProjectModal({ project, onClose, onProjectUpdated }:
       longitud: project.longitud?.toString() || '',
       precioTerreno: project.precioTerreno?.toString() || '',
       inversionInicial: project.inversionInicial?.toString() || '',
-      totalArea: project.totalArea?.toString() || ''
+      totalArea: project.totalArea?.toString() || '',
+      // Campos del predio matriz para contratos
+      extensionTotal: project.extensionTotal?.toString() || '',
+      unidadCatastral: project.unidadCatastral || '',
+      partidaRegistral: project.partidaRegistral || '',
+      plazoIndependizacion: project.plazoIndependizacion?.toString() || ''
     },
     onSubmit: async (data: ProjectFormData) => {
       try {
@@ -422,6 +429,76 @@ export default function EditProjectModal({ project, onClose, onProjectUpdated }:
               </div>
             </div>
 
+            {/* Información del Predio Matriz */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Información del Predio Matriz</h3>
+              <p className="text-sm text-gray-600 mb-4">Datos del terreno original que serán utilizados en los contratos de venta</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="extensionTotal" className="block text-sm font-medium text-gray-700">
+                    Extensión Total (hectáreas)
+                  </label>
+                  <input
+                    type="number"
+                    id="extensionTotal"
+                    name="extensionTotal"
+                    value={formData.extensionTotal}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="unidadCatastral" className="block text-sm font-medium text-gray-700">
+                    Unidad Catastral
+                  </label>
+                  <input
+                    type="text"
+                    id="unidadCatastral"
+                    name="unidadCatastral"
+                    value={formData.unidadCatastral}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+                    placeholder="Ej: 311394"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="partidaRegistral" className="block text-sm font-medium text-gray-700">
+                    Partida Registral
+                  </label>
+                  <input
+                    type="text"
+                    id="partidaRegistral"
+                    name="partidaRegistral"
+                    value={formData.partidaRegistral}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+                    placeholder="Ej: 11140550"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="plazoIndependizacion" className="block text-sm font-medium text-gray-700">
+                    Plazo de Independización (meses)
+                  </label>
+                  <input
+                    type="number"
+                    id="plazoIndependizacion"
+                    name="plazoIndependizacion"
+                    value={formData.plazoIndependizacion}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-white text-gray-900"
+                    placeholder="12"
+                    min="1"
+                    step="1"
+                  />
+                </div>
+              </div>
+            </div>
+
+
+
             {/* Información del Proyecto */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Información del Proyecto</h3>
@@ -462,6 +539,8 @@ export default function EditProjectModal({ project, onClose, onProjectUpdated }:
           </div>
         </form>
       </DialogContent>
+      
+
     </Dialog>
   )
 } 

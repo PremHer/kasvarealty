@@ -183,7 +183,7 @@ export default function EstadisticasVendedoresPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totales.totalVentas.toString())}</div>
+              <div className="text-2xl font-bold">{formatCurrency(totales.totalVentas)}</div>
               <p className="text-xs text-muted-foreground">
                 {totales.cantidadVentas} ventas realizadas
               </p>
@@ -196,9 +196,9 @@ export default function EstadisticasVendedoresPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totales.totalComisiones.toString())}</div>
+              <div className="text-2xl font-bold">{formatCurrency(totales.totalComisiones)}</div>
               <p className="text-xs text-muted-foreground">
-                Promedio: {formatCurrency(totales.promedioComision.toString())}
+                Promedio: {formatCurrency(totales.promedioComision)}
               </p>
             </CardContent>
           </Card>
@@ -222,7 +222,7 @@ export default function EstadisticasVendedoresPage() {
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totales.promedioVenta.toString())}</div>
+              <div className="text-2xl font-bold">{formatCurrency(totales.promedioVenta)}</div>
               <p className="text-xs text-muted-foreground">
                 Valor promedio por transacción
               </p>
@@ -277,13 +277,13 @@ export default function EstadisticasVendedoresPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4 font-medium">
-                      {formatCurrency(stat.totalVentas.toString())}
+                      {formatCurrency(stat.totalVentas)}
                     </td>
                     <td className="py-3 px-4 font-medium text-green-600">
-                      {formatCurrency(stat.totalComisiones.toString())}
+                      {formatCurrency(stat.totalComisiones)}
                     </td>
                     <td className="py-3 px-4">
-                      {formatCurrency(stat.promedioVenta.toString())}
+                      {formatCurrency(stat.promedioVenta)}
                     </td>
                     <td className="py-3 px-4">
                       {stat.porcentajeCumplimiento !== null ? (

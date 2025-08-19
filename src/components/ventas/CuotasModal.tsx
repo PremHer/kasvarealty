@@ -1,129 +1,98 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
-import { 
-  FiDollarSign, 
-  FiCalendar, 
-  FiCheck, 
-  FiX, 
-  FiClock, 
-  FiAlertCircle,
-  FiDownload,
-  FiPlus,
-  FiRefreshCw,
-  FiFileText,
-  FiList,
-  FiEye,
-  FiChevronDown,
-  FiChevronUp
-} from 'react-icons/fi'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-
-interface PagoCuota {
-  id: string
-  monto: number
-  fechaPago: string
-  formaPago?: string
-  voucherPago?: string
-  observaciones?: string
-  creadoPorUsuario?: {
-    id: string
-    nombre: string
-    email: string
-  }
-  comprobante?: {
-    id: string
-    nombreArchivo: string
-    driveFileUrl: string
-    driveDownloadUrl?: string
-    mimeType: string
-    tamanio: number
-  }
-  createdAt: string
-}
+import { FiDollarSign, FiCalendar, FiCheckCircle, FiClock, FiXCircle, FiPlus, FiX, FiUpload, FiChevronDown, FiChevronUp } from 'react-icons/fi'
+import React from 'react'
 
 interface Cuota {
   id: string
   numeroCuota: number
   monto: number
   fechaVencimiento: string
+  estado: 'PENDIENTE' | 'PAGADA' | 'VENCIDA' | 'PARCIAL'
+  montoPagado?: number
   fechaPago?: string
-  montoPagado: number
-  estado: 'PENDIENTE' | 'PAGADA' | 'VENCIDA' | 'CANCELADA' | 'PARCIAL'
+  saldoCapitalAnterior?: number
+  saldoCapitalPosterior?: number
+  montoCapital?: number
+  montoInteres?: number
+  interesMora?: number
+  diasVencidos?: number
+  pagos?: PagoCuota[]
+}
+
+interface PagoCuota {
+  id: string
+  monto: number
+  fechaPago: string
+  metodoPago?: string
   observaciones?: string
-  ventaId: string
-  tipoVenta: 'LOTE' | 'UNIDAD_CEMENTERIO'
-  cliente: {
+  comprobantePago?: {
     id: string
-    nombre: string
-    apellido?: string
-    email?: string
+    nombreArchivo: string
+    driveFileUrl?: string
+    localPath?: string
   }
-  vendedor: {
-    id: string
+  creadoPorUsuario?: {
     nombre: string
     email: string
   }
-  unidad: {
-    id: string
-    codigo: string
-    tipo: string
-  }
-  proyecto: {
-    id: string
-    nombre: string
-  }
   createdAt: string
-  updatedAt: string
 }
 
 interface CuotasModalProps {
   isOpen: boolean
   onClose: () => void
   ventaId: string
-  tipoVenta: 'LOTE' | 'UNIDAD_CEMENTERIO'
 }
 
-export default function CuotasModal({ isOpen, onClose, ventaId, tipoVenta }: CuotasModalProps) {
+export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalProps) {
   const [cuotas, setCuotas] = useState<Cuota[]>([])
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({
-    totalCuotas: 0,
-    cuotasPagadas: 0,
-    cuotasPendientes: 0,
-    cuotasVencidas: 0,
-    montoTotal: 0,
-    montoPagado: 0,
-    montoPendiente: 0
-  })
-  
-  // Estados para gestión de pagos integrada
+  const [loading, setLoading] = useState(false)
+  const [ventaInfo, setVentaInfo] = useState<any>(null)
+  const [calculandoAmortizacion, setCalculandoAmortizacion] = useState(false)
+  const [tasaInteresAnual, setTasaInteresAnual] = useState<number>(0)
+  const [tasaMoraAnual, setTasaMoraAnual] = useState<number>(0)
+  const [calculandoMora, setCalculandoMora] = useState(false)
   const [expandedCuota, setExpandedCuota] = useState<string | null>(null)
-  const [pagos, setPagos] = useState<PagoCuota[]>([])
-  const [loadingPagos, setLoadingPagos] = useState(false)
-  const [showForm, setShowForm] = useState(false)
-  const [creandoPago, setCreandoPago] = useState(false)
-  const [formData, setFormData] = useState({
+  const [loadingPagos, setLoadingPagos] = useState<string | null>(null)
+  const [pagoFormData, setPagoFormData] = useState({
     monto: '',
-    fechaPago: format(new Date(), 'yyyy-MM-dd'),
+    fechaPago: new Date().toISOString().split('T')[0],
     formaPago: '',
-    voucherPago: '',
     observaciones: '',
-    comprobanteArchivo: null as File | null,
-    comprobanteNombre: ''
+    comprobantes: [] as File[]
   })
-  
+
+  // Función para limpiar el formulario de pago
+  const limpiarFormularioPago = () => {
+    setPagoFormData({
+      monto: '',
+      fechaPago: new Date().toISOString().split('T')[0],
+      formaPago: '',
+      observaciones: '',
+      comprobantes: []
+    })
+  }
+  const [submittingPago, setSubmittingPago] = useState<string | null>(null)
+  const [recalculandoSaldos, setRecalculandoSaldos] = useState(false)
   const { toast } = useToast()
+
+  useEffect(() => {
+    if (isOpen && ventaId) {
+      fetchCuotas()
+    }
+  }, [isOpen, ventaId])
 
   const fetchCuotas = async () => {
     try {
@@ -133,8 +102,20 @@ export default function CuotasModal({ isOpen, onClose, ventaId, tipoVenta }: Cuo
         throw new Error('Error al cargar cuotas')
       }
       const data = await response.json()
+      console.log('Cuotas recibidas:', data.cuotas)
+      console.log('🔍 Verificando campos de mora en cuotas:', data.cuotas.map((c: any) => ({
+        numeroCuota: c.numeroCuota,
+        interesMora: c.interesMora,
+        diasVencidos: c.diasVencidos
+      })))
       setCuotas(data.cuotas)
-      calcularEstadisticas(data.cuotas)
+      
+      // También obtener información de la venta
+      const ventaResponse = await fetch(`/api/ventas/${ventaId}`)
+      if (ventaResponse.ok) {
+        const ventaData = await ventaResponse.json()
+        setVentaInfo(ventaData)
+      }
     } catch (error) {
       console.error('Error:', error)
       toast({
@@ -147,78 +128,249 @@ export default function CuotasModal({ isOpen, onClose, ventaId, tipoVenta }: Cuo
     }
   }
 
-  const calcularEstadisticas = (cuotasData: Cuota[]) => {
-    const totalCuotas = cuotasData.length
-    const cuotasPagadas = cuotasData.filter(c => c.estado === 'PAGADA').length
-    const cuotasPendientes = cuotasData.filter(c => c.estado === 'PENDIENTE').length
-    const cuotasVencidas = cuotasData.filter(c => c.estado === 'VENCIDA').length
-    const montoTotal = cuotasData.reduce((sum, c) => sum + c.monto, 0)
-    const montoPagado = cuotasData.reduce((sum, c) => sum + c.montoPagado, 0)
-    const montoPendiente = montoTotal - montoPagado
-
-    setStats({
-      totalCuotas,
-      cuotasPagadas,
-      cuotasPendientes,
-      cuotasVencidas,
-      montoTotal,
-      montoPagado,
-      montoPendiente
-    })
-  }
-
-  useEffect(() => {
-    if (isOpen && ventaId) {
-      fetchCuotas()
+  const fetchPagosCuota = async (cuotaId: string) => {
+    try {
+      setLoadingPagos(cuotaId)
+      const response = await fetch(`/api/cuotas/${cuotaId}/pagos`)
+      if (response.ok) {
+        const data = await response.json()
+        setCuotas(prev => prev.map(cuota => 
+          cuota.id === cuotaId 
+            ? { ...cuota, pagos: data.pagos }
+            : cuota
+        ))
+      }
+    } catch (error) {
+      console.error('Error al cargar pagos:', error)
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los pagos de la cuota',
+        variant: 'destructive'
+      })
+    } finally {
+      setLoadingPagos(null)
     }
-  }, [isOpen, ventaId])
-
-  const handlePagoCreado = () => {
-    fetchCuotas()
   }
 
-  const handleCuotaActualizada = (cuotaActualizada: any) => {
-    setCuotas(prevCuotas => {
-      const cuotasActualizadas = prevCuotas.map(cuota => 
-        cuota.id === cuotaActualizada.id 
-          ? {
-              ...cuota,
-              montoPagado: cuotaActualizada.montoPagado,
-              estado: cuotaActualizada.estado,
-              fechaPago: cuotaActualizada.fechaPago
-            }
-          : cuota
-      )
+  const toggleCuotaExpansion = (cuotaId: string) => {
+    if (expandedCuota === cuotaId) {
+      // Si se está cerrando la misma cuota, solo cerrar
+      setExpandedCuota(null)
+    } else {
+      // Si se está abriendo una cuota diferente, limpiar formulario y cambiar
+      if (expandedCuota !== null) {
+        limpiarFormularioPago()
+      }
+      setExpandedCuota(cuotaId)
+      // Cargar pagos si no están cargados
+      const cuota = cuotas.find(c => c.id === cuotaId)
+      if (cuota && !cuota.pagos) {
+        fetchPagosCuota(cuotaId)
+      }
+    }
+  }
+
+  const handlePagoSubmit = async (cuotaId: string) => {
+    const cuota = cuotas.find(c => c.id === cuotaId)
+    if (!cuota) return
+
+    const montoPago = parseFloat(pagoFormData.monto)
+    // Calcular monto pendiente incluyendo intereses por mora
+    const montoBasePendiente = cuota.monto - (cuota.montoPagado || 0)
+    const interesMora = cuota.interesMora || 0
+    const montoPendiente = montoBasePendiente + interesMora
+    
+    // Redondear a 2 decimales para evitar problemas de precisión
+    const montoPagoRedondeado = roundToTwoDecimals(montoPago)
+    const montoPendienteRedondeado = roundToTwoDecimals(montoPendiente)
+
+    // Debug logs para entender el problema
+    console.log('🔍 Debug - Datos de pago con mora:', {
+      cuotaId,
+      montoCuota: cuota.monto,
+      montoPagado: cuota.montoPagado,
+      interesMora,
+      montoBasePendiente,
+      montoPendienteCalculado: montoPendiente,
+      montoPendienteRedondeado,
+      montoPagoIngresado: pagoFormData.monto,
+      montoPagoRedondeado,
+      diferencia: montoPagoRedondeado - montoPendienteRedondeado,
+      tolerancia: 0.01,
+      excedeTolerancia: (montoPagoRedondeado - montoPendienteRedondeado) > 0.01,
+      calculoVerificacion: `${cuota.monto} + ${interesMora} - ${cuota.montoPagado || 0} = ${montoPendiente}`,
+      valoresExactos: {
+        montoPagoString: pagoFormData.monto,
+        montoPagoParseFloat: parseFloat(pagoFormData.monto),
+        montoPagoToFixed: parseFloat(pagoFormData.monto).toFixed(2),
+        montoPagoFinal: montoPagoRedondeado
+      }
+    })
+
+    if (!pagoFormData.monto || montoPagoRedondeado <= 0) {
+      toast({
+        title: 'Error',
+        description: 'El monto debe ser mayor a 0',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Usar una comparación más tolerante para evitar problemas de precisión decimal
+    const diferencia = montoPagoRedondeado - montoPendienteRedondeado
+    const tolerancia = 0.01 // Tolerancia de 1 centavo
+    
+    console.log('🔍 Debug - Validación final:', {
+      montoPagoRedondeado,
+      montoPendienteRedondeado,
+      diferencia,
+      tolerancia,
+      esValido: diferencia <= tolerancia,
+      comparacionExacta: montoPagoRedondeado === montoPendienteRedondeado,
+      comparacionTolerante: Math.abs(diferencia) <= tolerancia
+    })
+    
+    if (diferencia > tolerancia) {
+      const mensajeError = interesMora > 0 
+        ? `El monto excede el pendiente. Máximo permitido: ${formatCurrency(montoPendienteRedondeado)} (Cuota base: ${formatCurrency(cuota.monto)} + Mora: ${formatCurrency(interesMora)} - Pagado: ${formatCurrency(cuota.montoPagado || 0)})`
+        : `El monto excede el pendiente. Máximo permitido: ${formatCurrency(montoPendienteRedondeado)} (Cuota: ${formatCurrency(cuota.monto)} - Pagado: ${formatCurrency(cuota.montoPagado || 0)})`
       
-      calcularEstadisticas(cuotasActualizadas)
-      return cuotasActualizadas
-    })
+      toast({
+        title: 'Error',
+        description: mensajeError,
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!pagoFormData.fechaPago) {
+      toast({
+        title: 'Error',
+        description: 'La fecha de pago es requerida',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setSubmittingPago(cuotaId)
+    try {
+      const formDataToSend = new FormData()
+      formDataToSend.append('monto', montoPagoRedondeado.toString())
+      formDataToSend.append('fechaPago', pagoFormData.fechaPago)
+      formDataToSend.append('formaPago', pagoFormData.formaPago)
+      formDataToSend.append('observaciones', pagoFormData.observaciones)
+
+      // Agregar comprobantes si existen
+      pagoFormData.comprobantes.forEach((archivo, index) => {
+        formDataToSend.append(`comprobante_${index}`, archivo)
+        formDataToSend.append(`comprobante_${index}_data`, JSON.stringify({
+          nombreArchivo: archivo.name,
+          tipo: 'CUOTA',
+          monto: montoPagoRedondeado,
+          fecha: pagoFormData.fechaPago,
+          descripcion: `Pago cuota ${cuota.numeroCuota}`
+        }))
+      })
+
+      const response = await fetch(`/api/cuotas/${cuotaId}/pagos`, {
+        method: 'POST',
+        body: formDataToSend
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        
+        toast({
+          title: 'Éxito',
+          description: 'Pago registrado correctamente'
+        })
+        
+        // Limpiar formulario
+        setPagoFormData({
+          monto: '',
+          fechaPago: new Date().toISOString().split('T')[0],
+          formaPago: '',
+          observaciones: '',
+          comprobantes: []
+        })
+        
+        // Recargar datos
+        await fetchCuotas()
+        await fetchPagosCuota(cuotaId)
+        
+        // Limpiar formulario y cerrar
+        limpiarFormularioPago()
+        setExpandedCuota(null)
+      } else {
+        const error = await response.json()
+        
+        // NUEVO: Manejo específico para error de pago secuencial
+        if (error.error && error.error.includes('orden secuencial')) {
+          toast({
+            title: 'Error de Orden de Pago',
+            description: error.error,
+            variant: 'destructive'
+          })
+        } else {
+          toast({
+            title: 'Error',
+            description: error.error || 'Error al registrar el pago',
+            variant: 'destructive'
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Error al registrar el pago',
+        variant: 'destructive'
+      })
+    } finally {
+      setSubmittingPago(null)
+    }
   }
 
-  const getEstadoBadge = (estado: string) => {
-    const estados = {
-      PENDIENTE: { label: 'Pendiente', variant: 'secondary' as const, icon: FiClock, color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
-      PAGADA: { label: 'Pagada', variant: 'default' as const, icon: FiCheck, color: 'text-green-600 bg-green-50 border-green-200' },
-      VENCIDA: { label: 'Vencida', variant: 'destructive' as const, icon: FiAlertCircle, color: 'text-red-600 bg-red-50 border-red-200' },
-      CANCELADA: { label: 'Cancelada', variant: 'destructive' as const, icon: FiX, color: 'text-gray-600 bg-gray-50 border-gray-200' },
-      PARCIAL: { label: 'Parcial', variant: 'outline' as const, icon: FiDollarSign, color: 'text-blue-600 bg-blue-50 border-blue-200' }
+  const handleFileUpload = (file: File) => {
+    setPagoFormData(prev => ({
+      ...prev,
+      comprobantes: [...prev.comprobantes, file]
+    }))
+  }
+
+  const removeComprobante = (index: number) => {
+    setPagoFormData(prev => ({
+      ...prev,
+      comprobantes: prev.comprobantes.filter((_, i) => i !== index)
+    }))
+  }
+
+  const getEstadoBadge = (cuota: any) => {
+    // Si la cuota está pagada, mostrar como pagada
+    if (cuota.estado === 'PAGADA') {
+        return <Badge className="bg-green-100 text-green-800"><FiCheckCircle className="h-3 w-3 mr-1" />Pagada</Badge>
     }
     
-    const estadoInfo = estados[estado as keyof typeof estados] || { 
-      label: estado, 
-      variant: 'secondary' as const, 
-      icon: FiClock,
-      color: 'text-gray-600 bg-gray-50 border-gray-200'
+    // Si la cuota está parcialmente pagada, mostrar como parcial
+    if (cuota.estado === 'PARCIAL') {
+      return <Badge className="bg-blue-100 text-blue-800"><FiClock className="h-3 w-3 mr-1" />Parcial</Badge>
     }
     
-    const IconComponent = estadoInfo.icon
+    // Si la cuota está pendiente, verificar si está vencida
+    if (cuota.estado === 'PENDIENTE') {
+      const fechaVencimiento = new Date(cuota.fechaVencimiento)
+      const fechaActual = new Date()
+      const estaVencida = fechaVencimiento < fechaActual
+      
+      if (estaVencida) {
+        return <Badge className="bg-red-100 text-red-800"><FiXCircle className="h-3 w-3 mr-1" />Vencida</Badge>
+      } else {
+        return <Badge className="bg-yellow-100 text-yellow-800"><FiClock className="h-3 w-3 mr-1" />Pendiente</Badge>
+      }
+    }
     
-    return (
-      <Badge variant={estadoInfo.variant} className={`flex items-center gap-1 ${estadoInfo.color}`}>
-        <IconComponent className="h-3 w-3" />
-        {estadoInfo.label}
-      </Badge>
-    )
+    // Para otros estados, mostrar como están
+    return <Badge variant="secondary">{cuota.estado}</Badge>
   }
 
   const formatCurrency = (amount: number) => {
@@ -232,772 +384,736 @@ export default function CuotasModal({ isOpen, onClose, ventaId, tipoVenta }: Cuo
     return format(new Date(dateString), 'dd/MM/yyyy', { locale: es })
   }
 
-  const isCuotaVencida = (fechaVencimiento: string) => {
-    return new Date(fechaVencimiento) < new Date()
+  // Función helper para redondear a 2 decimales y evitar problemas de precisión
+  const roundToTwoDecimals = (value: number): number => {
+    // Usar toFixed(2) y parseFloat para asegurar precisión de 2 decimales
+    return parseFloat(value.toFixed(2))
   }
 
-  // Funciones para gestión de pagos integrada
-  const fetchPagos = async (cuotaId: string) => {
-    try {
-      setLoadingPagos(true)
-      const response = await fetch(`/api/cuotas/${cuotaId}/pagos`)
-      if (!response.ok) {
-        throw new Error('Error al cargar pagos')
-      }
-      const data = await response.json()
-      console.log('Datos de pagos recibidos:', data)
-      console.log('Pagos con comprobantes:', data.pagos?.map((p: any) => ({
-        id: p.id,
-        monto: p.monto,
-        comprobanteId: p.comprobanteId,
-        comprobante: p.comprobante ? {
-          id: p.comprobante.id,
-          nombreArchivo: p.comprobante.nombreArchivo,
-          tamanio: p.comprobante.tamanio
-        } : null
-      })))
-      setPagos(data.pagos || [])
-    } catch (error) {
-      console.error('Error:', error)
+  const calcularTotales = () => {
+    const totalCuotas = cuotas.length
+    const cuotasPagadas = cuotas.filter(c => c.estado === 'PAGADA').length
+    const montoTotal = cuotas.reduce((sum, c) => sum + c.monto, 0)
+    const montoPagado = cuotas.reduce((sum, c) => sum + (c.montoPagado || 0), 0)
+
+    return { totalCuotas, cuotasPagadas, montoTotal, montoPagado }
+  }
+
+  const { totalCuotas, cuotasPagadas, montoTotal, montoPagado } = calcularTotales()
+
+  const calcularAmortizacion = async () => {
+    if (!ventaInfo?.tasaInteres || ventaInfo.tasaInteres <= 0) {
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar los pagos',
+        description: 'Esta venta no tiene intereses configurados',
         variant: 'destructive'
       })
-    } finally {
-      setLoadingPagos(false)
+      return
     }
-  }
 
-  const handleFileUpload = (file: File) => {
-    if (file) {
-      // Validar tipo de archivo (PDF, JPG, PNG)
-      const tiposPermitidos = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
-      if (!tiposPermitidos.includes(file.type)) {
-        toast({
-          title: 'Error',
-          description: 'Solo se permiten archivos PDF, JPG o PNG',
-          variant: 'destructive'
-        })
-        return
-      }
-
-      // Validar tamaño (máximo 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: 'Error',
-          description: 'El archivo no puede ser mayor a 5MB',
-          variant: 'destructive'
-        })
-        return
-      }
-
-      setFormData(prev => ({
-        ...prev,
-        comprobanteArchivo: file,
-        comprobanteNombre: file.name
-      }))
-    }
-  }
-
-  const handleVerComprobante = async (comprobante: any) => {
+    setCalculandoAmortizacion(true)
     try {
-      if (comprobante?.driveFileUrl) {
-        const newWindow = window.open(comprobante.driveFileUrl, '_blank')
-        
-        if (!newWindow || newWindow.closed) {
-          await handleMakePublic(comprobante.id)
-        }
-      } else {
-        toast({
-          title: 'Error',
-          description: 'No se puede abrir el comprobante. URL no disponible.',
-          variant: 'destructive'
-        })
-      }
-    } catch (error) {
-      console.error('Error al abrir comprobante:', error)
-      await handleMakePublic(comprobante.id)
-    }
-  }
-
-  const handleDescargarComprobante = async (comprobante: any) => {
-    try {
-      if (!comprobante) {
-        toast({
-          title: 'Error',
-          description: 'Información del comprobante no disponible',
-          variant: 'destructive'
-        })
-        return
-      }
-
-      if (comprobante.driveDownloadUrl) {
-        const link = document.createElement('a')
-        link.href = comprobante.driveDownloadUrl
-        link.download = comprobante.nombreArchivo
-        link.target = '_blank'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      } else if (comprobante.driveFileUrl) {
-        const newWindow = window.open(comprobante.driveFileUrl, '_blank')
-        
-        if (!newWindow || newWindow.closed) {
-          await handleMakePublic(comprobante.id)
-        }
-      } else {
-        toast({
-          title: 'Error',
-          description: 'No hay enlaces disponibles para descargar el comprobante',
-          variant: 'destructive'
-        })
-      }
-    } catch (error) {
-      console.error('Error al descargar comprobante:', error)
-      await handleMakePublic(comprobante.id)
-    }
-  }
-
-  const handleMakePublic = async (comprobanteId: string) => {
-    try {
-      toast({
-        title: 'Configurando acceso...',
-        description: 'Haciendo público el archivo para que puedas acceder',
-        variant: 'default'
-      })
-
-      const response = await fetch(`/api/comprobantes-pago/${comprobanteId}/make-public`, {
+      const response = await fetch(`/api/ventas/${ventaId}/calcular-amortizacion`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
+        body: JSON.stringify({
+          tasaInteresAnual: ventaInfo.tasaInteres
+        })
       })
 
       if (response.ok) {
-        const data = await response.json()
-        toast({
-          title: 'Archivo configurado',
-          description: 'El archivo ahora es accesible públicamente',
-          variant: 'default'
-        })
-        
-        if (expandedCuota) {
-          await fetchPagos(expandedCuota)
-        }
-      } else {
-        throw new Error('Error al hacer público el archivo')
-      }
-    } catch (error) {
-      console.error('Error al hacer público el archivo:', error)
       toast({
-        title: 'Error',
-        description: 'No se pudo configurar el acceso al archivo',
-        variant: 'destructive'
-      })
-    }
-  }
-
-  const handleCrearPago = async () => {
-    if (!expandedCuota) return
-
-    try {
-      setCreandoPago(true)
-      
-      const formDataToSend = new FormData()
-      formDataToSend.append('monto', formData.monto)
-      formDataToSend.append('fechaPago', formData.fechaPago)
-      formDataToSend.append('formaPago', formData.formaPago)
-      formDataToSend.append('voucherPago', formData.voucherPago)
-      formDataToSend.append('observaciones', formData.observaciones)
-      
-      // Agregar archivo de comprobante si existe, usando la misma estructura que en ventas
-      if (formData.comprobanteArchivo) {
-        formDataToSend.append('comprobante_0', formData.comprobanteArchivo)
-        formDataToSend.append('comprobante_0_data', JSON.stringify({
-          tipo: 'CUOTA',
-          monto: parseFloat(formData.monto),
-          fecha: formData.fechaPago,
-          descripcion: `Comprobante de pago - ${formData.formaPago || 'Pago'}`
-        }))
-      }
-
-      const response = await fetch(`/api/cuotas/${expandedCuota}/pagos`, {
-        method: 'POST',
-        body: formDataToSend,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Error al crear pago')
-      }
-
-      const responseData = await response.json()
-      console.log('Respuesta del pago creado:', responseData)
-      console.log('Pago con comprobante:', responseData.pago?.comprobante)
-      
-      await fetchPagos(expandedCuota)
-      await fetchCuotas()
-      
-      setFormData({
-        monto: '',
-        fechaPago: format(new Date(), 'yyyy-MM-dd'),
-        formaPago: '',
-        voucherPago: '',
-        observaciones: '',
-        comprobanteArchivo: null,
-        comprobanteNombre: ''
-      })
-      setShowForm(false)
-      
-      // Verificar el estado del archivo
-      if (formData.comprobanteArchivo) {
-        if (responseData.archivoGuardado) {
-          if (responseData.pago.comprobante?.driveFileId === 'LOCAL_BACKUP') {
-            toast({
-              title: 'Pago registrado',
-              description: 'El pago se registró correctamente. El archivo se guardó localmente como respaldo.',
-              variant: 'default'
-            })
-          } else {
-            toast({
-              title: 'Pago registrado',
-              description: 'El pago se registró correctamente con el archivo subido a Google Drive',
-              variant: 'default'
-            })
-          }
-        } else {
-          toast({
-            title: 'Pago registrado',
-            description: 'El pago se registró correctamente, pero no se pudo guardar el archivo',
-            variant: 'destructive'
-          })
-        }
-      } else {
-        toast({
-          title: 'Pago registrado',
-          description: 'La información se ha actualizado correctamente',
-          variant: 'default'
+        title: 'Éxito',
+          description: 'Amortización calculada correctamente'
         })
+        await fetchCuotas()
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al calcular amortización')
       }
-      
     } catch (error) {
       console.error('Error:', error)
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'No se pudo crear el pago',
+        description: error instanceof Error ? error.message : 'Error al calcular amortización',
         variant: 'destructive'
       })
     } finally {
-      setCreandoPago(false)
+      setCalculandoAmortizacion(false)
     }
   }
 
-  const handleToggleExpansion = async (cuotaId: string) => {
-    if (expandedCuota === cuotaId) {
-      setExpandedCuota(null)
-      setPagos([])
-      setShowForm(false)
+  // Función para determinar si una cuota se puede pagar
+  const puedePagarCuota = (cuota: any) => {
+    if (cuota.estado === 'PAGADA') return false
+    
+    // Si es la primera cuota, siempre se puede pagar
+    if (cuota.numeroCuota === 1) return true
+    
+    // Buscar la cuota anterior
+    const cuotaAnterior = cuotas.find(c => c.numeroCuota === cuota.numeroCuota - 1)
+    if (!cuotaAnterior) return true
+    
+    // Solo se puede pagar si la cuota anterior está completamente pagada
+    return cuotaAnterior.estado === 'PAGADA'
+  }
+
+  // Función para obtener el estado de pago de una cuota
+  const getEstadoPago = (cuota: any) => {
+    if (cuota.estado === 'PAGADA') return 'Completamente pagada'
+    if (cuota.estado === 'PARCIAL') return 'Pago parcial'
+    if (cuota.estado === 'VENCIDA') return 'Vencida'
+    
+    // Verificar si se puede pagar
+    if (puedePagarCuota(cuota)) {
+      return 'Lista para pagar'
     } else {
-      setExpandedCuota(cuotaId)
-      await fetchPagos(cuotaId)
+      return 'Esperando pago de cuota anterior'
+    }
+  }
+
+  // Función para recalcular saldos de capital
+  const recalcularSaldos = async () => {
+    try {
+      setRecalculandoSaldos(true)
+      
+      const response = await fetch(`/api/ventas/${ventaId}/recalcular-saldos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok) {
+        toast({
+          title: 'Éxito',
+          description: 'Saldos de capital recalculados correctamente'
+        })
+        
+        // Recargar cuotas para mostrar los nuevos saldos
+        await fetchCuotas()
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message || 'Error al recalcular saldos',
+          variant: 'destructive'
+        })
+      }
+    } catch (error) {
+      console.error('Error al recalcular saldos:', error)
+      toast({
+        title: 'Error',
+        description: 'Error al recalcular saldos',
+        variant: 'destructive'
+      })
+    } finally {
+      setRecalculandoSaldos(false)
+    }
+  }
+
+  // Función para calcular intereses por mora
+  const calcularInteresesMora = async () => {
+    if (!tasaMoraAnual || tasaMoraAnual <= 0) {
+      toast({
+        title: 'Error',
+        description: 'Debe ingresar una tasa de mora válida',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setCalculandoMora(true)
+    try {
+      const response = await fetch(`/api/ventas/${ventaId}/calcular-mora`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          tasaMoraAnual: tasaMoraAnual
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('✅ Resultado del cálculo de mora:', result)
+        toast({
+          title: 'Éxito',
+          description: `Intereses por mora calculados: ${formatCurrency(result.totalMora)}`
+        })
+        console.log('🔄 Recargando cuotas...')
+        await fetchCuotas()
+        console.log('✅ Cuotas recargadas después del cálculo de mora')
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al calcular intereses por mora')
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Error al calcular intereses por mora',
+        variant: 'destructive'
+      })
+    } finally {
+      setCalculandoMora(false)
     }
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FiDollarSign className="h-5 w-5" />
-            Gestión de Cuotas
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchCuotas}
-              className="ml-auto"
-            >
-              <FiRefreshCw className="h-4 w-4" />
-            </Button>
+            Cuotas de la Venta
+            {ventaInfo && (
+              <span className="text-sm text-gray-500">
+                - {ventaInfo.cliente?.nombre} {ventaInfo.cliente?.apellido}
+                {ventaInfo?.lote?.codigo || ventaInfo?.unidad?.codigo ? (
+                  <span className="ml-2 text-blue-600 font-semibold">
+                    {ventaInfo?.tipoVenta === 'LOTE' ? 'LOTE' : 
+                     ventaInfo?.tipoVenta === 'UNIDAD_CEMENTERIO' ? 'UNIDAD CEMENTERIO' : 
+                     'UNIDAD'} {ventaInfo.lote?.codigo || ventaInfo.unidad?.codigo}
+                  </span>
+                ) : null}
+              </span>
+            )}
           </DialogTitle>
         </DialogHeader>
 
-        {/* Estadísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-600">Total Cuotas</p>
-                <p className="text-2xl font-bold text-blue-900">{stats.totalCuotas}</p>
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Resumen */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600">{totalCuotas}</div>
+                <div className="text-sm font-medium text-gray-700">Total Cuotas</div>
               </div>
-              <FiDollarSign className="h-8 w-8 text-blue-600" />
-            </div>
-          </div>
-
-          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-600">Pagadas</p>
-                <p className="text-2xl font-bold text-green-900">{stats.cuotasPagadas}</p>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600">{cuotasPagadas}</div>
+                <div className="text-sm font-medium text-gray-700">Pagadas</div>
               </div>
-              <FiCheck className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
-
-          <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-yellow-600">Pendientes</p>
-                <p className="text-2xl font-bold text-yellow-900">{stats.cuotasPendientes}</p>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-yellow-600">{totalCuotas - cuotasPagadas}</div>
+                <div className="text-sm font-medium text-gray-700">Pendientes</div>
               </div>
-              <FiClock className="h-8 w-8 text-yellow-600" />
-            </div>
-          </div>
-
-          <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-red-600">Vencidas</p>
-                <p className="text-2xl font-bold text-red-900">{stats.cuotasVencidas}</p>
+              <div className="text-center">
+                <div className="text-xl font-bold text-gray-900">{formatCurrency(montoTotal)}</div>
+                <div className="text-sm font-medium text-gray-700">Monto Total</div>
               </div>
-              <FiAlertCircle className="h-8 w-8 text-red-600" />
+              <div className="text-center">
+                <div className="text-xl font-bold text-green-600">{formatCurrency(montoPagado)}</div>
+                <div className="text-sm font-medium text-gray-700">Pagado</div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Resumen financiero */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gray-50 p-4 rounded-lg border">
-            <p className="text-sm font-medium text-gray-600">Monto Total</p>
-            <p className="text-xl font-bold text-gray-900">{formatCurrency(stats.montoTotal)}</p>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-            <p className="text-sm font-medium text-green-600">Monto Pagado</p>
-            <p className="text-xl font-bold text-green-900">{formatCurrency(stats.montoPagado)}</p>
-          </div>
-          <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-            <p className="text-sm font-medium text-orange-600">Monto Pendiente</p>
-            <p className="text-xl font-bold text-orange-900">{formatCurrency(stats.montoPendiente)}</p>
-          </div>
-        </div>
+            {/* Botón para recalcular saldos - Solo para ventas con intereses */}
+            {ventaInfo?.tasaInteres && ventaInfo.tasaInteres > 0 && (
+              <div className="flex justify-end">
+                <Button 
+                  onClick={recalcularSaldos} 
+                  variant="outline" 
+                  size="sm"
+                  disabled={recalculandoSaldos}
+                  className="text-xs"
+                >
+                  {recalculandoSaldos ? 'Recalculando...' : 'Recalcular Saldos de Capital'}
+                </Button>
+              </div>
+            )}
 
-        {/* Tabla de cuotas */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Cuotas de la Venta</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                toast({
-                  title: 'Funcionalidad en desarrollo',
-                  description: 'La exportación de cuotas estará disponible próximamente',
-                  variant: 'default'
-                })
-              }}
-            >
-              <FiDownload className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-8">
-              <FiRefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500">Cargando cuotas...</p>
-            </div>
-          ) : cuotas.length === 0 ? (
-            <div className="text-center py-8">
-              <FiDollarSign className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay cuotas registradas</h3>
-              <p className="text-gray-500">Esta venta no tiene cuotas configuradas</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="font-semibold">Cuota</TableHead>
-                    <TableHead className="font-semibold">Monto</TableHead>
-                    <TableHead className="font-semibold">Vencimiento</TableHead>
-                    <TableHead className="font-semibold">Estado</TableHead>
-                    <TableHead className="font-semibold">Pago</TableHead>
-                    <TableHead className="font-semibold">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cuotas.map((cuota) => (
-                    <React.Fragment key={cuota.id}>
-                    <TableRow 
-                      className={`hover:bg-gray-50 transition-colors ${
-                        isCuotaVencida(cuota.fechaVencimiento) && cuota.estado === 'PENDIENTE' 
-                          ? 'bg-red-50' 
-                          : ''
-                      }`}
-                    >
-                      <TableCell>
-                        <div className="font-medium">Cuota {cuota.numeroCuota}</div>
-                        {cuota.observaciones && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {cuota.observaciones}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-semibold">{formatCurrency(cuota.monto)}</div>
-                        {cuota.montoPagado > 0 && (
-                          <div className="text-sm text-gray-500">
-                            Pagado: {formatCurrency(cuota.montoPagado)}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{formatDate(cuota.fechaVencimiento)}</div>
-                        {isCuotaVencida(cuota.fechaVencimiento) && cuota.estado === 'PENDIENTE' && (
-                          <div className="text-xs text-red-600 font-medium">
-                            Vencida
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {getEstadoBadge(cuota.estado)}
-                      </TableCell>
-                      <TableCell>
-                        {cuota.fechaPago ? (
-                          <div>
-                            <div className="font-medium">{formatDate(cuota.fechaPago)}</div>
-                            <div className="text-sm text-gray-500">
-                              {formatCurrency(cuota.montoPagado)}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">Sin pago</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                          <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                              onClick={() => handleToggleExpansion(cuota.id)}
-                              className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
-                              title="Ver pagos"
-                        >
-                              {expandedCuota === cuota.id ? (
-                                <FiChevronUp className="h-3 w-3" />
-                              ) : (
-                                <FiChevronDown className="h-3 w-3" />
-                              )}
-                              Pagos
-                        </Button>
-                          </div>
-                      </TableCell>
-                    </TableRow>
-                      
-                      {/* Fila expandible para gestión de pagos */}
-                      {expandedCuota === cuota.id && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="p-0">
-                            <div className="bg-gray-50 border-t border-gray-200 p-6">
-                              {/* Resumen de la cuota */}
-                              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-4">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                  <div>
-                                    <h3 className="text-lg font-semibold text-blue-900 mb-2">Cuota {cuota.numeroCuota}</h3>
-                                    <div className="space-y-1">
-                                      <div className="flex justify-between">
-                                        <span className="text-blue-700">Monto total:</span>
-                                        <span className="font-semibold text-blue-900">{formatCurrency(cuota.monto)}</span>
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-blue-700">Monto pagado:</span>
-                                        <span className="font-semibold text-green-600">{formatCurrency(cuota.montoPagado)}</span>
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-blue-700">Monto pendiente:</span>
-                                        <span className="font-semibold text-orange-600">{formatCurrency(cuota.monto - cuota.montoPagado)}</span>
-                                      </div>
-            </div>
-        </div>
-
-                <div>
-                                    <div className="mb-2">
-                                      {getEstadoBadge(cuota.estado)}
-                                    </div>
-                                    <div className="text-sm text-blue-700">
-                                      <div>Vencimiento: {formatDate(cuota.fechaVencimiento)}</div>
-                                      <div>Progreso: {((cuota.montoPagado / cuota.monto) * 100).toFixed(1)}%</div>
-                                    </div>
-                </div>
-
-                <div>
-                                    <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                                      <div 
-                                        className="h-3 rounded-full bg-green-500 transition-all duration-300"
-                                        style={{ width: `${Math.min((cuota.montoPagado / cuota.monto) * 100, 100)}%` }}
-                                      ></div>
-                                    </div>
-                                    <div className="text-xs text-blue-600">
-                                      {cuota.montoPagado} de {cuota.monto} pagado
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Botones de acción */}
-                              <div className="mb-4 flex gap-2">
-                                {cuota.monto - cuota.montoPagado > 0 && (
-                                  <Button 
-                                    onClick={() => setShowForm(!showForm)}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    <FiPlus className="w-4 h-4 mr-2" />
-                                    {showForm ? 'Cancelar' : 'Agregar Pago'}
-                                  </Button>
-                                )}
-                                <Button 
-                                  onClick={async () => {
-                                    await fetchPagos(cuota.id)
-                                  }}
-                                  variant="outline"
-                                  className="text-blue-600 hover:text-blue-700"
-                                >
-                                  <FiRefreshCw className="w-4 h-4 mr-2" />
-                                  Actualizar
-                                </Button>
-                              </div>
-
-                              {/* Formulario de pago */}
-                              {showForm && (
-                                <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-                                  <h4 className="font-medium text-gray-900 mb-4">Registrar Nuevo Pago</h4>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                      <Label htmlFor="monto">Monto</Label>
-                  <Input
-                                        id="monto"
-                    type="number"
-                    step="0.01"
-                                        value={formData.monto}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, monto: e.target.value }))}
-                                        placeholder={`Máximo: ${formatCurrency(cuota.monto - cuota.montoPagado)}`}
-                                        max={cuota.monto - cuota.montoPagado}
-                                      />
-                                      <p className="text-xs text-gray-500 mt-1">
-                                        Monto pendiente: {formatCurrency(cuota.monto - cuota.montoPagado)}
-                                      </p>
-                </div>
-
-                <div>
-                  <Label htmlFor="fechaPago">Fecha de Pago</Label>
-                  <Input
-                    id="fechaPago"
-                    type="date"
-                                        value={formData.fechaPago}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, fechaPago: e.target.value }))}
-                  />
-                </div>
-
-                <div>
-                                      <Label htmlFor="formaPago">Forma de Pago</Label>
-                                      <Select value={formData.formaPago} onValueChange={(value) => setFormData(prev => ({ ...prev, formaPago: value }))}>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Seleccionar forma de pago" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="EFECTIVO">Efectivo</SelectItem>
-                                          <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
-                                          <SelectItem value="DEPOSITO">Depósito</SelectItem>
-                                          <SelectItem value="CHEQUE">Cheque</SelectItem>
-                                          <SelectItem value="TARJETA_CREDITO">Tarjeta de Crédito</SelectItem>
-                                          <SelectItem value="TARJETA_DEBITO">Tarjeta de Débito</SelectItem>
-                                          <SelectItem value="YAPE">Yape</SelectItem>
-                                          <SelectItem value="PLIN">Plin</SelectItem>
-                                          <SelectItem value="OTRO">Otro</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                </div>
-
-                <div>
-                                      <Label htmlFor="voucherPago">Voucher/Comprobante</Label>
-                  <Input
-                    id="voucherPago"
-                                        value={formData.voucherPago}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, voucherPago: e.target.value }))}
-                    placeholder="Número de voucher"
-                  />
-                </div>
-
-                                    <div className="md:col-span-2">
-                                      <Label htmlFor="observaciones">Observaciones</Label>
-                                      <Textarea
-                                        id="observaciones"
-                                        value={formData.observaciones}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
-                                        placeholder="Observaciones sobre el pago"
-                                        rows={3}
-                                      />
-                                    </div>
-
-                                    <div className="md:col-span-2">
-                  <Label htmlFor="comprobanteArchivo">Comprobante de Pago</Label>
-                  <div className="space-y-2">
-                    <input
-                      type="file"
-                      id="comprobanteArchivo"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          handleFileUpload(file)
-                        }
-                      }}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                                        {formData.comprobanteNombre && (
-                      <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded">
-                        <FiFileText className="h-4 w-4 text-green-600" />
-                                            <span className="text-sm text-green-700">{formData.comprobanteNombre}</span>
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-500">
-                      Formatos permitidos: PDF, JPG, PNG (máximo 5MB)
+            {/* Sección para calcular amortización solo si la venta tiene intereses configurados pero no calculados */}
+            {cuotas.length > 0 && 
+             ventaInfo?.tasaInteres && 
+             ventaInfo.tasaInteres > 0 && 
+             cuotas.every(c => !c.montoCapital && !c.montoInteres) && (
+              <div className="p-6 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-yellow-800">Amortización Pendiente</h3>
+                    <p className="text-sm text-yellow-700 mt-2">
+                      Esta venta tiene intereses configurados ({ventaInfo.tasaInteres}% anual) pero no se han calculado los datos de amortización.
                     </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={calcularAmortizacion}
+                      disabled={calculandoAmortizacion}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium"
+                      size="sm"
+                    >
+                      {calculandoAmortizacion ? 'Calculando...' : 'Calcular Amortización'}
+                    </Button>
                   </div>
                 </div>
               </div>
+            )}
 
-                                  <div className="flex justify-end gap-2 mt-4">
-                                    <Button variant="outline" onClick={() => setShowForm(false)}>
-                  Cancelar
-                </Button>
-                                    <Button 
-                                      onClick={handleCrearPago}
-                                      disabled={creandoPago || !formData.monto || parseFloat(formData.monto) <= 0}
-                                      className="bg-green-600 hover:bg-green-700"
-                                    >
-                                      {creandoPago ? (
-                                        <>
-                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                                          Creando...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <FiCheck className="w-4 h-4 mr-2" />
-                                          Registrar Pago
-                                        </>
-                                      )}
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
+            {/* Sección para calcular intereses por mora */}
+            {cuotas.length > 0 && cuotas.some(c => new Date(c.fechaVencimiento) < new Date() && (c.monto - (c.montoPagado || 0)) > 0) && (
+              <div className="p-6 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-red-800">Cuotas Vencidas Detectadas</h3>
+                    <p className="text-sm text-red-700 mt-2">
+                      Hay cuotas vencidas con saldo pendiente. Puede calcular intereses por mora.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={tasaMoraAnual}
+                        onChange={(e) => setTasaMoraAnual(parseFloat(e.target.value) || 0)}
+                        placeholder="Tasa Mora %"
+                        className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">% anual</span>
+                    </div>
+                    <Button
+                      onClick={calcularInteresesMora}
+                      disabled={calculandoMora || !tasaMoraAnual}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
+                      size="sm"
+                    >
+                      {calculandoMora ? 'Calculando...' : 'Calcular Mora'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
 
-                              {/* Historial de pagos */}
-                              <div className="space-y-4">
-                                <h4 className="font-medium text-sm text-gray-700">Historial de Pagos</h4>
-                                
-                                {loadingPagos ? (
-                                  <div className="text-center py-4">
-                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                                    <p className="text-gray-600">Cargando pagos...</p>
-                                  </div>
-                                ) : pagos.length === 0 ? (
-                                  <div className="text-center py-4">
-                                    <FiDollarSign className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                                    <h4 className="text-sm font-medium text-gray-900 mb-1">No hay pagos registrados</h4>
-                                    <p className="text-xs text-gray-500">Esta cuota aún no tiene pagos registrados</p>
-                                  </div>
-                                ) : (
-                                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                                    {pagos.map((pago: PagoCuota) => (
-                                      <div key={pago.id} className="bg-white p-3 rounded-lg border border-gray-200">
-                                        <div className="flex justify-between items-start">
-                                          <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-sm font-medium text-gray-900">
-                                                ${pago.monto.toFixed(2)}
-                                              </span>
-                                              <span className="text-xs text-gray-500">
-                                                {new Date(pago.fechaPago).toLocaleDateString('es-ES')}
-                                              </span>
-                                            </div>
-                                            {pago.formaPago && (
-                                              <p className="text-xs text-gray-600 mt-1">
-                                                Forma de pago: {pago.formaPago}
-                                              </p>
-                                            )}
-                                            {pago.observaciones && (
-                                              <p className="text-xs text-gray-600 mt-1">
-                                                {pago.observaciones}
-                                              </p>
-                                            )}
-                                            {pago.creadoPorUsuario && (
-                                              <p className="text-xs text-gray-500 mt-1">
-                                                Registrado por: {pago.creadoPorUsuario.nombre}
-                                              </p>
-                                            )}
-                                            {pago.comprobante && (
-                                              <div className="flex items-center gap-2 mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
-                                                <div className="flex-1">
-                                                  <span className="text-xs text-blue-700 font-medium">
-                                                    Comprobante: {pago.comprobante.nombreArchivo}
-                                                  </span>
-                                                  <div className="text-xs text-blue-600">
-                                                    {(pago.comprobante.tamanio / 1024).toFixed(1)} KB
-                                                  </div>
-                                                </div>
-                                                <div className="flex gap-1">
-                                                  <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => handleVerComprobante(pago.comprobante)}
-                                                    className="h-7 px-2 text-xs bg-white hover:bg-blue-50"
-                                                    title="Ver comprobante"
-                                                  >
-                                                    <FiEye className="h-3 w-3 mr-1" />
-                                                    Ver
-                                                  </Button>
-                                                  <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => handleDescargarComprobante(pago.comprobante)}
-                                                    className="h-7 px-2 text-xs bg-white hover:bg-blue-50"
-                                                    title="Descargar comprobante"
-                                                  >
-                                                    <FiDownload className="h-3 w-3 mr-1" />
-                                                    Descargar
-                                                  </Button>
-                                                  <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => handleMakePublic(pago.comprobante?.id || '')}
-                                                    className="h-7 px-2 text-xs bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
-                                                    title="Hacer público el archivo"
-                                                  >
-                                                    <FiRefreshCw className="h-3 w-3 mr-1" />
-                                                    Hacer Público
-                </Button>
+            {/* Indicador de tipo de venta */}
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${ventaInfo?.tasaInteres && ventaInfo.tasaInteres > 0 ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+                <span className="text-sm font-medium text-gray-700">
+                  {ventaInfo?.tasaInteres && ventaInfo.tasaInteres > 0 
+                    ? `Venta con intereses (${ventaInfo.tasaInteres}% anual)` 
+                    : 'Venta sin intereses (cuotas fijas)'
+                  }
+                </span>
               </div>
             </div>
-                                            )}
-                                          </div>
+
+            {/* Tabla de cuotas */}
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b bg-gray-50">
+                    <th className="text-left p-4 font-semibold text-gray-700">#</th>
+                    <th className="text-left p-4 font-semibold text-gray-700">Vencimiento</th>
+                    <th className="text-right p-4 font-semibold text-gray-700">Monto</th>
+                    {ventaInfo?.tasaInteres && ventaInfo.tasaInteres > 0 ? (
+                      <>
+                        <th className="text-right p-4 font-semibold text-gray-700">Capital</th>
+                        <th className="text-right p-4 font-semibold text-gray-700">Interés</th>
+                        <th className="text-right p-4 font-semibold text-gray-700">Saldo Anterior</th>
+                        <th className="text-right p-4 font-semibold text-gray-700">Saldo Posterior</th>
+                      </>
+                    ) : null}
+                    <th className="text-right p-4 font-semibold text-gray-700">Mora</th>
+                    <th className="text-center p-4 font-semibold text-gray-700">Estado</th>
+                    <th className="text-center p-4 font-semibold text-gray-700">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cuotas.map((cuota) => {
+                    // Calcular monto pendiente incluyendo intereses por mora
+                    const montoBasePendiente = cuota.monto - (cuota.montoPagado || 0)
+                    const interesMora = cuota.interesMora || 0
+                    const montoPendiente = roundToTwoDecimals(montoBasePendiente + interesMora)
+                    const montoTotalConMora = cuota.monto + interesMora
+                    const porcentajePagado = ((cuota.montoPagado || 0) / montoTotalConMora) * 100
+                    const isExpanded = expandedCuota === cuota.id
+                    
+                    // Debug log para la cuota actual
+                    if (isExpanded) {
+                      console.log('🔍 Debug - Cuota expandida:', {
+                        cuotaId: cuota.id,
+                        numeroCuota: cuota.numeroCuota,
+                        montoCuota: cuota.monto,
+                        montoPagado: cuota.montoPagado,
+                        montoPendiente,
+                        porcentajePagado
+                      })
+                    }
+                    
+                    return (
+                      <React.Fragment key={cuota.id}>
+                        <tr className="border-b hover:bg-gray-50 transition-colors">
+                          <td className="p-4 font-semibold text-gray-900">{cuota.numeroCuota}</td>
+                          <td className="p-4 text-gray-700">{formatDate(cuota.fechaVencimiento)}</td>
+                          <td className="p-4 text-right font-semibold text-gray-900">{formatCurrency(cuota.monto)}</td>
+                          {ventaInfo?.tasaInteres && ventaInfo.tasaInteres > 0 ? (
+                            <>
+                              <td className="p-4 text-right text-green-600 font-medium">
+                        {cuota.montoCapital ? formatCurrency(cuota.montoCapital) : '-'}
+                      </td>
+                              <td className="p-4 text-right text-blue-600 font-medium">
+                        {cuota.montoInteres ? formatCurrency(cuota.montoInteres) : '-'}
+                      </td>
+                              <td className="p-4 text-right text-gray-600">
+                        {cuota.saldoCapitalAnterior ? formatCurrency(cuota.saldoCapitalAnterior) : '-'}
+                      </td>
+                              <td className="p-4 text-right text-gray-600">
+                        {cuota.saldoCapitalPosterior ? formatCurrency(cuota.saldoCapitalPosterior) : '-'}
+                      </td>
+                            </>
+                          ) : null}
+                          <td className="p-4 text-right text-red-600 font-medium">
+                            {cuota.interesMora && cuota.interesMora > 0 ? (
+                              <div className="text-xs">
+                                <div>{formatCurrency(cuota.interesMora)}</div>
+                                <div className="text-gray-500">({cuota.diasVencidos} días)</div>
+                              </div>
+                            ) : '-'}
+                          </td>
+                          <td className="p-4 text-center">{getEstadoBadge(cuota)}</td>
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {montoPendiente > 0 && puedePagarCuota(cuota) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                                  onClick={() => toggleCuotaExpansion(cuota.id)}
+                            className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                          >
+                                  <FiPlus className="h-3 w-3 mr-1" />
+                            Pagar
+                          </Button>
+                        )}
+                              {montoPendiente > 0 && !puedePagarCuota(cuota) && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                                  disabled
+                            className="opacity-50 cursor-not-allowed"
+                            title={getEstadoPago(cuota)}
+                          >
+                                  <FiClock className="h-3 w-3 mr-1" />
+                            Esperando
+                          </Button>
+                        )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => toggleCuotaExpansion(cuota.id)}
+                                className="text-gray-600 hover:text-gray-800"
+                              >
+                                {isExpanded ? <FiChevronUp className="h-4 w-4" /> : <FiChevronDown className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                      </td>
+                    </tr>
+                        
+                        {/* Fila expandible para pagos */}
+                        {isExpanded && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={ventaInfo?.tasaInteres && ventaInfo.tasaInteres > 0 ? 10 : 6} className="p-6">
+                              <div className="space-y-6">
+                                {/* Resumen de la cuota */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white rounded-lg border">
+                                  <div className="text-center">
+                                    <div className="text-lg font-bold text-gray-900">
+                                      {formatCurrency(montoTotalConMora)}
+                                      {interesMora > 0 && (
+                                        <div className="text-xs text-red-600">
+                                          + {formatCurrency(interesMora)} mora
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="text-sm text-gray-600">Monto Total de Cuota</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-lg font-bold text-green-600">{formatCurrency(cuota.montoPagado || 0)}</div>
+                                    <div className="text-sm text-gray-600">Total Pagado</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-lg font-bold text-orange-600">{formatCurrency(montoPendiente)}</div>
+                                    <div className="text-sm text-gray-600">Pendiente por Pagar</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-lg font-bold text-blue-600">{Math.round(porcentajePagado)}%</div>
+                                    <div className="text-sm text-gray-600">Progreso de Pago</div>
+                                  </div>
+                                </div>
+
+                                {/* Barra de progreso */}
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span>Progreso de pago</span>
+                                    <span>{Math.round(porcentajePagado)}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-3">
+                                    <div 
+                                      className="bg-gradient-to-r from-green-500 to-emerald-600 h-3 rounded-full transition-all duration-300"
+                                      style={{ width: `${porcentajePagado}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+
+                                {/* Formulario de pago */}
+                                {montoPendiente > 0 && (
+                                  <div className="p-3 bg-white rounded-lg border">
+                                    <h4 className="font-semibold text-gray-900 mb-3 text-sm">Registrar Nuevo Pago</h4>
+                                    
+                                    {/* Primera fila: Monto, Fecha y Forma de Pago */}
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                                      <div>
+                                        <Label htmlFor="monto" className="text-xs font-medium">Monto a Pagar *</Label>
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          value={pagoFormData.monto}
+                                          onChange={(e) => setPagoFormData(prev => ({ ...prev, monto: e.target.value }))}
+                                          placeholder="0.00"
+                                          max={montoPendiente}
+                                          className="h-8 text-sm"
+                                        />
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          Máx: <span className="font-semibold text-orange-600">{formatCurrency(montoPendiente)}</span>
+                                        </div>
+                                        {pagoFormData.monto && parseFloat(pagoFormData.monto) > montoPendiente && (
+                                          <p className="text-xs text-red-600 font-medium mt-1">
+                                            ⚠️ Monto excede el disponible
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      <div>
+                                        <Label htmlFor="fechaPago" className="text-xs font-medium">Fecha de Pago *</Label>
+                                        <Input
+                                          type="date"
+                                          value={pagoFormData.fechaPago}
+                                          onChange={(e) => setPagoFormData(prev => ({ ...prev, fechaPago: e.target.value }))}
+                                          className="h-8 text-sm"
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <Label htmlFor="formaPago" className="text-xs font-medium">Forma de Pago</Label>
+                                        <Select value={pagoFormData.formaPago} onValueChange={(value) => setPagoFormData(prev => ({ ...prev, formaPago: value }))}>
+                                          <SelectTrigger className="h-8 text-sm">
+                                            <SelectValue placeholder="Seleccionar" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                                            <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                                            <SelectItem value="DEPOSITO">Depósito</SelectItem>
+                                            <SelectItem value="CHEQUE">Cheque</SelectItem>
+                                            <SelectItem value="TARJETA">Tarjeta</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+
+                                      <div>
+                                        <Label htmlFor="comprobantes" className="text-xs font-medium">Comprobantes</Label>
+                                        <Input
+                                          type="file"
+                                          accept=".pdf,.jpg,.jpeg,.png"
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0]
+                                            if (file) handleFileUpload(file)
+                                          }}
+                                          multiple
+                                          className="h-8 text-xs"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">PDF, JPG o PNG (máx. 5MB)</p>
+                                      </div>
+                                    </div>
+
+                                    {/* Información de cuota */}
+                                    <div className="mb-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                                      <div className="flex justify-between">
+                                        <span>Cuota: {formatCurrency(montoTotalConMora)}</span>
+                                        <span>Pagado: {formatCurrency(cuota.montoPagado || 0)}</span>
+                                        <span>Pendiente: {formatCurrency(montoPendiente)}</span>
+                                      </div>
+                                      {interesMora > 0 && (
+                                        <div className="flex justify-between mt-1 text-red-600">
+                                          <span>Mora: {formatCurrency(interesMora)} ({cuota.diasVencidos} días)</span>
+                                        </div>
+                                      )}
+                                    </div>
+
+
+
+                                    {/* Observaciones y Botones en la misma fila */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                                      <div className="md:col-span-2">
+                                        <Label htmlFor="observaciones" className="text-xs font-medium">Observaciones</Label>
+                                        <Textarea
+                                          value={pagoFormData.observaciones}
+                                          onChange={(e) => setPagoFormData(prev => ({ ...prev, observaciones: e.target.value }))}
+                                          placeholder="Observaciones del pago..."
+                                          rows={1}
+                                          className="text-sm"
+                                        />
+                                      </div>
+
+                                      <div className="flex flex-col justify-end gap-2">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            setExpandedCuota(null)
+                                            setPagoFormData({
+                                              monto: '',
+                                              fechaPago: new Date().toISOString().split('T')[0],
+                                              formaPago: '',
+                                              observaciones: '',
+                                              comprobantes: []
+                                            })
+                                          }}
+                                          className="h-8 text-xs"
+                                        >
+                                          Cancelar
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          onClick={() => handlePagoSubmit(cuota.id)}
+                                          disabled={
+                                            submittingPago === cuota.id || 
+                                            !pagoFormData.monto || 
+                                            parseFloat(pagoFormData.monto) <= 0 ||
+                                            parseFloat(pagoFormData.monto) > montoPendiente
+                                          }
+                                          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed h-8 text-xs"
+                                        >
+                                          {submittingPago === cuota.id ? 'Registrando...' : 'Registrar Pago'}
+                                        </Button>
+                                      </div>
+                                    </div>
+
+                                    {/* Comprobantes seleccionados - Solo si hay archivos */}
+                                    {pagoFormData.comprobantes.length > 0 && (
+                                      <div className="mb-3">
+                                        <Label className="text-xs font-medium">Comprobantes seleccionados:</Label>
+                                        <div className="space-y-1 mt-1">
+                                          {pagoFormData.comprobantes.map((file, index) => (
+                                            <div key={index} className="flex items-center justify-between p-1 bg-gray-50 rounded text-xs">
+                                              <span className="text-gray-700 truncate">{file.name}</span>
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => removeComprobante(index)}
+                                                className="text-red-600 hover:text-red-700 h-6 w-6 p-0"
+                                              >
+                                                <FiX className="h-3 w-3" />
+                                              </Button>
+                                            </div>
+                                          ))}
                                         </div>
                                       </div>
-                                    ))}
+                                    )}
+
+
                                   </div>
                                 )}
+
+                                {/* Historial de pagos */}
+                                <div className="p-3 bg-white rounded-lg border">
+                                  <h4 className="font-semibold text-gray-900 mb-3 text-sm">Historial de Pagos</h4>
+                                  {loadingPagos === cuota.id ? (
+                                    <div className="flex items-center justify-center py-2">
+                                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></div>
+                                    </div>
+                                  ) : cuota.pagos && cuota.pagos.length > 0 ? (
+                                    <div className="space-y-2">
+                                      {cuota.pagos.map((pago) => (
+                                        <div key={pago.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <div className="font-medium text-gray-900">
+                                                {formatCurrency(pago.monto)}
+                                              </div>
+                                              <div className="text-gray-600">
+                                                {formatDate(pago.fechaPago)}
+                                              </div>
+                                              {pago.metodoPago && (
+                                                <Badge variant="outline" className="text-xs px-1 py-0">
+                                                  {pago.metodoPago}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            {pago.observaciones && (
+                                              <p className="text-gray-600 mt-1 truncate">{pago.observaciones}</p>
+                                            )}
+                                            {pago.comprobantePago && (
+                                              <div className="flex items-center gap-1 mt-1">
+                                                <FiUpload className="h-3 w-3 text-gray-500" />
+                                                <a 
+                                                  href={pago.comprobantePago.driveFileUrl || pago.comprobantePago.localPath} 
+                                                  target="_blank" 
+                                                  rel="noopener noreferrer"
+                                                  className="text-blue-600 hover:text-blue-800 truncate"
+                                                >
+                                                  {pago.comprobantePago.nombreArchivo}
+                                                </a>
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="text-gray-500 ml-2 text-right">
+                                            {pago.creadoPorUsuario && (
+                                              <div className="truncate">Por: {pago.creadoPorUsuario.nombre}</div>
+                                            )}
+                                            <div>{formatDate(pago.createdAt)}</div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-gray-500 text-center py-2 text-sm">No hay pagos registrados para esta cuota</p>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </TableBody>
-              </Table>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Progreso de pago */}
+            <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-sm">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-semibold text-gray-800">Progreso de pago</span>
+                  <span className="text-2xl font-bold text-green-600">{Math.round((montoPagado / montoTotal) * 100)}%</span>
+              </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
+                <div 
+                    className="bg-gradient-to-r from-green-500 to-emerald-600 h-3 rounded-full transition-all duration-500 shadow-sm"
+                  style={{ width: `${(montoPagado / montoTotal) * 100}%` }}
+                ></div>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Pagado: {formatCurrency(montoPagado)}</span>
+                  <span>Total: {formatCurrency(montoTotal)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
-        </div>
       </DialogContent>
     </Dialog>
   )

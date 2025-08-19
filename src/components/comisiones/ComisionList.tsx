@@ -140,7 +140,7 @@ export default function ComisionList({
                     <span className="font-medium">{venta.unidad.codigo}</span>
                   </div>
                   {getTipoVentaBadge(venta.tipoVenta)}
-                  {getEstadoComisionBadge(venta.estadoComision)}
+                  {getEstadoComisionBadge(venta.porcentajePagado >= 100 ? 'PAGADA' : 'PENDIENTE')}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button

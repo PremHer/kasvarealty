@@ -46,7 +46,7 @@ export const columns: ColumnDef<Cliente>[] = [
     accessorKey: 'tipo',
     header: 'Tipo',
     cell: ({ row }) => {
-      const tipo = row.original.tipo
+      const tipo = row.original.tipoCliente
       return (
         <Badge variant={tipo === 'INDIVIDUAL' ? 'default' : 'secondary'} className="bg-blue-50 text-blue-700 hover:bg-blue-100">
           {tipo === 'INDIVIDUAL' ? 'Persona Natural' : 'Empresa'}
@@ -59,21 +59,18 @@ export const columns: ColumnDef<Cliente>[] = [
     header: 'Estado',
     cell: ({ row }) => {
       const cliente = row.original
-      const estado = cliente.estado
-      const variant = {
-        'ACTIVO': 'success',
-        'INACTIVO': 'destructive',
-        'POTENCIAL': 'secondary'
-      }[estado] as 'success' | 'destructive' | 'secondary'
+      const isActive = cliente.isActive
+      const estado = isActive ? 'ACTIVO' : 'INACTIVO'
+      const variant = isActive ? 'success' : 'destructive'
 
-      const handleEstadoChange = async (newEstado: 'ACTIVO' | 'INACTIVO' | 'POTENCIAL') => {
+      const handleEstadoChange = async (newEstado: 'ACTIVO' | 'INACTIVO') => {
         try {
           const response = await fetch(`/api/clientes/${cliente.id}`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ estado: newEstado }),
+            body: JSON.stringify({ isActive: newEstado === 'ACTIVO' }),
           })
 
           if (!response.ok) {
@@ -82,7 +79,7 @@ export const columns: ColumnDef<Cliente>[] = [
 
           toast.success('Estado actualizado correctamente')
           // Actualizar la UI
-          row.original.estado = newEstado
+          row.original.isActive = newEstado === 'ACTIVO'
         } catch (error) {
           toast.error('Error al actualizar el estado')
           console.error('Error:', error)
@@ -92,7 +89,7 @@ export const columns: ColumnDef<Cliente>[] = [
       return (
         <div className="flex items-center gap-2">
           <Switch
-            checked={estado === 'ACTIVO'}
+            checked={isActive}
             onCheckedChange={(checked) => {
               handleEstadoChange(checked ? 'ACTIVO' : 'INACTIVO')
             }}
@@ -115,10 +112,6 @@ export const columns: ColumnDef<Cliente>[] = [
               <DropdownMenuItem onClick={() => handleEstadoChange('INACTIVO')}>
                 <Badge variant="destructive" className="mr-2">INACTIVO</Badge>
                 Inactivo
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleEstadoChange('POTENCIAL')}>
-                <Badge variant="secondary" className="mr-2">POTENCIAL</Badge>
-                Potencial
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -81,6 +81,11 @@ export async function GET(
       totalArea: proyecto.areaTotal,
       usableArea: proyecto.areaUtil,
       totalUnits: proyecto.cantidadUnidades,
+      // Campos del predio matriz para contratos
+      extensionTotal: proyecto.extensionTotal,
+      unidadCatastral: proyecto.unidadCatastral,
+      partidaRegistral: proyecto.partidaRegistral,
+      plazoIndependizacion: proyecto.plazoIndependizacion,
       createdBy: {
         id: proyecto.creadoPor.id,
         name: proyecto.creadoPor.nombre,
@@ -189,7 +194,12 @@ export async function PUT(
       type,
       totalArea,
       usableArea,
-      totalUnits
+      totalUnits,
+      // Campos del predio matriz para contratos
+      extensionTotal,
+      unidadCatastral,
+      partidaRegistral,
+      plazoIndependizacion
     } = data
 
     // Validar cambio de tipo de proyecto si hay datos relacionados
@@ -251,7 +261,12 @@ export async function PUT(
         tipo: type,
         areaTotal: totalArea ? parseFloat(totalArea) : null,
         areaUtil: usableArea ? parseFloat(usableArea) : null,
-        cantidadUnidades: totalUnits ? parseInt(totalUnits) : null
+        cantidadUnidades: totalUnits ? parseInt(totalUnits) : null,
+        // Campos del predio matriz para contratos
+        extensionTotal: extensionTotal ? parseFloat(extensionTotal) : null,
+        unidadCatastral: unidadCatastral || null,
+        partidaRegistral: partidaRegistral || null,
+        plazoIndependizacion: plazoIndependizacion ? parseInt(plazoIndependizacion) : null
       },
       include: {
         creadoPor: {
@@ -312,6 +327,11 @@ export async function PUT(
       totalArea: proyectoActualizado.areaTotal,
       usableArea: proyectoActualizado.areaUtil,
       totalUnits: proyectoActualizado.cantidadUnidades,
+      // Campos del predio matriz para contratos
+      extensionTotal: proyectoActualizado.extensionTotal,
+      unidadCatastral: proyectoActualizado.unidadCatastral,
+      partidaRegistral: proyectoActualizado.partidaRegistral,
+      plazoIndependizacion: proyectoActualizado.plazoIndependizacion,
       createdBy: {
         id: proyectoActualizado.creadoPor.id,
         name: proyectoActualizado.creadoPor.nombre,

@@ -17,7 +17,10 @@ import {
   FiDollarSign,
   FiActivity,
   FiCreditCard,
-  FiDatabase
+  FiDatabase,
+  FiAlertTriangle,
+  FiFileText,
+  FiCalendar
 } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
 import Logo from '@/components/ui/logo'
@@ -27,6 +30,7 @@ import type { Rol } from '@prisma/client'
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: FiHome },
   { name: 'Proyectos', href: '/dashboard/projects', icon: FiShoppingCart },
+  { name: 'Contratos', href: '/dashboard/contratos', icon: FiFileText },
   { name: 'Configuración', href: '/configuracion', icon: FiSettings },
 ]
 
@@ -125,10 +129,30 @@ export default function Navbar() {
     'ACCOUNTANT'
   ].includes(userRole as Rol)
 
+  const canManageCancelaciones = [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'SALES_MANAGER',
+    'FINANCE_MANAGER',
+    'GERENTE_GENERAL'
+  ].includes(userRole as Rol)
+
+  const canManageReservas = [
+    'SUPER_ADMIN',
+    'ADMIN',
+    'SALES_MANAGER',
+    'SALES_REP',
+    'SALES_ASSISTANT',
+    'SALES_COORDINATOR',
+    'GERENTE_GENERAL'
+  ].includes(userRole as Rol)
+
   // Verificar si alguna de las rutas de gestión está activa
   const isGestionActive = pathname === '/clientes' || 
                           pathname === '/dashboard/users' || 
-                          pathname === '/dashboard/vendedores'
+                          pathname === '/dashboard/vendedores' ||
+                          pathname === '/dashboard/cancelaciones' ||
+                          pathname === '/dashboard/reservas'
 
   return (
     <nav className="bg-white border-b border-gray-100">
@@ -218,6 +242,36 @@ export default function Navbar() {
                       >
                         <FiUser className="mr-3 h-5 w-5" />
                         Vendedores
+                      </Link>
+                    )}
+                    {canManageCancelaciones && (
+                      <Link
+                        href="/dashboard/cancelaciones"
+                        className={`flex items-center px-4 py-2 text-sm ${
+                          pathname === '/dashboard/cancelaciones'
+                            ? 'bg-primary-50 text-primary-700'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                        role="menuitem"
+                        onClick={() => setIsGestionMenuOpen(false)}
+                      >
+                        <FiAlertTriangle className="mr-3 h-5 w-5" />
+                        Cancelaciones
+                      </Link>
+                    )}
+                    {canManageReservas && (
+                      <Link
+                        href="/dashboard/reservas"
+                        className={`flex items-center px-4 py-2 text-sm ${
+                          pathname === '/dashboard/reservas'
+                            ? 'bg-primary-50 text-primary-700'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                        role="menuitem"
+                        onClick={() => setIsGestionMenuOpen(false)}
+                      >
+                        <FiCalendar className="mr-3 h-5 w-5" />
+                        Reservas
                       </Link>
                     )}
                   </div>
@@ -429,6 +483,32 @@ export default function Navbar() {
               >
                 <FiUser className="h-6 w-6 mr-3" />
                 Vendedores
+              </Link>
+            )}
+            {canManageCancelaciones && (
+              <Link
+                href="/dashboard/cancelaciones"
+                className={`flex items-center px-3 py-2 text-base font-medium ${
+                  pathname === '/dashboard/cancelaciones'
+                    ? 'bg-primary-50 border-l-4 border-primary-500 text-primary-700'
+                    : 'border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                <FiAlertTriangle className="h-6 w-6 mr-3" />
+                Cancelaciones
+              </Link>
+            )}
+            {canManageReservas && (
+              <Link
+                href="/dashboard/reservas"
+                className={`flex items-center px-3 py-2 text-base font-medium ${
+                  pathname === '/dashboard/reservas'
+                    ? 'bg-primary-50 border-l-4 border-primary-500 text-primary-700'
+                    : 'border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                <FiCalendar className="h-6 w-6 mr-3" />
+                Reservas
               </Link>
             )}
             
