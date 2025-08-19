@@ -139,9 +139,9 @@ export default function ComisionesPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-900">{stats.totalVentas}</div>
+            <div className="text-3xl font-bold text-blue-900">{stats.totalComisiones}</div>
             <p className="text-xs text-blue-700 mt-1">
-              Ventas con comisión
+              Comisiones totales
             </p>
           </CardContent>
         </Card>
@@ -154,7 +154,7 @@ export default function ComisionesPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-yellow-900">{stats.ventasPendientes}</div>
+            <div className="text-3xl font-bold text-yellow-900">{stats.comisionesPendientes}</div>
             <p className="text-xs text-yellow-700 mt-1">
               Por pagar
             </p>
@@ -169,7 +169,7 @@ export default function ComisionesPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-900">{stats.ventasPagadas}</div>
+            <div className="text-3xl font-bold text-green-900">{stats.comisionesPagadas}</div>
             <p className="text-xs text-green-700 mt-1">
               Completamente pagadas
             </p>

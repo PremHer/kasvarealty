@@ -94,11 +94,11 @@ export async function GET(request: Request) {
         name: proyecto.creadoPor.nombre,
         email: proyecto.creadoPor.email
       },
-      manager: {
+      manager: proyecto.gerente ? {
         id: proyecto.gerente.id,
         name: proyecto.gerente.nombre,
         email: proyecto.gerente.email
-      },
+      } : null,
       createdAt: proyecto.createdAt
     }))
 

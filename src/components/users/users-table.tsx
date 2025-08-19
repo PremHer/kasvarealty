@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { FiEdit2, FiTrash2, FiUser, FiMail, FiShield, FiCalendar, FiX } from 'react-icons/fi'
+import { FiEdit2, FiTrash2, FiUser, FiMail, FiShield, FiCalendar, FiX, FiInfo } from 'react-icons/fi'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import EditUserModal from './edit-user-modal'
@@ -22,6 +22,16 @@ interface User {
   isActive: boolean
   lastLogin: Date | null
   createdAt: Date
+  // Nuevos campos
+  dni?: string | null
+  sexo?: string | null
+  fechaNacimiento?: Date | null
+  estadoCivil?: string | null
+  profesion?: string | null
+  direccion?: string | null
+  distrito?: string | null
+  provincia?: string | null
+  departamento?: string | null
 }
 
 interface UsersTableProps {
@@ -73,6 +83,23 @@ export default function UsersTable({ users: initialUsers, onUserUpdated, onUserC
     setUsers(initialUsers)
   }, [initialUsers])
 
+  // Actualizar selectedUserDetails cuando se actualiza la lista de usuarios
+  useEffect(() => {
+    if (selectedUserDetails && users.length > 0) {
+      const updatedUser = users.find(user => user.id === selectedUserDetails.id)
+      if (updatedUser) {
+        setSelectedUserDetails(updatedUser)
+      }
+    }
+  }, [users, selectedUserDetails])
+
+  // Loggear cuando cambie selectedUserDetails
+  useEffect(() => {
+    if (selectedUserDetails) {
+      console.log('🔍 selectedUserDetails actualizado:', selectedUserDetails)
+    }
+  }, [selectedUserDetails])
+
   // Estado para filtros y paginación
   const [filters, setFilters] = useState({
     search: '',
@@ -112,10 +139,12 @@ export default function UsersTable({ users: initialUsers, onUserUpdated, onUserC
     // Aplicar ordenamiento
     result.sort((a, b) => {
       if (filters.sortBy === 'createdAt' || filters.sortBy === 'lastLogin') {
-        const aDate = a[filters.sortBy] instanceof Date ? a[filters.sortBy].getTime() : 
-                     a[filters.sortBy] ? new Date(a[filters.sortBy] as string).getTime() : 0
-        const bDate = b[filters.sortBy] instanceof Date ? b[filters.sortBy].getTime() : 
-                     b[filters.sortBy] ? new Date(b[filters.sortBy] as string).getTime() : 0
+        const aValue = a[filters.sortBy as keyof User]
+        const bValue = b[filters.sortBy as keyof User]
+        const aDate = aValue instanceof Date ? aValue.getTime() : 
+                     aValue ? new Date(aValue as string).getTime() : 0
+        const bDate = bValue instanceof Date ? bValue.getTime() : 
+                     bValue ? new Date(bValue as string).getTime() : 0
         return filters.sortOrder === 'asc' ? aDate - bDate : bDate - aDate
       }
       
@@ -309,6 +338,7 @@ export default function UsersTable({ users: initialUsers, onUserUpdated, onUserC
   }
 
   const handleViewDetails = (user: User) => {
+    console.log('🔍 Usuario seleccionado para detalles:', user)
     setSelectedUserDetails(user)
   }
 
@@ -544,6 +574,82 @@ export default function UsersTable({ users: initialUsers, onUserUpdated, onUserC
                   </p>
                 </div>
               </div>
+
+              {/* Información Personal */}
+              <div className="flex items-center space-x-2">
+                <FiUser className="h-5 w-5 text-gray-400" />
+                <h4 className="font-semibold text-gray-900">Información Personal</h4>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                {selectedUserDetails.dni && (
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-500">DNI</h5>
+                    <p className="text-gray-600">{selectedUserDetails.dni}</p>
+                  </div>
+                )}
+                {selectedUserDetails.sexo && (
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-500">Sexo</h5>
+                    <p className="text-gray-600">{selectedUserDetails.sexo}</p>
+                  </div>
+                )}
+                {selectedUserDetails.fechaNacimiento && (
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-500">Fecha de Nacimiento</h5>
+                    <p className="text-gray-600">
+                      {new Date(selectedUserDetails.fechaNacimiento).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+                {selectedUserDetails.estadoCivil && (
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-500">Estado Civil</h5>
+                    <p className="text-gray-600">{selectedUserDetails.estadoCivil}</p>
+                  </div>
+                )}
+                {selectedUserDetails.profesion && (
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-500">Profesión</h5>
+                    <p className="text-gray-600">{selectedUserDetails.profesion}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Información de Dirección */}
+              {(selectedUserDetails.direccion || selectedUserDetails.distrito || selectedUserDetails.provincia || selectedUserDetails.departamento) && (
+                <>
+                  <div className="flex items-center space-x-2">
+                    <FiInfo className="h-5 w-5 text-gray-400" />
+                    <h4 className="font-semibold text-gray-900">Información de Dirección</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    {selectedUserDetails.direccion && (
+                      <div className="col-span-2">
+                        <h5 className="text-sm font-medium text-gray-500">Dirección</h5>
+                        <p className="text-gray-600">{selectedUserDetails.direccion}</p>
+                      </div>
+                    )}
+                    {selectedUserDetails.distrito && (
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-500">Distrito</h5>
+                        <p className="text-gray-600">{selectedUserDetails.distrito}</p>
+                      </div>
+                    )}
+                    {selectedUserDetails.provincia && (
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-500">Provincia</h5>
+                        <p className="text-gray-600">{selectedUserDetails.provincia}</p>
+                      </div>
+                    )}
+                    {selectedUserDetails.departamento && (
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-500">Departamento</h5>
+                        <p className="text-gray-600">{selectedUserDetails.departamento}</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </Card>
         </div>

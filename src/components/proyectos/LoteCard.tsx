@@ -74,7 +74,7 @@ export function LoteCard({ proyectoId, manzanaId, manzanaCodigo, manzanaIsActive
   const handleCrearLote = async () => {
     try {
       // Detectar lotes pendientes
-      const lotesPendientes = loteService.detectarLotesPendientes(lotes, manzanaCodigo);
+      const lotesPendientes = loteService.detectarLotesPendientes(lotes as any, manzanaCodigo);
       
       if (lotesPendientes.length > 0) {
         // Hay lotes pendientes, mostrar selector

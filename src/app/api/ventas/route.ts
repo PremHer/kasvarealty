@@ -1,12 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
-import { Rol, EstadoCuota } from '@prisma/client'
+import { EstadoCuota, Rol } from '@prisma/client'
+import { AmortizacionService } from '@/lib/services/amortizacionService'
 import { googleDriveService } from '@/lib/services/googleDriveService'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { generarReciboVentaContado, generarReciboPagoInicial } from '@/lib/services/reciboService'
 
 // Definir roles permitidos para ventas
 const SALES_ROLES: Rol[] = [
@@ -195,6 +197,17 @@ export async function GET(request: Request) {
             nombre: true,
             email: true
           }
+        },
+        cuotas: {
+          select: {
+            id: true,
+            montoPagado: true
+          }
+        },
+        comprobantesPago: {
+          select: {
+            id: true
+          }
         }
       },
       orderBy: {
@@ -252,6 +265,17 @@ export async function GET(request: Request) {
             nombre: true,
             email: true
           }
+        },
+        cuotas: {
+          select: {
+            id: true,
+            montoPagado: true
+          }
+        },
+        comprobantesPago: {
+          select: {
+            id: true
+          }
         }
       },
       orderBy: {
@@ -263,37 +287,49 @@ export async function GET(request: Request) {
 
     // Combinar y formatear resultados
     const ventas = [
-      ...ventasLotes.map((venta: any) => ({
-        ...venta,
-        tipoVenta: 'LOTE',
-        tipoVentaVenta: venta.tipoVenta,
-        unidad: {
-          id: venta.lote.id,
-          codigo: venta.lote.codigo,
-          manzana: venta.lote.manzana.nombre,
-          manzanaCodigo: venta.lote.manzana.codigo
+      ...ventasLotes.map((venta: any) => {
+        const totalPagos = venta.cuotas.reduce((sum: number, cuota: any) => sum + cuota.montoPagado, 0)
+        const tieneComprobantes = venta.comprobantesPago && venta.comprobantesPago.length > 0
+        const tienePagos = totalPagos > 0
+        
+
+        
+        return {
+          ...venta,
+          tipoVenta: 'LOTE',
+          tipoVentaVenta: venta.tipoVenta,
+          hasPayments: tienePagos || tieneComprobantes,
+          unidad: {
+            id: venta.lote.id,
+            codigo: venta.lote.codigo,
+            manzana: venta.lote.manzana.nombre,
+            manzanaCodigo: venta.lote.manzana.codigo
+          }
         }
-      })),
-      ...ventasUnidadesCementerio.map((venta: any) => ({
-        ...venta,
-        tipoVenta: 'UNIDAD_CEMENTERIO',
-        tipoVentaVenta: venta.tipoVenta,
-        unidad: {
-          id: venta.unidadCementerio.id,
-          codigo: venta.unidadCementerio.codigo,
-          pabellon: venta.unidadCementerio.pabellon.nombre,
-          pabellonCodigo: venta.unidadCementerio.pabellon.codigo
+      }),
+      ...ventasUnidadesCementerio.map((venta: any) => {
+        const totalPagos = venta.cuotas.reduce((sum: number, cuota: any) => sum + cuota.montoPagado, 0)
+        const tieneComprobantes = venta.comprobantesPago && venta.comprobantesPago.length > 0
+        const tienePagos = totalPagos > 0
+        
+
+        
+        return {
+          ...venta,
+          tipoVenta: 'UNIDAD_CEMENTERIO',
+          tipoVentaVenta: venta.tipoVenta,
+          hasPayments: tienePagos || tieneComprobantes,
+          unidad: {
+            id: venta.unidadCementerio.id,
+            codigo: venta.unidadCementerio.codigo,
+            pabellon: venta.unidadCementerio.pabellon.nombre,
+            pabellonCodigo: venta.unidadCementerio.pabellon.codigo
+          }
         }
-      }))
+      })
     ]
 
-    console.log('=== DEBUG API VENTAS ===')
-    console.log('Ventas formateadas:', ventas)
-    if (ventas.length > 0) {
-      console.log('Primera venta formateada:', ventas[0])
-      console.log('tipoVenta de la primera venta:', ventas[0].tipoVenta)
-      console.log('tipoVentaVenta de la primera venta:', ventas[0].tipoVentaVenta)
-    }
+
 
     // Contar total de registros para paginación
     const totalVentasLotes = await prisma.ventaLote.count({ where: whereClause })
@@ -407,6 +443,15 @@ export async function POST(request: Request) {
     console.log('Datos de venta:', body)
     console.log('VendedorId recibido:', body.vendedorId)
     console.log('Session user id:', session.user.id)
+    console.log('🔍 Campo numeroOperacion recibido:', body.numeroOperacion)
+    console.log('🔍 Datos de amortización recibidos:', {
+      aplicarIntereses: body.aplicarIntereses,
+      modeloAmortizacion: body.modeloAmortizacion,
+      tasaInteresAnual: body.tasaInteresAnual,
+      montoIntereses: body.montoIntereses,
+      montoCapital: body.montoCapital,
+      saldoCapital: body.saldoCapital
+    })
     
     const { 
       tipoVenta, 
@@ -432,7 +477,16 @@ export async function POST(request: Request) {
       metodoPago, 
       fechaVenta,
       observaciones,
-      cuotasPersonalizadas
+      cuotasPersonalizadas,
+      cuotasPersonalizadasList,
+      numeroOperacion,
+      // NUEVO: Campos de intereses
+      aplicarIntereses,
+      modeloAmortizacion,
+      tasaInteresAnual,
+      montoIntereses,
+      montoCapital,
+      saldoCapital
     } = body
 
     // Validaciones básicas
@@ -442,6 +496,37 @@ export async function POST(request: Request) {
         { error: 'Faltan campos requeridos o formato inválido de clientes' },
         { status: 400 }
       )
+    }
+
+    // NUEVO: Validaciones de tasas de interés
+    if (aplicarIntereses && tasaInteresAnual) {
+      const tasaInteres = parseFloat(tasaInteresAnual)
+      
+      // Validar que la tasa sea un número válido
+      if (isNaN(tasaInteres)) {
+        return NextResponse.json(
+          { error: 'La tasa de interés debe ser un número válido' },
+          { status: 400 }
+        )
+      }
+      
+      // Validar rango de tasa de interés (0% a 100%)
+      if (tasaInteres < 0 || tasaInteres > 100) {
+        return NextResponse.json(
+          { error: 'La tasa de interés debe estar entre 0% y 100%' },
+          { status: 400 }
+        )
+      }
+      
+      // Validar que si se aplican intereses, la tasa sea mayor a 0
+      if (tasaInteres === 0) {
+        return NextResponse.json(
+          { error: 'Si se aplican intereses, la tasa debe ser mayor a 0%' },
+          { status: 400 }
+        )
+      }
+      
+      console.log('✅ Tasa de interés validada:', tasaInteres + '%')
     }
 
     // Validar que tipoVenta sea válido para Prisma (CONTADO o CUOTAS)
@@ -565,17 +650,35 @@ export async function POST(request: Request) {
     let venta
 
     // Determinar si hay cuotas personalizadas
-    const tieneCuotasPersonalizadas = cuotasPersonalizadas && Array.isArray(cuotasPersonalizadas) && cuotasPersonalizadas.length > 0
+    const tieneCuotasPersonalizadas = cuotasPersonalizadas && cuotasPersonalizadasList && Array.isArray(cuotasPersonalizadasList) && cuotasPersonalizadasList.length > 0
+    
+    console.log('🔍 Debug - Cuotas personalizadas:', {
+      cuotasPersonalizadas,
+      cuotasPersonalizadasList,
+      tieneCuotasPersonalizadas,
+      longitud: cuotasPersonalizadasList?.length
+    })
     
     // Calcular valores para la venta basados en el tipo de cuotas
     let numeroCuotasFinal = parseInt(numeroCuotas || '1')
     let fechaPrimeraCuotaFinal = fechaPrimeraCuota ? new Date(fechaPrimeraCuota) : null
     
+    // Función helper para manejar fechas de manera segura
+    const parseDate = (dateString: string | null | undefined): Date | null => {
+      if (!dateString) return null
+      try {
+        const date = new Date(dateString)
+        return isNaN(date.getTime()) ? null : date
+      } catch {
+        return null
+      }
+    }
+
     // Si hay cuotas personalizadas, usar esa información
     if (tieneCuotasPersonalizadas) {
-      numeroCuotasFinal = cuotasPersonalizadas.length
+      numeroCuotasFinal = cuotasPersonalizadasList.length
       // Usar la fecha de la primera cuota personalizada
-      fechaPrimeraCuotaFinal = new Date(cuotasPersonalizadas[0].fecha)
+      fechaPrimeraCuotaFinal = cuotasPersonalizadasList[0]?.fecha ? parseDate(cuotasPersonalizadasList[0].fecha) : null
     }
 
     if (tipoUnidad === 'LOTE') {
@@ -592,7 +695,8 @@ export async function POST(request: Request) {
         observaciones,
         createdBy: session.user.id,
         numeroCuotas: numeroCuotasFinal,
-        fechaPrimeraCuota: fechaPrimeraCuotaFinal
+        fechaPrimeraCuota: fechaPrimeraCuotaFinal,
+        numeroOperacion: numeroOperacion || null
       })
       
       venta = await prisma.ventaLote.create({
@@ -609,12 +713,18 @@ export async function POST(request: Request) {
           tipoVenta,
           numeroCuotas: numeroCuotasFinal,
           frecuenciaCuota: tieneCuotasPersonalizadas ? 'PERSONALIZADA' : (frecuenciaCuota || 'MENSUAL'),
-          fechaPrimeraCuota: tieneCuotasPersonalizadas ? new Date(cuotasPersonalizadas[0]?.fecha) : (fechaPrimeraCuota ? new Date(fechaPrimeraCuota) : null),
+          fechaPrimeraCuota: tieneCuotasPersonalizadas ? new Date(cuotasPersonalizadasList[0]?.fecha) : (fechaPrimeraCuota ? new Date(fechaPrimeraCuota) : null),
           formaPago: formaPago || null,
           montoInicial: montoInicial ? parseFloat(montoInicial) : null,
           saldoPendiente: saldoPendiente ? parseFloat(saldoPendiente) : null,
           comisionVendedor: comisionVendedor ? parseFloat(comisionVendedor) : null,
           porcentajeComision: porcentajeComision ? parseFloat(porcentajeComision) : null,
+          // NUEVO: Campos de intereses
+          modeloAmortizacion: aplicarIntereses && modeloAmortizacion ? modeloAmortizacion : null,
+          tasaInteres: aplicarIntereses && tasaInteresAnual ? parseFloat(tasaInteresAnual) : null,
+          montoIntereses: aplicarIntereses && montoIntereses ? parseFloat(montoIntereses) : null,
+          montoCapital: aplicarIntereses && montoCapital ? parseFloat(montoCapital) : null,
+          saldoCapital: aplicarIntereses && saldoCapital ? parseFloat(saldoCapital) : null,
           estadoDocumentacion: estadoDocumentacion || 'PENDIENTE',
           documentosRequeridos,
           fechaEntrega: fechaEntrega ? new Date(fechaEntrega) : null,
@@ -623,7 +733,8 @@ export async function POST(request: Request) {
           fechaVenta: fechaVenta ? new Date(fechaVenta) : new Date(),
           estado: 'PENDIENTE',
           observaciones,
-          createdBy: session.user.id
+          createdBy: session.user.id,
+          numeroOperacion: numeroOperacion || null
         }
       })
       console.log('Venta de lote creada:', venta)
@@ -641,7 +752,8 @@ export async function POST(request: Request) {
         observaciones,
         createdBy: session.user.id,
         numeroCuotas: numeroCuotasFinal,
-        fechaPrimeraCuota: fechaPrimeraCuotaFinal
+        fechaPrimeraCuota: fechaPrimeraCuotaFinal,
+        numeroOperacion: numeroOperacion || null
       })
       
       venta = await prisma.ventaUnidadCementerio.create({
@@ -658,12 +770,18 @@ export async function POST(request: Request) {
           tipoVenta,
           numeroCuotas: numeroCuotasFinal,
           frecuenciaCuota: tieneCuotasPersonalizadas ? 'PERSONALIZADA' : (frecuenciaCuota || 'MENSUAL'),
-          fechaPrimeraCuota: tieneCuotasPersonalizadas ? new Date(cuotasPersonalizadas[0]?.fecha) : (fechaPrimeraCuota ? new Date(fechaPrimeraCuota) : null),
+          fechaPrimeraCuota: tieneCuotasPersonalizadas ? new Date(cuotasPersonalizadasList[0]?.fecha) : (fechaPrimeraCuota ? new Date(fechaPrimeraCuota) : null),
           formaPago: formaPago || null,
           montoInicial: montoInicial ? parseFloat(montoInicial) : null,
           saldoPendiente: saldoPendiente ? parseFloat(saldoPendiente) : null,
           comisionVendedor: comisionVendedor ? parseFloat(comisionVendedor) : null,
           porcentajeComision: porcentajeComision ? parseFloat(porcentajeComision) : null,
+          // NUEVO: Campos de intereses
+          modeloAmortizacion: aplicarIntereses && modeloAmortizacion ? modeloAmortizacion : null,
+          tasaInteres: aplicarIntereses && tasaInteresAnual ? parseFloat(tasaInteresAnual) : null,
+          montoIntereses: aplicarIntereses && montoIntereses ? parseFloat(montoIntereses) : null,
+          montoCapital: aplicarIntereses && montoCapital ? parseFloat(montoCapital) : null,
+          saldoCapital: aplicarIntereses && saldoCapital ? parseFloat(saldoCapital) : null,
           estadoDocumentacion: estadoDocumentacion || 'PENDIENTE',
           documentosRequeridos,
           fechaEntrega: fechaEntrega ? new Date(fechaEntrega) : null,
@@ -672,7 +790,8 @@ export async function POST(request: Request) {
           fechaVenta: fechaVenta ? new Date(fechaVenta) : new Date(),
           estado: 'PENDIENTE',
           observaciones,
-          createdBy: session.user.id
+          createdBy: session.user.id,
+          numeroOperacion: numeroOperacion || null
         }
       })
       console.log('Venta de unidad de cementerio creada:', venta)
@@ -745,84 +864,186 @@ export async function POST(request: Request) {
       console.log('Creando cuotas para la venta')
       
       // Si hay cuotas personalizadas, usarlas
-      if (cuotasPersonalizadas && Array.isArray(cuotasPersonalizadas) && cuotasPersonalizadas.length > 0) {
-        console.log('Creando cuotas personalizadas')
-        const cuotasACrear = cuotasPersonalizadas.map((cuota: any, index: number) => ({
-          numeroCuota: index + 1,
-          monto: parseFloat(cuota.monto),
-          fechaVencimiento: new Date(cuota.fecha),
-          estado: EstadoCuota.PENDIENTE,
-          montoPagado: 0,
-          ventaLoteId: tipoUnidad === 'LOTE' ? venta.id : null,
-          ventaUnidadCementerioId: tipoUnidad === 'UNIDAD_CEMENTERIO' ? venta.id : null,
-          createdBy: session.user.id
-        }))
+      if (cuotasPersonalizadas && cuotasPersonalizadasList && Array.isArray(cuotasPersonalizadasList) && cuotasPersonalizadasList.length > 0) {
+        console.log('🔍 Debug - Creando cuotas personalizadas:', {
+          numeroCuotas: cuotasPersonalizadasList.length,
+          cuotas: cuotasPersonalizadasList
+        })
+        
+        // Ordenar cuotas por fecha
+        const cuotasOrdenadas = [...cuotasPersonalizadasList].sort((a: any, b: any) => 
+          new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+        )
+        
+        let saldoRestante = parseFloat(saldoPendiente) || 0
+        const cuotasACrear = []
+        
+        for (let i = 0; i < cuotasOrdenadas.length; i++) {
+          const cuota = cuotasOrdenadas[i]
+          const fechaCuota = new Date(cuota.fecha)
+          
+          // Calcular datos de amortización para cuotas personalizadas
+          let montoCapital = parseFloat(cuota.monto)
+          let montoInteres = 0
+          let saldoCapitalAnterior = saldoRestante
+          let saldoCapitalPosterior = saldoRestante - montoCapital
+          
+          // Si se aplican intereses, calcular los intereses
+          if (aplicarIntereses && tasaInteresAnual && parseFloat(tasaInteresAnual) > 0) {
+            const tasaInteresDiaria = parseFloat(tasaInteresAnual) / 365 / 100
+            const fechaInicial = new Date()
+            const diasTranscurridos = Math.floor((fechaCuota.getTime() - fechaInicial.getTime()) / (1000 * 60 * 60 * 24))
+            
+            montoInteres = Math.max(0, saldoRestante * tasaInteresDiaria * diasTranscurridos)
+            const montoConIntereses = montoCapital + montoInteres
+            
+            cuotasACrear.push({
+              numeroCuota: i + 1,
+              monto: Math.round(montoConIntereses * 100) / 100,
+              fechaVencimiento: fechaCuota,
+              estado: EstadoCuota.PENDIENTE,
+              montoPagado: 0,
+              // Datos de amortización
+              montoCapital: Math.round(montoCapital * 100) / 100,
+              montoInteres: Math.round(montoInteres * 100) / 100,
+              saldoCapitalAnterior: Math.round(saldoCapitalAnterior * 100) / 100,
+              saldoCapitalPosterior: Math.round(saldoCapitalPosterior * 100) / 100,
+              ventaLoteId: tipoUnidad === 'LOTE' ? venta.id : null,
+              ventaUnidadCementerioId: tipoUnidad === 'UNIDAD_CEMENTERIO' ? venta.id : null,
+              createdBy: session.user.id
+            })
+          } else {
+            // Sin intereses
+            cuotasACrear.push({
+              numeroCuota: i + 1,
+              monto: Math.round(montoCapital * 100) / 100,
+              fechaVencimiento: fechaCuota,
+              estado: EstadoCuota.PENDIENTE,
+              montoPagado: 0,
+              // Datos de amortización
+              montoCapital: Math.round(montoCapital * 100) / 100,
+              montoInteres: 0,
+              saldoCapitalAnterior: Math.round(saldoCapitalAnterior * 100) / 100,
+              saldoCapitalPosterior: Math.round(saldoCapitalPosterior * 100) / 100,
+              ventaLoteId: tipoUnidad === 'LOTE' ? venta.id : null,
+              ventaUnidadCementerioId: tipoUnidad === 'UNIDAD_CEMENTERIO' ? venta.id : null,
+              createdBy: session.user.id
+            })
+          }
+          
+          // Actualizar saldo restante
+          saldoRestante -= montoCapital
+        }
         
         await prisma.cuota.createMany({
           data: cuotasACrear
         })
-        console.log(`${cuotasACrear.length} cuotas personalizadas creadas`)
+        console.log(`${cuotasACrear.length} cuotas personalizadas creadas con datos de amortización`)
       } 
       // Si no hay cuotas personalizadas, crear cuotas regulares
       else if (numeroCuotas && parseInt(numeroCuotas) > 1) {
-        console.log('Creando cuotas regulares')
+        console.log('🔍 Debug - Creando cuotas regulares porque no hay personalizadas:', {
+          numeroCuotas,
+          tieneCuotasPersonalizadas,
+          cuotasPersonalizadas,
+          cuotasPersonalizadasList
+        })
         const cuotasACrear = []
         const saldoFinanciar = parseFloat(saldoPendiente) || 0
         const numCuotas = parseInt(numeroCuotas) || 1
-        const montoCuotaDecimal = saldoFinanciar / numCuotas
-        const cuotaEntera = Math.floor(montoCuotaDecimal)
-        const diferencia = saldoFinanciar - (cuotaEntera * numCuotas)
         
-        // Calcular fechas según la frecuencia
-        const fechaInicial = fechaPrimeraCuota ? new Date(fechaPrimeraCuota) : new Date()
-        
-        for (let i = 0; i < numCuotas; i++) {
-          const fechaVencimiento = new Date(fechaInicial)
+        // Verificar si se aplican intereses
+        if (aplicarIntereses && tasaInteresAnual && parseFloat(tasaInteresAnual) > 0) {
+          console.log('Calculando cuotas con intereses y amortización')
+          const fechaInicial = fechaPrimeraCuota ? new Date(fechaPrimeraCuota) : new Date()
           
-          // Calcular fecha según frecuencia
-          switch (frecuenciaCuota) {
-            case 'MENSUAL':
-              fechaVencimiento.setMonth(fechaVencimiento.getMonth() + i)
-              break
-            case 'QUINCENAL':
-              fechaVencimiento.setDate(fechaVencimiento.getDate() + (i * 15))
-              break
-            case 'SEMANAL':
-              fechaVencimiento.setDate(fechaVencimiento.getDate() + (i * 7))
-              break
-            case 'BIMESTRAL':
-              fechaVencimiento.setMonth(fechaVencimiento.getMonth() + (i * 2))
-              break
-            case 'TRIMESTRAL':
-              fechaVencimiento.setMonth(fechaVencimiento.getMonth() + (i * 3))
-              break
-            case 'SEMESTRAL':
-              fechaVencimiento.setMonth(fechaVencimiento.getMonth() + (i * 6))
-              break
-            case 'ANUAL':
-              fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + i)
-              break
-            default:
-              fechaVencimiento.setMonth(fechaVencimiento.getMonth() + i)
-          }
+          // Calcular tabla de amortización
+          const calculoAmortizacion = AmortizacionService.calcularAmortizacion(
+            saldoFinanciar,
+            parseFloat(tasaInteresAnual),
+            numCuotas,
+            frecuenciaCuota as 'MENSUAL' | 'BIMESTRAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL',
+            fechaInicial,
+            modeloAmortizacion as 'FRANCES' | 'ALEMAN' | 'JAPONES'
+          )
           
-          // Calcular monto de la cuota
-          let montoCuota = cuotaEntera
-          if (i === numCuotas - 1 && diferencia > 0) {
-            // Última cuota con el resto
-            montoCuota = cuotaEntera + diferencia
-          }
-          
-          cuotasACrear.push({
-            numeroCuota: i + 1,
-            monto: montoCuota,
-            fechaVencimiento: fechaVencimiento,
-            estado: EstadoCuota.PENDIENTE,
-            montoPagado: 0,
-            ventaLoteId: tipoUnidad === 'LOTE' ? venta.id : null,
-            ventaUnidadCementerioId: tipoUnidad === 'UNIDAD_CEMENTERIO' ? venta.id : null,
-            createdBy: session.user.id
+          // Crear cuotas basadas en la tabla de amortización
+          calculoAmortizacion.tablaAmortizacion.forEach((cuotaAmortizacion) => {
+            cuotasACrear.push({
+              numeroCuota: cuotaAmortizacion.numeroCuota,
+              monto: cuotaAmortizacion.montoCuota,
+              fechaVencimiento: cuotaAmortizacion.fechaVencimiento,
+              estado: EstadoCuota.PENDIENTE,
+              montoPagado: 0,
+              // NUEVO: Campos de amortización
+              montoCapital: cuotaAmortizacion.montoCapital,
+              montoInteres: cuotaAmortizacion.montoInteres,
+              saldoCapitalAnterior: cuotaAmortizacion.saldoCapital,
+              saldoCapitalPosterior: cuotaAmortizacion.saldoCapitalPosterior,
+              ventaLoteId: tipoUnidad === 'LOTE' ? venta.id : null,
+              ventaUnidadCementerioId: tipoUnidad === 'UNIDAD_CEMENTERIO' ? venta.id : null,
+              createdBy: session.user.id
+            })
           })
+          
+          console.log(`Calculada tabla de amortización con ${cuotasACrear.length} cuotas`)
+        } else {
+          // Cálculo tradicional sin intereses
+          const montoCuotaDecimal = saldoFinanciar / numCuotas
+          const cuotaEntera = Math.floor(montoCuotaDecimal)
+          const diferencia = saldoFinanciar - (cuotaEntera * numCuotas)
+          
+          // Calcular fechas según la frecuencia
+          const fechaInicial = fechaPrimeraCuota ? new Date(fechaPrimeraCuota) : new Date()
+          
+          for (let i = 0; i < numCuotas; i++) {
+            const fechaVencimiento = new Date(fechaInicial)
+            
+            // Calcular fecha según frecuencia
+            switch (frecuenciaCuota) {
+              case 'MENSUAL':
+                fechaVencimiento.setMonth(fechaVencimiento.getMonth() + i)
+                break
+              case 'QUINCENAL':
+                fechaVencimiento.setDate(fechaVencimiento.getDate() + (i * 15))
+                break
+              case 'SEMANAL':
+                fechaVencimiento.setDate(fechaVencimiento.getDate() + (i * 7))
+                break
+              case 'BIMESTRAL':
+                fechaVencimiento.setMonth(fechaVencimiento.getMonth() + (i * 2))
+                break
+              case 'TRIMESTRAL':
+                fechaVencimiento.setMonth(fechaVencimiento.getMonth() + (i * 3))
+                break
+              case 'SEMESTRAL':
+                fechaVencimiento.setMonth(fechaVencimiento.getMonth() + (i * 6))
+                break
+              case 'ANUAL':
+                fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + i)
+                break
+              default:
+                fechaVencimiento.setMonth(fechaVencimiento.getMonth() + i)
+            }
+            
+            // Calcular monto de la cuota
+            let montoCuota = cuotaEntera
+            if (i === numCuotas - 1 && diferencia > 0) {
+              // Última cuota con el resto
+              montoCuota = cuotaEntera + diferencia
+            }
+            
+            cuotasACrear.push({
+              numeroCuota: i + 1,
+              monto: montoCuota,
+              fechaVencimiento: fechaVencimiento,
+              estado: EstadoCuota.PENDIENTE,
+              montoPagado: 0,
+              ventaLoteId: tipoUnidad === 'LOTE' ? venta.id : null,
+              ventaUnidadCementerioId: tipoUnidad === 'UNIDAD_CEMENTERIO' ? venta.id : null,
+              createdBy: session.user.id
+            })
+          }
         }
         
         // Crear las cuotas en la base de datos
@@ -1007,6 +1228,53 @@ export async function POST(request: Request) {
     }
 
     console.log('Venta creada exitosamente')
+    
+    // Generar recibos automáticamente según el tipo de venta
+    try {
+      // Obtener información del usuario para la empresa desarrolladora
+      const usuario = await prisma.usuario.findUnique({
+        where: { id: session.user.id },
+        include: { empresaDesarrolladora: true }
+      })
+
+      if (usuario?.empresaDesarrolladoraId) {
+        // Para ventas al contado, generar recibo del pago completo
+        if (tipoVenta === 'CONTADO') {
+          await generarReciboVentaContado(
+            venta.id, // ventaId
+            precioVenta, // montoPagado
+            formaPago || 'EFECTIVO', // formaPago
+            usuario.empresaDesarrolladoraId, // empresaDesarrolladoraId
+            session.user.id, // createdBy
+            metodoPago, // metodoPago (opcional)
+            `Pago de venta al contado - ${tipoUnidad === 'LOTE' ? 'Lote' : 'Unidad'} ${unidadId}`, // observaciones
+            undefined // comprobantePagoId (opcional)
+          )
+          console.log('✅ API Ventas - Recibo de venta al contado generado automáticamente')
+        }
+        
+        // Para ventas a cuotas, generar recibo del pago inicial si existe
+        if (tipoVenta === 'CUOTAS' && montoInicial && montoInicial > 0) {
+          await generarReciboPagoInicial(
+            venta.id, // ventaId
+            montoInicial, // montoPagado
+            formaPago || 'EFECTIVO', // formaPago
+            usuario.empresaDesarrolladoraId, // empresaDesarrolladoraId
+            session.user.id, // createdBy
+            metodoPago, // metodoPago (opcional)
+            `Pago inicial - ${tipoUnidad === 'LOTE' ? 'Lote' : 'Unidad'} ${unidadId}`, // observaciones
+            undefined // comprobantePagoId (opcional)
+          )
+          console.log('✅ API Ventas - Recibo de pago inicial generado automáticamente')
+        }
+      } else {
+        console.log('⚠️ API Ventas - Usuario no asociado a empresa desarrolladora, no se generaron recibos')
+      }
+    } catch (reciboError) {
+      console.error('❌ API Ventas - Error al generar recibos:', reciboError)
+      // No fallar la venta si falla la generación de recibos
+    }
+    
     return NextResponse.json({
       ...venta,
       tipoVenta

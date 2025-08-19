@@ -35,10 +35,12 @@ export async function POST(
     }
 
     // Establecer permisos públicos en Google Drive
-    await googleDriveService.setPublicPermissions(comprobante.driveFileId);
+    if (comprobante.driveFileId) {
+      await googleDriveService.setPublicPermissions(comprobante.driveFileId);
+    }
 
     // Obtener información actualizada del archivo
-    const fileInfo = await googleDriveService.getFileInfo(comprobante.driveFileId);
+    const fileInfo = comprobante.driveFileId ? await googleDriveService.getFileInfo(comprobante.driveFileId) : null;
 
     if (fileInfo) {
       // Actualizar las URLs en la base de datos

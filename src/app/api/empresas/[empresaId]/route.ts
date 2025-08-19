@@ -101,7 +101,14 @@ export async function PUT(
       telefono, 
       email,
       bancos,
-      billeterasVirtuales
+      billeterasVirtuales,
+      // Nuevos campos bancarios
+      bancoPrincipal,
+      tipoCuenta,
+      numeroCuenta,
+      cci,
+      titularCuenta,
+      emailPagos
     } = body
 
     // Validar RUC
@@ -143,7 +150,14 @@ export async function PUT(
         telefono,
         email,
         bancos,
-        billeterasVirtuales
+        billeterasVirtuales,
+        // Nuevos campos bancarios
+        bancoPrincipal,
+        tipoCuenta,
+        numeroCuenta,
+        cci,
+        titularCuenta,
+        emailPagos
       },
       include: {
         representanteLegal: {

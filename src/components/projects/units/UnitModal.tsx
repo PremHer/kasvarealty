@@ -32,7 +32,7 @@ const unitStatuses: EstadoUnidad[] = [
   'DISPONIBLE',
   'RESERVADO',
   'VENDIDO',
-  'NO_DISPONIBLE'
+  'ENTREGADO'
 ]
 
 export default function UnitModal({ projectId, unit, onClose, onSave }: UnitModalProps) {

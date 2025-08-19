@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { FiDollarSign, FiPlus, FiEdit2, FiTrash2, FiCheck, FiCreditCard, FiTrendingUp, FiClock, FiCheckCircle, FiXCircle, FiX, FiShield, FiChevronDown, FiChevronUp, FiEye, FiChevronLeft, FiChevronRight, FiPackage } from 'react-icons/fi'
+import { FiDollarSign, FiPlus, FiEdit2, FiTrash2, FiCheck, FiCreditCard, FiTrendingUp, FiClock, FiCheckCircle, FiXCircle, FiX, FiShield, FiChevronDown, FiChevronUp, FiEye, FiChevronLeft, FiChevronRight, FiPackage, FiAlertTriangle, FiFileText } from 'react-icons/fi'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +17,9 @@ import VentaDetailsModal from '@/components/ventas/VentaDetailsModal'
 import VentaDetailsExpanded from '@/components/ventas/VentaDetailsExpanded'
 import { ApproveVentaAlert } from '@/components/ventas/ApproveVentaAlert'
 import { DeleteVentaAlert } from '@/components/ventas/DeleteVentaAlert'
+import CancelacionModal from '@/components/ventas/cancelacion-modal'
+import { ForceDeleteVentaModal } from '@/components/ventas/ForceDeleteVentaModal'
+import GenerarContratoModal from '@/components/ventas/GenerarContratoModal'
 
 interface Venta {
   id: string
@@ -63,6 +66,7 @@ interface Venta {
     pabellonCodigo?: string
   }
   createdAt: string
+  hasPayments?: boolean
 }
 
 interface Stats {
@@ -114,6 +118,16 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
   const [selectedVentaForDelete, setSelectedVentaForDelete] = useState<Venta | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [expandedVenta, setExpandedVenta] = useState<string | null>(null)
+  
+  // Estados para cancelaciones
+  const [isCancelacionModalOpen, setIsCancelacionModalOpen] = useState(false)
+  const [selectedVentaForCancelacion, setSelectedVentaForCancelacion] = useState<Venta | null>(null)
+  const [isForceDeleteModalOpen, setIsForceDeleteModalOpen] = useState(false)
+  const [selectedVentaForForceDelete, setSelectedVentaForForceDelete] = useState<Venta | null>(null)
+  
+  // Estados para generar contrato
+  const [isGenerarContratoModalOpen, setIsGenerarContratoModalOpen] = useState(false)
+  const [selectedVentaForContrato, setSelectedVentaForContrato] = useState<Venta | null>(null)
 
   // Estado de paginación
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -129,6 +143,7 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
   const canViewSales = ['ADMIN', 'SUPER_ADMIN', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'GERENTE_GENERAL'].includes(userRole || '')
   const canCreateSales = ['ADMIN', 'SUPER_ADMIN', 'SALES_MANAGER', 'SALES_REP', 'GERENTE_GENERAL'].includes(userRole || '')
   const canManageCuotas = ['ADMIN', 'SUPER_ADMIN', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'FINANCE_MANAGER', 'ACCOUNTANT', 'GERENTE_GENERAL'].includes(userRole || '')
+  const canManageCancelaciones = ['ADMIN', 'SUPER_ADMIN', 'SALES_MANAGER', 'FINANCE_MANAGER', 'GERENTE_GENERAL'].includes(userRole || '')
   
   // Lógica para determinar si puede aprobar ventas
   const canApprove = (venta: Venta) => {
@@ -160,8 +175,7 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
         throw new Error('Error al cargar ventas')
       }
       const data = await response.json()
-      console.log('Datos de ventas recibidos:', data.ventas)
-      console.log('Información de paginación:', data.pagination)
+
       setVentas(data.ventas)
       setPagination(data.pagination)
     } catch (error) {
@@ -255,18 +269,36 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
         setDeleteAlertOpen(false)
         setSelectedVentaForDelete(null)
       } else {
-        throw new Error('Error al eliminar la venta')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al eliminar la venta')
       }
     } catch (error) {
       console.error('Error:', error)
       toast({
         title: 'Error',
-        description: 'No se pudo eliminar la venta',
+        description: error instanceof Error ? error.message : 'No se pudo eliminar la venta',
         variant: 'destructive'
       })
     } finally {
       setIsDeleting(false)
     }
+  }
+
+  const handleForceDelete = () => {
+    if (selectedVentaForDelete) {
+      setSelectedVentaForForceDelete(selectedVentaForDelete)
+      setIsForceDeleteModalOpen(true)
+      setDeleteAlertOpen(false) // Cerrar el modal de eliminación normal
+    }
+  }
+
+  const handleForceDeleteSuccess = () => {
+    fetchVentas(pagination.page)
+    fetchStats()
+    setIsForceDeleteModalOpen(false)
+    setSelectedVentaForForceDelete(null)
+    setDeleteAlertOpen(false)
+    setSelectedVentaForDelete(null)
   }
 
   const handleManageVenta = async (ventaId: string, tipoVenta: 'LOTE' | 'UNIDAD_CEMENTERIO') => {
@@ -331,6 +363,28 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
     }
   }
 
+  const handleCancelacionVenta = (venta: Venta) => {
+    setSelectedVentaForCancelacion(venta)
+    setIsCancelacionModalOpen(true)
+  }
+
+  const handleCancelacionSuccess = () => {
+    fetchVentas(pagination.page)
+    fetchStats()
+    setIsCancelacionModalOpen(false)
+    setSelectedVentaForCancelacion(null)
+  }
+
+  const handleGenerarContrato = (venta: Venta) => {
+    setSelectedVentaForContrato(venta)
+    setIsGenerarContratoModalOpen(true)
+  }
+
+  const handleGenerarContratoSuccess = () => {
+    setIsGenerarContratoModalOpen(false)
+    setSelectedVentaForContrato(null)
+  }
+
   // Funciones de paginación
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
@@ -364,6 +418,11 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
         label: 'Cancelada',
         className: 'bg-gray-100 text-gray-800 border-gray-200',
         icon: FiX
+      },
+      'EN_PROCESO_CANCELACION': {
+        label: 'En Cancelación',
+        className: 'bg-orange-100 text-orange-800 border-orange-200',
+        icon: FiAlertTriangle
       },
       'ENTREGADA': {
         label: 'Entregada',
@@ -643,7 +702,6 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
                       <TableHead className="font-semibold text-gray-700 py-4 px-6">Cliente</TableHead>
                       <TableHead className="font-semibold text-gray-700 py-4 px-6">Vendedor</TableHead>
                       <TableHead className="font-semibold text-gray-700 py-4 px-6">Precio</TableHead>
-                      <TableHead className="font-semibold text-gray-700 py-4 px-6">Comisión</TableHead>
                       <TableHead className="font-semibold text-gray-700 py-4 px-6">Tipo de Venta</TableHead>
                       <TableHead className="font-semibold text-gray-700 py-4 px-6">Estado</TableHead>
                       <TableHead className="font-semibold text-gray-700 py-4 px-6">Fecha</TableHead>
@@ -756,13 +814,6 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
                           </div>
                     </TableCell>
                         <TableCell className="py-4 px-6">
-                          <div className="text-right">
-                            <div className="font-bold text-lg text-purple-600">
-                      {formatCurrency(venta.comisionVendedor || 0)}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6">
                           <div className="flex flex-col gap-1">
                       {/* Mostrar badge solo si NO es cuotas */}
                       {venta.tipoVentaVenta !== 'CUOTAS' && (
@@ -838,6 +889,32 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
                           </Button>
                         )}
                         
+                        {/* Botón de Cancelación */}
+                        {canManageCancelaciones && venta.estado !== 'CANCELADA' && venta.estado !== 'EN_PROCESO_CANCELACION' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCancelacionVenta(venta)}
+                            className="flex items-center justify-center w-8 h-8 p-0 border-orange-200 text-orange-600 hover:border-orange-300 hover:bg-orange-50"
+                            title="Solicitar Cancelación (Para clientes que quieren cancelar)"
+                          >
+                            <FiAlertTriangle className="w-3 h-3" />
+                          </Button>
+                        )}
+                        
+                        {/* Botón de Generar Contrato */}
+                        {canCreateSales && venta.estado === 'APROBADA' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleGenerarContrato(venta)}
+                            className="flex items-center justify-center w-8 h-8 p-0 border-blue-200 text-blue-600 hover:border-blue-300 hover:bg-blue-50"
+                            title="Generar Contrato de Venta"
+                          >
+                            <FiFileText className="w-3 h-3" />
+                          </Button>
+                        )}
+                        
                         {/* Botón de Eliminar */}
                         {canCreateSales && (
                           <Button
@@ -845,7 +922,7 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
                             size="sm"
                                 onClick={() => handleDeleteVenta(venta)}
                                 className="flex items-center justify-center w-8 h-8 p-0 border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50"
-                            title="Eliminar Venta"
+                            title="Eliminar Venta (Solo para errores)"
                           >
                             <FiTrash2 className="w-3 h-3" />
                           </Button>
@@ -966,7 +1043,6 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
         isOpen={isCuotasModalOpen}
         onClose={() => setIsCuotasModalOpen(false)}
         ventaId={selectedVentaForCuotas?.id || ''}
-        tipoVenta={selectedVentaForCuotas?.tipo || 'LOTE'}
       />
 
       {/* Modal para ver detalles de venta */}
@@ -985,13 +1061,57 @@ export default function ProjectVentas({ proyectoId, tipoProyecto }: ProjectVenta
       />
 
       {/* Modal para eliminar venta */}
-      <DeleteVentaAlert
-        isOpen={deleteAlertOpen}
-        onClose={() => setDeleteAlertOpen(false)}
-        onConfirm={handleConfirmDelete}
-        venta={selectedVentaForDelete}
-        isLoading={isDeleting}
+              <DeleteVentaAlert
+          isOpen={deleteAlertOpen}
+          onClose={() => setDeleteAlertOpen(false)}
+          onConfirm={handleConfirmDelete}
+          onForceDelete={handleForceDelete}
+          venta={selectedVentaForDelete}
+          isLoading={isDeleting}
+          hasPayments={selectedVentaForDelete?.hasPayments || false}
+        />
+
+      {/* Modal de Cancelación */}
+      {selectedVentaForCancelacion && (
+        <CancelacionModal
+          isOpen={isCancelacionModalOpen}
+          onClose={() => {
+            setIsCancelacionModalOpen(false)
+            setSelectedVentaForCancelacion(null)
+          }}
+          onCancelacionCreated={handleCancelacionSuccess}
+          ventaLoteId={selectedVentaForCancelacion.tipoVenta === 'LOTE' ? selectedVentaForCancelacion.id : undefined}
+          ventaUnidadCementerioId={selectedVentaForCancelacion.tipoVenta === 'UNIDAD_CEMENTERIO' ? selectedVentaForCancelacion.id : undefined}
+          ventaInfo={{
+            cliente: `${selectedVentaForCancelacion.cliente.nombre} ${selectedVentaForCancelacion.cliente.apellido || ''}`,
+            producto: selectedVentaForCancelacion.unidad?.codigo || 'Producto',
+            precioVenta: selectedVentaForCancelacion.precioVenta,
+            montoPagado: selectedVentaForCancelacion.montoInicial || 0
+          }}
+        />
+      )}
+
+      {/* Modal de Eliminación Forzada */}
+      <ForceDeleteVentaModal
+        isOpen={isForceDeleteModalOpen}
+        onClose={() => {
+          setIsForceDeleteModalOpen(false)
+          setSelectedVentaForForceDelete(null)
+        }}
+        onSuccess={handleForceDeleteSuccess}
+        venta={selectedVentaForForceDelete}
       />
+
+      {/* Modal de Generar Contrato */}
+      {selectedVentaForContrato && (
+        <GenerarContratoModal
+          open={isGenerarContratoModalOpen}
+          onOpenChange={setIsGenerarContratoModalOpen}
+          ventaId={selectedVentaForContrato.id}
+          ventaTipo={selectedVentaForContrato.tipoVenta}
+          numeroContrato={`CON-${selectedVentaForContrato.id.substring(0, 8).toUpperCase()}-${new Date().getFullYear()}`}
+        />
+      )}
     </div>
   )
 } 

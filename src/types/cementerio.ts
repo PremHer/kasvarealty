@@ -5,12 +5,12 @@ export type PabellonWithRelations = Pabellon & {
   creadoPorUsuario?: {
     id: string
     nombre: string
-    email: string
+    email: string | null
   } | null
   actualizadoPorUsuario?: {
     id: string
     nombre: string
-    email: string
+    email: string | null
   } | null
 }
 
@@ -26,12 +26,12 @@ export type UnidadCementerioWithRelations = UnidadCementerio & {
   creadoPorUsuario?: {
     id: string
     nombre: string
-    email: string
+    email: string | null
   } | null
   actualizadoPorUsuario?: {
     id: string
     nombre: string
-    email: string
+    email: string | null
   } | null
 }
 

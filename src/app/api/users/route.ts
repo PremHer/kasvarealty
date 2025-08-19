@@ -108,7 +108,17 @@ export async function GET(request: Request) {
         createdAt: true,
         updatedAt: true,
         isActive: true,
-        lastLogin: true
+        lastLogin: true,
+        // Nuevos campos
+        dni: true,
+        sexo: true,
+        fechaNacimiento: true,
+        estadoCivil: true,
+        profesion: true,
+        direccion: true,
+        distrito: true,
+        provincia: true,
+        departamento: true
       },
       orderBy: {
         createdAt: 'desc'
@@ -148,7 +158,22 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { nombre, email, password, rol } = body
+    const { 
+      nombre, 
+      email, 
+      password, 
+      rol,
+      // Nuevos campos
+      dni,
+      sexo,
+      fechaNacimiento,
+      estadoCivil,
+      profesion,
+      direccion,
+      distrito,
+      provincia,
+      departamento
+    } = body
 
     // Verificar que el rol que se está asignando está permitido según la jerarquía
     const allowedRoles = ROLE_HIERARCHY[userRole] || []
@@ -183,7 +208,17 @@ export async function POST(request: Request) {
         nombre,
         email,
         password: hashedPassword,
-        rol
+        rol,
+        // Nuevos campos
+        dni: dni || null,
+        sexo: sexo || null,
+        fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null,
+        estadoCivil: estadoCivil || null,
+        profesion: profesion || null,
+        direccion: direccion || null,
+        distrito: distrito || null,
+        provincia: provincia || null,
+        departamento: departamento || null
       }
     })
 

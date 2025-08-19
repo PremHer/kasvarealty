@@ -24,7 +24,9 @@ export interface Direccion {
   id?: string
   tipo: TipoDireccion
   pais: string
-  ciudad: string
+  distrito: string
+  provincia: string
+  departamento: string
   direccion: string
   referencia?: string
 }

@@ -4,17 +4,33 @@ import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
 
 // GET /api/ventas/unidades-cementerio-disponibles - Obtener todas las unidades de cementerio disponibles para venta
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Obtener query parameters
+    const { searchParams } = new URL(request.url)
+    const proyectoId = searchParams.get('proyectoId')
+
+    // Construir where clause
+    const whereClause: any = {
+      estado: 'DISPONIBLE'
+    }
+
+    // Si se proporciona proyectoId, filtrar por proyecto
+    if (proyectoId) {
+      whereClause.pabellon = {
+        proyecto: {
+          id: proyectoId
+        }
+      }
+    }
+
     const unidades = await prisma.unidadCementerio.findMany({
-      where: {
-        estado: 'DISPONIBLE'
-      },
+      where: whereClause,
       include: {
         pabellon: {
           include: {

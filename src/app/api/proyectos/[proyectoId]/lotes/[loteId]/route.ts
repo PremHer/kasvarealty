@@ -382,8 +382,11 @@ export async function DELETE(
   { params }: { params: { proyectoId: string; loteId: string } }
 ) {
   try {
+    console.log('🔍 API DELETE Lote - Iniciando eliminación:', { proyectoId: params.proyectoId, loteId: params.loteId });
+    
     const session = await getServerSession(authOptions);
     if (!session) {
+      console.log('❌ API DELETE Lote - No autorizado');
       return new NextResponse('No autorizado', { status: 401 });
     }
 
@@ -396,6 +399,7 @@ export async function DELETE(
     ].includes(userRole);
 
     if (!canDeleteLotes) {
+      console.log('❌ API DELETE Lote - Sin permisos:', userRole);
       return new NextResponse(
         'No tienes permisos para eliminar lotes. Solo los Project Managers, Gerentes Generales y Super Admins pueden realizar esta acción.',
         { status: 403 }
@@ -403,6 +407,7 @@ export async function DELETE(
     }
 
     const { proyectoId, loteId } = params;
+    console.log('✅ API DELETE Lote - Permisos verificados, procediendo con eliminación');
 
     // Verificar que el proyecto existe
     const proyecto = await prisma.proyecto.findUnique({
@@ -410,8 +415,11 @@ export async function DELETE(
     });
 
     if (!proyecto) {
+      console.log('❌ API DELETE Lote - Proyecto no encontrado:', proyectoId);
       return new NextResponse('Proyecto no encontrado', { status: 404 });
     }
+
+    console.log('✅ API DELETE Lote - Proyecto encontrado:', proyecto.nombre);
 
     // Verificar que el lote existe y pertenece al proyecto
     const lote = await prisma.lote.findFirst({
@@ -422,42 +430,54 @@ export async function DELETE(
         }
       },
       include: {
-        ventas: true,
+        ventasLotes: true,
         manzana: true
       }
     });
 
     if (!lote) {
+      console.log('❌ API DELETE Lote - Lote no encontrado:', loteId);
       return new NextResponse('Lote no encontrado', { status: 404 });
     }
 
+    console.log('✅ API DELETE Lote - Lote encontrado:', { codigo: lote.codigo, ventas: lote.ventasLotes.length });
+
     // Verificar que la manzana esté activa para poder eliminar lotes
     if (!lote.manzana.isActive) {
+      console.log('❌ API DELETE Lote - Manzana inactiva:', lote.manzana.codigo);
       return new NextResponse(
         'No se pueden eliminar lotes en una manzana inactiva. Primero debe activar la manzana.',
         { status: 400 }
       );
     }
 
+    console.log('✅ API DELETE Lote - Manzana activa:', lote.manzana.codigo);
+
     // Verificar si el lote tiene ventas asociadas
-    if (lote.ventas.length > 0) {
+    if (lote.ventasLotes.length > 0) {
+      console.log('❌ API DELETE Lote - Lote tiene ventas asociadas:', lote.ventasLotes.length);
       return new NextResponse(
         'No se puede eliminar el lote porque tiene ventas asociadas. Primero debe eliminar las ventas.',
         { status: 400 }
       );
     }
 
+    console.log('✅ API DELETE Lote - Lote sin ventas, procediendo a eliminar');
+
     // Eliminar el lote
     await prisma.lote.delete({
       where: { id: loteId }
     });
 
+    console.log('✅ API DELETE Lote - Lote eliminado exitosamente');
+
     // Actualizar estadísticas de la manzana
     await ManzanaService.actualizarEstadisticasManzana(lote.manzanaId);
+    console.log('✅ API DELETE Lote - Estadísticas de manzana actualizadas');
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error('Error al eliminar lote:', error);
+    console.error('❌ API DELETE Lote - Error al eliminar lote:', error);
     return new NextResponse('Error interno del servidor', { status: 500 });
   }
 } 

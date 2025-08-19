@@ -49,6 +49,38 @@ export default withAuth(
       }
     }
 
+    // Proteger rutas de cancelaciones
+    if (req.nextUrl.pathname.startsWith('/dashboard/cancelaciones')) {
+      const token = req.nextauth.token
+
+      if (!token) {
+        return NextResponse.redirect(new URL('/auth/signin', req.url))
+      }
+
+      // Verificar si el usuario tiene permiso para gestionar cancelaciones
+      const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'FINANCE_MANAGER', 'GERENTE_GENERAL']
+      
+      if (!allowedRoles.includes(token.role as string)) {
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+    }
+
+    // Proteger rutas de reservas
+    if (req.nextUrl.pathname.startsWith('/dashboard/reservas')) {
+      const token = req.nextauth.token
+
+      if (!token) {
+        return NextResponse.redirect(new URL('/auth/signin', req.url))
+      }
+
+      // Verificar si el usuario tiene permiso para gestionar reservas
+      const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'SALES_REP', 'SALES_ASSISTANT', 'SALES_COORDINATOR', 'GERENTE_GENERAL']
+      
+      if (!allowedRoles.includes(token.role as string)) {
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+    }
+
     // Proteger rutas de comisiones
     if (req.nextUrl.pathname.startsWith('/dashboard/comisiones')) {
       const token = req.nextauth.token
@@ -63,6 +95,67 @@ export default withAuth(
       if (!allowedRoles.includes(token.role as string)) {
         return NextResponse.redirect(new URL('/dashboard', req.url))
       }
+    }
+
+    // Proteger rutas de API de cuotas - solo verificar autenticación, los endpoints manejan permisos
+    if (req.nextUrl.pathname.startsWith('/api/cuotas')) {
+      const token = req.nextauth.token
+      console.log('🔍 Middleware - Ruta de cuotas detectada:', req.nextUrl.pathname)
+      console.log('🔍 Middleware - Token:', token)
+      console.log('🔍 Middleware - Rol del usuario:', token?.role)
+
+      if (!token) {
+        console.log('❌ Middleware - No hay token, retornando 401')
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      }
+      
+      // TEMPORAL: Permitir todos los roles para diagnosticar
+      console.log('✅ Middleware - Token válido, permitiendo acceso (diagnóstico)')
+    }
+
+    // Proteger rutas de API de ventas - solo verificar autenticación, los endpoints manejan permisos
+    if (req.nextUrl.pathname.startsWith('/api/ventas')) {
+      const token = req.nextauth.token
+      console.log('🔍 Middleware - Ruta de ventas detectada:', req.nextUrl.pathname)
+      console.log('🔍 Middleware - Token:', token)
+      console.log('🔍 Middleware - Rol del usuario:', token?.role)
+
+      if (!token) {
+        console.log('❌ Middleware - No hay token, retornando 401')
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      }
+      
+      console.log('✅ Middleware - Token válido, permitiendo acceso')
+    }
+
+    // Proteger rutas de API de proyectos - solo verificar autenticación, los endpoints manejan permisos
+    if (req.nextUrl.pathname.startsWith('/api/proyectos')) {
+      const token = req.nextauth.token
+      console.log('🔍 Middleware - Ruta de proyectos detectada:', req.nextUrl.pathname)
+      console.log('🔍 Middleware - Token:', token)
+      console.log('🔍 Middleware - Rol del usuario:', token?.role)
+
+      if (!token) {
+        console.log('❌ Middleware - No hay token, retornando 401')
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      }
+      
+      console.log('✅ Middleware - Token válido, permitiendo acceso')
+    }
+
+    // Proteger rutas de API de reservas - solo verificar autenticación, los endpoints manejan permisos
+    if (req.nextUrl.pathname.startsWith('/api/reservas')) {
+      const token = req.nextauth.token
+      console.log('🔍 Middleware - Ruta de reservas detectada:', req.nextUrl.pathname)
+      console.log('🔍 Middleware - Token:', token)
+      console.log('🔍 Middleware - Rol del usuario:', token?.role)
+
+      if (!token) {
+        console.log('❌ Middleware - No hay token, retornando 401')
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      }
+      
+      console.log('✅ Middleware - Token válido, permitiendo acceso')
     }
 
     return NextResponse.next()
@@ -86,5 +179,10 @@ export const config = {
     "/ventas/:path*",
     "/finanzas/:path*",
     "/configuracion",
+    "/api/cuotas/:path*",
+    "/api/ventas/:path*",
+    "/api/clientes/:path*",
+    "/api/proyectos/:path*",
+    "/api/reservas/:path*",
   ]
 } 

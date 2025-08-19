@@ -43,6 +43,14 @@ export default function ClienteModal({
     sexo: '',
     fechaNacimiento: '',
     estadoCivil: '',
+    // Campos de dirección
+    direccionTipo: 'NACIONAL',
+    direccionPais: 'Peru',
+    direccionDistrito: '',
+    direccionProvincia: '',
+    direccionDepartamento: '',
+    direccionCalle: '',
+    direccionReferencia: '',
   })
   const { toast } = useToast()
 
@@ -55,6 +63,13 @@ export default function ClienteModal({
   useEffect(() => {
     if (initialData) {
       setTipoCliente(initialData.tipoCliente)
+      // Obtener la primera dirección si existe
+      const primeraDireccion = initialData.direcciones && initialData.direcciones.length > 0 ? initialData.direcciones[0] : null
+      
+      console.log('🔍 ClienteModal - initialData:', initialData)
+      console.log('🔍 ClienteModal - direcciones:', initialData.direcciones)
+      console.log('🔍 ClienteModal - primeraDireccion:', primeraDireccion)
+      
       setFormData({
         nombre: initialData.nombre || '',
         apellido: initialData.apellido || '',
@@ -68,6 +83,14 @@ export default function ClienteModal({
         sexo: initialData.sexo || '',
         fechaNacimiento: initialData.fechaNacimiento ? (typeof initialData.fechaNacimiento === 'string' ? initialData.fechaNacimiento : initialData.fechaNacimiento.toISOString().substring(0, 10)) : '',
         estadoCivil: initialData.estadoCivil || '',
+        // Campos de dirección
+        direccionTipo: primeraDireccion?.tipo || 'NACIONAL',
+        direccionPais: primeraDireccion?.pais || 'Peru',
+        direccionDistrito: primeraDireccion?.distrito || '',
+        direccionProvincia: primeraDireccion?.provincia || '',
+        direccionDepartamento: primeraDireccion?.departamento || '',
+        direccionCalle: primeraDireccion?.direccion || '',
+        direccionReferencia: primeraDireccion?.referencia || '',
       })
     } else {
       // Resetear formulario si es nuevo cliente
@@ -85,6 +108,14 @@ export default function ClienteModal({
         sexo: '',
         fechaNacimiento: '',
         estadoCivil: '',
+        // Campos de dirección
+        direccionTipo: 'NACIONAL',
+        direccionPais: 'Peru',
+        direccionDistrito: 'Lima',
+        direccionProvincia: 'Lima',
+        direccionDepartamento: 'Lima',
+        direccionCalle: '',
+        direccionReferencia: '',
       })
     }
   }, [initialData, open])
@@ -110,20 +141,23 @@ export default function ClienteModal({
         representanteLegal: formData.representanteLegal,
         cargoRepresentante: formData.cargoRepresentante,
         tipoCliente: tipoCliente,
-        direcciones: initialData?.direcciones || [{
-          tipo: 'NACIONAL',
-          pais: 'Peru',
-          ciudad: 'Lima',
-          direccion: 'Direccion temporal',
-          referencia: ''
+        direcciones: [{
+          tipo: formData.direccionTipo,
+          pais: formData.direccionPais,
+          distrito: formData.direccionDistrito,
+          provincia: formData.direccionProvincia,
+          departamento: formData.direccionDepartamento,
+          direccion: formData.direccionCalle,
+          referencia: formData.direccionReferencia
         }],
         sexo: formData.sexo,
         fechaNacimiento: formData.fechaNacimiento,
         estadoCivil: formData.estadoCivil,
       }
       
-      console.log('Datos a enviar:', data)
-      console.log('Tipo de cliente seleccionado:', tipoCliente)
+      console.log('🔍 ClienteModal - Datos a enviar:', data)
+      console.log('🔍 ClienteModal - Tipo de cliente seleccionado:', tipoCliente)
+      console.log('🔍 ClienteModal - formData actual:', formData)
       
       await onSubmit(data)
 
@@ -143,6 +177,14 @@ export default function ClienteModal({
           sexo: '',
           fechaNacimiento: '',
           estadoCivil: '',
+          // Campos de dirección
+          direccionTipo: 'NACIONAL',
+          direccionPais: 'Peru',
+          direccionDistrito: '',
+          direccionProvincia: '',
+          direccionDepartamento: '',
+          direccionCalle: '',
+          direccionReferencia: '',
         })
       }
     } catch (error) {
@@ -159,51 +201,66 @@ export default function ClienteModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-none">
           <DialogTitle className="flex items-center gap-2">
             <FiUser className="w-5 h-5" />
             {initialData ? 'Editar Cliente' : 'Nuevo Cliente'}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Tipo de Cliente */}
-          <div className="space-y-2">
-            <Label>Tipo de Cliente *</Label>
-            <Select
-              value={tipoCliente}
-              onValueChange={(value: 'INDIVIDUAL' | 'EMPRESA') => setTipoCliente(value)}
-              disabled={!!initialData} // Deshabilitar si se está editando
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="INDIVIDUAL">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto py-4">
+            <div className="space-y-6">
+                      {/* Tipo de Cliente */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <FiUser className="h-5 w-5 text-blue-600" />
+                <h3 className="font-semibold text-gray-900">Tipo de Cliente</h3>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Tipo de Cliente *</Label>
+                <Select
+                  value={tipoCliente}
+                  onValueChange={(value: 'INDIVIDUAL' | 'EMPRESA') => setTipoCliente(value)}
+                  disabled={!!initialData} // Deshabilitar si se está editando
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INDIVIDUAL">
+                        <div className="flex items-center gap-2">
+                      <FiUser className="w-4 h-4" />
+                      Persona Natural
+                          </div>
+                    </SelectItem>
+                    <SelectItem value="EMPRESA">
                       <div className="flex items-center gap-2">
-                    <FiUser className="w-4 h-4" />
-                    Persona Natural
+                        <FiBriefcase className="w-4 h-4" />
+                        Empresa
                         </div>
-                </SelectItem>
-                <SelectItem value="EMPRESA">
-                  <div className="flex items-center gap-2">
-                    <FiBriefcase className="w-4 h-4" />
-                    Empresa
-                      </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            {initialData && (
-              <p className="text-sm text-gray-500">
-                Para cambiar el tipo de cliente, debe eliminar y recrear el cliente.
-              </p>
-                  )}
-                </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {initialData && (
+                  <p className="text-sm text-gray-500">
+                    Para cambiar el tipo de cliente, debe eliminar y recrear el cliente.
+                  </p>
+                )}
+              </div>
+            </div>
 
           {/* Campos especificos segun tipo */}
           {tipoCliente === 'INDIVIDUAL' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <FiUser className="h-5 w-5 text-blue-600" />
+                <h3 className="font-semibold text-gray-900">Información Personal</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nombre *</Label>
                 <Input
@@ -277,8 +334,15 @@ export default function ClienteModal({
                           </Select>
                   </div>
                 </div>
-              ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              </div>
+            ) : (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <FiBriefcase className="h-5 w-5 text-blue-600" />
+                <h3 className="font-semibold text-gray-900">Información de Empresa</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Razon Social *</Label>
                 <Input
@@ -318,10 +382,17 @@ export default function ClienteModal({
                     />
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
           {/* Campos comunes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-4">
+              <FiUser className="h-5 w-5 text-blue-600" />
+              <h3 className="font-semibold text-gray-900">Información de Contacto</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Email</Label>
               <Input
@@ -341,9 +412,93 @@ export default function ClienteModal({
               />
                 </div>
               </div>
+            </div>
 
+          {/* Sección de Dirección */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-4">
+              <FiUser className="h-5 w-5 text-blue-600" />
+              <h3 className="font-semibold text-gray-900">Información de Dirección</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo de Dirección</Label>
+                <Select
+                  value={formData.direccionTipo}
+                  onValueChange={(value) => handleInputChange('direccionTipo', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NACIONAL">Nacional</SelectItem>
+                    <SelectItem value="EXTRANJERA">Extranjera</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>País</Label>
+                <Input
+                  value={formData.direccionPais}
+                  onChange={(e) => handleInputChange('direccionPais', e.target.value)}
+                  placeholder="Peru"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Distrito</Label>
+                <Input
+                  value={formData.direccionDistrito}
+                  onChange={(e) => handleInputChange('direccionDistrito', e.target.value)}
+                  placeholder="Miraflores, San Isidro, etc."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Provincia</Label>
+                <Input
+                  value={formData.direccionProvincia}
+                  onChange={(e) => handleInputChange('direccionProvincia', e.target.value)}
+                  placeholder="Lima, Arequipa, etc."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Departamento</Label>
+                <Input
+                  value={formData.direccionDepartamento}
+                  onChange={(e) => handleInputChange('direccionDepartamento', e.target.value)}
+                  placeholder="Lima, Arequipa, etc."
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label>Dirección</Label>
+                <Input
+                  value={formData.direccionCalle}
+                  onChange={(e) => handleInputChange('direccionCalle', e.target.value)}
+                  placeholder="Av. Principal 123, Urbanización Los Jardines"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label>Referencia</Label>
+                <Input
+                  value={formData.direccionReferencia}
+                  onChange={(e) => handleInputChange('direccionReferencia', e.target.value)}
+                  placeholder="Cerca al parque, entre la calle A y B, etc."
+                />
+              </div>
+            </div>
+          </div>
+
+            </div>
+          </div>
+          
           {/* Botones */}
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex-none flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancelar
                 </Button>

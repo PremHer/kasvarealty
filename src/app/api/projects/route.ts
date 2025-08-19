@@ -99,7 +99,7 @@ export async function GET(request: Request) {
     }
     // SUPER_ADMIN y ADMIN ven todos los proyectos (whereClause vacío)
 
-    const proyectos = await prisma.proyecto.findMany({
+        const proyectos = await prisma.proyecto.findMany({
       where: whereClause,
       include: {
         creadoPor: {
@@ -174,6 +174,11 @@ export async function GET(request: Request) {
       totalArea: proyecto.areaTotal,
       usableArea: proyecto.areaUtil,
       totalUnits: proyecto.cantidadUnidades,
+      // Campos del predio matriz para contratos
+      extensionTotal: proyecto.extensionTotal,
+      unidadCatastral: proyecto.unidadCatastral,
+      partidaRegistral: proyecto.partidaRegistral,
+      plazoIndependizacion: proyecto.plazoIndependizacion,
       createdBy: {
         id: proyecto.creadoPor.id,
         name: proyecto.creadoPor.nombre,
@@ -271,7 +276,12 @@ export async function POST(request: Request) {
       areaTotal: data.totalArea ? parseFloat(data.totalArea) : null,
       areaUtil: data.usableArea ? parseFloat(data.usableArea) : null,
       cantidadUnidades: data.totalUnits ? parseInt(data.totalUnits) : null,
-      tipo: data.type as TipoProyecto
+      tipo: data.type as TipoProyecto,
+      // Campos del predio matriz para contratos
+      extensionTotal: data.extensionTotal ? parseFloat(data.extensionTotal) : null,
+      unidadCatastral: data.unidadCatastral || null,
+      partidaRegistral: data.partidaRegistral || null,
+      plazoIndependizacion: data.plazoIndependizacion ? parseInt(data.plazoIndependizacion) : null
     }
 
     const proyecto = await prisma.proyecto.create({
@@ -335,6 +345,11 @@ export async function POST(request: Request) {
       totalArea: proyecto.areaTotal,
       usableArea: proyecto.areaUtil,
       totalUnits: proyecto.cantidadUnidades,
+      // Campos del predio matriz para contratos
+      extensionTotal: proyecto.extensionTotal,
+      unidadCatastral: proyecto.unidadCatastral,
+      partidaRegistral: proyecto.partidaRegistral,
+      plazoIndependizacion: proyecto.plazoIndependizacion,
       createdBy: {
         id: proyecto.creadoPor.id,
         name: proyecto.creadoPor.nombre,

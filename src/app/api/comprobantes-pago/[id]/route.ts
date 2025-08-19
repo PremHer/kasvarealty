@@ -31,7 +31,9 @@ export async function DELETE(
 
     // Eliminar el archivo de Google Drive
     try {
-      await googleDriveService.deleteFile(comprobante.driveFileId);
+      if (comprobante.driveFileId) {
+        await googleDriveService.deleteFile(comprobante.driveFileId);
+      }
     } catch (error) {
       console.error('Error al eliminar archivo de Google Drive:', error);
       // Continuar con la eliminación de la base de datos aunque falle Google Drive

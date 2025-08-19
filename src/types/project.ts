@@ -119,4 +119,9 @@ export interface ProjectFormData {
   precioTerreno?: string
   inversionInicial?: string
   totalArea?: string
+  // Campos del predio matriz para contratos
+  extensionTotal?: string
+  unidadCatastral?: string
+  partidaRegistral?: string
+  plazoIndependizacion?: string
 } 

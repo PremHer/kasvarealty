@@ -1,5 +1,7 @@
 import { google } from 'googleapis';
 import { Readable } from 'stream';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { join } from 'path';
 
 // Configurar Node.js para usar el algoritmo de firma compatible
 process.env.NODE_OPTIONS = '--openssl-legacy-provider';
@@ -14,21 +16,32 @@ export interface GoogleDriveFile {
 }
 
 export class GoogleDriveService {
-  private drive;
+  private drive: any;
+  private isDevelopment: boolean;
+  private initialized: boolean = false;
 
   constructor() {
+    this.isDevelopment = process.env.NODE_ENV === 'development'
+  }
+
+  private async initialize() {
+    if (this.initialized) return;
+
     // Debug: Verificar variables de entorno
     console.log('=== DEBUG GOOGLE DRIVE CONFIG ===')
     console.log('Client Email:', process.env.GOOGLE_DRIVE_CLIENT_EMAIL ? '✅ Configurado' : '❌ No configurado')
     console.log('Client ID:', process.env.GOOGLE_DRIVE_CLIENT_ID ? '✅ Configurado' : '❌ No configurado')
     console.log('Private Key:', process.env.GOOGLE_DRIVE_PRIVATE_KEY ? '✅ Configurado' : '❌ No configurado')
-    
-    if (process.env.GOOGLE_DRIVE_PRIVATE_KEY) {
-      console.log('Private Key starts with:', process.env.GOOGLE_DRIVE_PRIVATE_KEY.substring(0, 50) + '...')
-      console.log('Private Key contains BEGIN:', process.env.GOOGLE_DRIVE_PRIVATE_KEY.includes('-----BEGIN PRIVATE KEY-----'))
-      console.log('Private Key contains END:', process.env.GOOGLE_DRIVE_PRIVATE_KEY.includes('-----END PRIVATE KEY-----'))
-    }
+    console.log('NODE_ENV:', process.env.NODE_ENV)
     console.log('================================')
+
+    // En desarrollo, si no hay credenciales, usar modo simulado
+    if (this.isDevelopment && (!process.env.GOOGLE_DRIVE_PRIVATE_KEY || !process.env.GOOGLE_DRIVE_CLIENT_EMAIL)) {
+      console.log('⚠️  Modo desarrollo: Google Drive Service en modo simulado')
+      this.drive = null
+      this.initialized = true
+      return
+    }
 
     // Configurar la autenticación con Google Drive
     const privateKey = process.env.GOOGLE_DRIVE_PRIVATE_KEY
@@ -64,6 +77,7 @@ export class GoogleDriveService {
 
       this.drive = google.drive({ version: 'v3', auth });
       console.log('✅ Google Drive Service inicializado correctamente')
+      this.initialized = true
     } catch (error) {
       console.error('❌ Error al inicializar Google Drive Service:', error)
       throw new Error('Error al configurar Google Drive Service')
@@ -76,6 +90,42 @@ export class GoogleDriveService {
     buffer: Buffer,
     folderId?: string
   ): Promise<GoogleDriveFile> {
+    await this.initialize(); // Ensure initialization happens before using the service
+
+    // En modo desarrollo sin credenciales, guardar localmente
+    if (this.isDevelopment && !this.drive) {
+      console.log('📁 [DEV] Guardando archivo localmente:', fileName)
+      
+      // Crear directorio para archivos de desarrollo si no existe
+      const devUploadsDir = join(process.cwd(), 'public', 'uploads', 'dev')
+      if (!existsSync(devUploadsDir)) {
+        mkdirSync(devUploadsDir, { recursive: true })
+      }
+      
+      // Generar nombre único para el archivo
+      const timestamp = Date.now()
+      const randomId = Math.random().toString(36).substr(2, 9)
+      const fileId = `dev-${timestamp}-${randomId}`
+      const fileExtension = fileName.split('.').pop() || 'bin'
+      const localFileName = `${fileId}.${fileExtension}`
+      const filePath = join(devUploadsDir, localFileName)
+      
+      // Guardar archivo localmente
+      writeFileSync(filePath, buffer)
+      
+      // URL local para acceder al archivo
+      const localUrl = `/uploads/dev/${localFileName}`
+      
+      return {
+        id: fileId,
+        name: fileName,
+        mimeType,
+        size: buffer.length,
+        webViewLink: localUrl,
+        webContentLink: localUrl
+      }
+    }
+
     try {
       // Crear el stream de lectura desde el buffer
       const stream = new Readable();
@@ -137,6 +187,14 @@ export class GoogleDriveService {
   }
 
   async deleteFile(fileId: string): Promise<void> {
+    await this.initialize(); // Ensure initialization happens before using the service
+
+    // En modo desarrollo sin credenciales, simular la eliminación
+    if (this.isDevelopment && !this.drive) {
+      console.log('🗑️ [DEV] Simulando eliminación de archivo:', fileId)
+      return
+    }
+
     try {
       await this.drive.files.delete({
         fileId,
@@ -148,6 +206,37 @@ export class GoogleDriveService {
   }
 
   async getFileInfo(fileId: string): Promise<GoogleDriveFile | null> {
+    await this.initialize(); // Ensure initialization happens before using the service
+
+    // En modo desarrollo sin credenciales, buscar archivo local
+    if (this.isDevelopment && !this.drive) {
+      console.log('📄 [DEV] Buscando archivo local:', fileId)
+      
+      // Buscar archivo en el directorio de uploads de desarrollo
+      const devUploadsDir = join(process.cwd(), 'public', 'uploads', 'dev')
+      const files = require('fs').readdirSync(devUploadsDir, { withFileTypes: true })
+      
+      // Buscar archivo que coincida con el ID
+      const file = files.find((f: any) => f.isFile() && f.name.startsWith(fileId))
+      
+      if (file) {
+        const filePath = join(devUploadsDir, file.name)
+        const stats = require('fs').statSync(filePath)
+        const localUrl = `/uploads/dev/${file.name}`
+        
+        return {
+          id: fileId,
+          name: file.name,
+          mimeType: this.getMimeTypeFromExtension(file.name),
+          size: stats.size,
+          webViewLink: localUrl,
+          webContentLink: localUrl
+        }
+      }
+      
+      return null
+    }
+
     try {
       const response = await this.drive.files.get({
         fileId,
@@ -175,6 +264,14 @@ export class GoogleDriveService {
   }
 
   async downloadFile(fileId: string): Promise<Buffer> {
+    await this.initialize(); // Ensure initialization happens before using the service
+
+    // En modo desarrollo sin credenciales, simular la descarga
+    if (this.isDevelopment && !this.drive) {
+      console.log('⬇️ [DEV] Simulando descarga de archivo:', fileId)
+      return Buffer.from('Contenido simulado del archivo')
+    }
+
     try {
       const response = await this.drive.files.get({
         fileId,
@@ -191,6 +288,14 @@ export class GoogleDriveService {
   }
 
   async createFolder(folderName: string, parentFolderId?: string): Promise<string> {
+    await this.initialize(); // Ensure initialization happens before using the service
+
+    // En modo desarrollo sin credenciales, simular la creación de carpeta
+    if (this.isDevelopment && !this.drive) {
+      console.log('📁 [DEV] Simulando creación de carpeta:', folderName)
+      return `dev-folder-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    }
+
     try {
       const fileMetadata = {
         name: folderName,
@@ -216,6 +321,14 @@ export class GoogleDriveService {
   }
 
   async setPublicPermissions(fileId: string): Promise<void> {
+    await this.initialize(); // Ensure initialization happens before using the service
+
+    // En modo desarrollo sin credenciales, simular la configuración de permisos
+    if (this.isDevelopment && !this.drive) {
+      console.log('🔓 [DEV] Simulando configuración de permisos públicos para archivo:', fileId)
+      return
+    }
+
     try {
       await this.drive.permissions.create({
         fileId,
@@ -229,6 +342,37 @@ export class GoogleDriveService {
       console.error('Error al establecer permisos públicos:', error);
       throw new Error('Error al establecer permisos públicos');
     }
+  }
+
+  private getMimeTypeFromExtension(fileName: string): string {
+    const extension = fileName.split('.').pop()?.toLowerCase()
+    
+    const mimeTypes: { [key: string]: string } = {
+      'pdf': 'application/pdf',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'bmp': 'image/bmp',
+      'webp': 'image/webp',
+      'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel',
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt': 'application/vnd.ms-powerpoint',
+      'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'txt': 'text/plain',
+      'csv': 'text/csv',
+      'zip': 'application/zip',
+      'rar': 'application/x-rar-compressed',
+      'mp4': 'video/mp4',
+      'avi': 'video/x-msvideo',
+      'mov': 'video/quicktime',
+      'mp3': 'audio/mpeg',
+      'wav': 'audio/wav'
+    }
+    
+    return mimeTypes[extension || ''] || 'application/octet-stream'
   }
 }
 

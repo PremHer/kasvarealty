@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { FiPlus, FiSearch } from 'react-icons/fi'
-import { Cliente, CreateClienteData, TIPO_CLIENTE, TipoCliente, EstadoCliente } from '@/types/cliente'
+import { Cliente, CreateClienteData, TIPO_CLIENTE, EstadoCliente } from '@/types/cliente'
 import toast from 'react-hot-toast'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -34,7 +34,7 @@ export default function ClientesPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [tipoFilter, setTipoFilter] = useState<TipoCliente | 'ALL'>('ALL')
+  const [tipoFilter, setTipoFilter] = useState<TIPO_CLIENTE | 'ALL'>('ALL')
   const [estadoFilter, setEstadoFilter] = useState<EstadoCliente | 'ALL'>('ALL')
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -160,17 +160,17 @@ export default function ClientesPage() {
 
   const filteredClientes = clientes.filter((cliente: Cliente) => {
     const searchLower = search.toLowerCase()
-    const matchesSearch = 
+        const matchesSearch =
       search === '' ||
-      cliente.nombre.toLowerCase().includes(searchLower) ||
-      cliente.apellido.toLowerCase().includes(searchLower) ||
+      cliente.nombre?.toLowerCase().includes(searchLower) ||
+      cliente.apellido?.toLowerCase().includes(searchLower) ||
       cliente.email.toLowerCase().includes(searchLower) ||
       cliente.razonSocial?.toLowerCase().includes(searchLower) ||
       cliente.dni?.toLowerCase().includes(searchLower) ||
       cliente.ruc?.toLowerCase().includes(searchLower)
     
-    const matchesTipo = tipoFilter === 'ALL' || cliente.tipo === tipoFilter
-    const matchesEstado = estadoFilter === 'ALL' || cliente.estado === estadoFilter
+    const matchesTipo = tipoFilter === 'ALL' || cliente.tipoCliente === tipoFilter
+    const matchesEstado = estadoFilter === 'ALL' || cliente.isActive === (estadoFilter === 'ACTIVO')
 
     return matchesSearch && matchesTipo && matchesEstado
   })
@@ -216,7 +216,7 @@ export default function ClientesPage() {
               className="pl-8"
             />
           </div>
-          <Select value={tipoFilter} onValueChange={(value: TipoCliente | 'ALL') => setTipoFilter(value)}>
+                        <Select value={tipoFilter} onValueChange={(value: TIPO_CLIENTE | 'ALL') => setTipoFilter(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Tipo de cliente" />
             </SelectTrigger>

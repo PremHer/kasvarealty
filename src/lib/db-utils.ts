@@ -8,7 +8,7 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
 // Función para limpiar el caché
 const clearCache = () => {
   const now = Date.now()
-  for (const [key, value] of queryCache.entries()) {
+  for (const [key, value] of Array.from(queryCache.entries())) {
     if (now - value.timestamp > CACHE_TTL) {
       queryCache.delete(key)
     }
@@ -305,7 +305,7 @@ export const getUpcomingDeadlines = async (empresaId: string) => {
 
 // Función para invalidar el caché
 export const invalidateCache = (pattern: string) => {
-  for (const key of queryCache.keys()) {
+  for (const key of Array.from(queryCache.keys())) {
     if (key.includes(pattern)) {
       queryCache.delete(key)
     }

@@ -4,6 +4,76 @@ import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
 import type { Rol } from '@prisma/client'
 
+// GET /api/users/[userId] - Obtener detalles del usuario
+export async function GET(
+  request: Request,
+  { params }: { params: { userId: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const userRole = session.user.role as Rol
+    const canViewUsers = [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'GERENTE_GENERAL',
+      'SALES_MANAGER',
+      'PROJECT_MANAGER',
+      'FINANCE_MANAGER',
+      'SALES_REP',
+      'SALES_ASSISTANT',
+      'SALES_COORDINATOR',
+      'PROJECT_ASSISTANT',
+      'ACCOUNTANT',
+      'FINANCE_ASSISTANT'
+    ].includes(userRole)
+
+    if (!canViewUsers) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    // Obtener el usuario con todos sus campos
+    const user = await prisma.usuario.findUnique({
+      where: { id: params.userId },
+      select: {
+        id: true,
+        nombre: true,
+        email: true,
+        rol: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true,
+        updatedAt: true,
+        dni: true,
+        sexo: true,
+        fechaNacimiento: true,
+        estadoCivil: true,
+        profesion: true,
+        direccion: true,
+        distrito: true,
+        provincia: true,
+        departamento: true,
+        empresaDesarrolladoraId: true
+      }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+    }
+
+    return NextResponse.json(user)
+  } catch (error) {
+    console.error('Error al obtener usuario:', error)
+    return NextResponse.json(
+      { error: 'Error al obtener usuario' },
+      { status: 500 }
+    )
+  }
+}
+
 // PUT /api/users/[userId] - Actualizar usuario
 export async function PUT(
   request: Request,
@@ -47,7 +117,21 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { nombre, email, rol } = body
+    const { 
+      nombre, 
+      email, 
+      rol,
+      // Nuevos campos
+      dni,
+      sexo,
+      fechaNacimiento,
+      estadoCivil,
+      profesion,
+      direccion,
+      distrito,
+      provincia,
+      departamento
+    } = body
 
     // Verificar que el rol que se está asignando está permitido según la jerarquía
     const ROLE_HIERARCHY: Record<Rol, Rol[]> = {
@@ -95,7 +179,10 @@ export async function PUT(
       }
     }
 
-    // RESTRICCIÓN: No permitir cambiar el rol si el usuario tiene proyectos asociados como gerente, creador o aprobador
+    // Permitir actualización de otros campos incluso si tiene proyectos asociados
+    // Solo se bloquea el cambio de rol, no la actualización de información personal
+
+    // RESTRICCIÓN: Solo bloquear cambio de rol si el usuario tiene proyectos asociados como gerente, creador o aprobador
     if (rol !== userToUpdate.rol) {
       const proyectosAsociados = await prisma.proyecto.findFirst({
         where: {
@@ -117,37 +204,6 @@ export async function PUT(
       }
     }
 
-    // Verificar proyectos asociados antes de actualizar el usuario
-    const projects = await prisma.proyecto.findMany({
-      where: {
-        OR: [
-          {
-            gerenteId: params.userId
-          },
-          {
-            creadoPorId: params.userId
-          },
-          {
-            aprobadoPorId: params.userId
-          },
-          {
-            miembros: {
-              some: {
-                id: params.userId
-              }
-            }
-          }
-        ]
-      }
-    })
-
-    if (projects.length > 0) {
-      return NextResponse.json(
-        { error: 'No puedes actualizar este usuario porque tiene proyectos asociados' },
-        { status: 403 }
-      )
-    }
-
     // Actualizar usuario
     try {
       const updatedUser = await prisma.usuario.update({
@@ -155,7 +211,17 @@ export async function PUT(
         data: {
           nombre,
           email,
-          rol
+          rol,
+          // Nuevos campos
+          dni: dni || null,
+          sexo: sexo || null,
+          fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null,
+          estadoCivil: estadoCivil || null,
+          profesion: profesion || null,
+          direccion: direccion || null,
+          distrito: distrito || null,
+          provincia: provincia || null,
+          departamento: departamento || null
         }
       })
 
