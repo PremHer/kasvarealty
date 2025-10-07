@@ -12,6 +12,8 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import VentaAmortizacionModal from './VentaAmortizacionModal'
 import CuotasModal from './CuotasModal'
+import ReprogramarCuotasModal from './ReprogramarCuotasModal'
+import VentaDetalleModal from './VentaDetalleModal'
 import { 
   FiSearch, 
   FiFilter, 
@@ -32,7 +34,8 @@ import {
   FiChevronRight,
   FiDownload,
   FiRefreshCw,
-  FiEdit
+  FiEdit,
+  FiEdit2
 } from 'react-icons/fi'
 
 interface Venta {
@@ -88,7 +91,10 @@ export default function VentaList({ userRole, userId, estado }: VentaListProps) 
   const [showFilters, setShowFilters] = useState(false)
   const [showAmortizacionModal, setShowAmortizacionModal] = useState(false)
   const [showCuotasModal, setShowCuotasModal] = useState(false)
+  const [showReprogramarModal, setShowReprogramarModal] = useState(false)
+  const [showDetalleModal, setShowDetalleModal] = useState(false)
   const [selectedVentaId, setSelectedVentaId] = useState<string>('')
+  const [selectedVenta, setSelectedVenta] = useState<any>(null)
   const { toast } = useToast()
 
   const fetchVentas = async () => {
@@ -520,8 +526,8 @@ export default function VentaList({ userRole, userId, estado }: VentaListProps) 
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  // TODO: Implementar vista de detalle
-                                  console.log('Ver detalle:', venta.id)
+                                  setSelectedVentaId(venta.id)
+                                  setShowDetalleModal(true)
                                 }}
                                 className="flex items-center gap-1"
                               >
@@ -562,6 +568,37 @@ export default function VentaList({ userRole, userId, estado }: VentaListProps) 
                                 <FiTrendingUp className="h-3 w-3" />
                                 Amortización
                               </Button>
+                              
+                              {/* Botón de reprogramar cuotas - solo para ventas aprobadas con cuotas */}
+                              {venta.estado === 'APROBADA' && (venta.metodoPago === 'CUOTAS' || venta.metodoPago === 'cuotas') && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      console.log('🔍 Cargando datos de venta para reprogramación:', venta.id)
+                                      const response = await fetch(`/api/ventas/${venta.id}`)
+                                      if (!response.ok) throw new Error('Error al cargar datos de venta')
+                                      
+                                      const ventaData = await response.json()
+                                      setSelectedVenta(ventaData)
+                                      setShowReprogramarModal(true)
+                                    } catch (error) {
+                                      console.error('Error al cargar venta:', error)
+                                      toast({
+                                        title: 'Error',
+                                        description: 'No se pudo cargar los datos de la venta',
+                                        variant: 'destructive'
+                                      })
+                                    }
+                                  }}
+                                  className="flex items-center gap-1 bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                                  title="Reprogramar Cuotas"
+                                >
+                                  <FiEdit2 className="h-3 w-3" />
+                                  Reprogramar
+                                </Button>
+                              )}
                               
                               {/* Botón de editar */}
                               <Button
@@ -727,6 +764,24 @@ export default function VentaList({ userRole, userId, estado }: VentaListProps) 
       <CuotasModal
         isOpen={showCuotasModal}
         onClose={() => setShowCuotasModal(false)}
+        ventaId={selectedVentaId}
+      />
+
+      {/* Modal de Reprogramación de Cuotas */}
+      <ReprogramarCuotasModal
+        isOpen={showReprogramarModal}
+        onClose={() => setShowReprogramarModal(false)}
+        venta={selectedVenta}
+        onReprogramacionSuccess={() => {
+          fetchVentas() // Recargar la lista de ventas
+          setShowReprogramarModal(false)
+        }}
+      />
+
+      {/* Modal de Detalle de Venta */}
+      <VentaDetalleModal
+        isOpen={showDetalleModal}
+        onClose={() => setShowDetalleModal(false)}
         ventaId={selectedVentaId}
       />
     </div>

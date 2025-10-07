@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { FiDollarSign, FiCalendar, FiCheckCircle, FiClock, FiXCircle, FiPlus, FiX, FiUpload, FiChevronDown, FiChevronUp } from 'react-icons/fi'
+import { FiDollarSign, FiCalendar, FiCheckCircle, FiClock, FiXCircle, FiPlus, FiX, FiUpload, FiChevronDown, FiChevronUp, FiEdit2 } from 'react-icons/fi'
 import React from 'react'
+import ReprogramarCuotasModal from './ReprogramarCuotasModal'
 
 interface Cuota {
   id: string
@@ -86,6 +87,8 @@ export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalPro
   }
   const [submittingPago, setSubmittingPago] = useState<string | null>(null)
   const [recalculandoSaldos, setRecalculandoSaldos] = useState(false)
+  const [showReprogramarModal, setShowReprogramarModal] = useState(false)
+  const [ventaData, setVentaData] = useState<any>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -114,6 +117,11 @@ export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalPro
       const ventaResponse = await fetch(`/api/ventas/${ventaId}`)
       if (ventaResponse.ok) {
         const ventaData = await ventaResponse.json()
+        console.log('🔍 Datos de venta cargados:', {
+          estado: ventaData.estado,
+          metodoPago: ventaData.metodoPago,
+          tipoVenta: ventaData.tipoVenta
+        })
         setVentaInfo(ventaData)
       }
     } catch (error) {
@@ -616,9 +624,17 @@ export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalPro
               </div>
             </div>
 
-            {/* Botón para recalcular saldos - Solo para ventas con intereses */}
-            {ventaInfo?.tasaInteres && ventaInfo.tasaInteres > 0 && (
-              <div className="flex justify-end">
+            {/* Botones de acción */}
+            <div className="flex justify-end gap-2">
+              {/* Debug info */}
+              {ventaInfo && (
+                <div className="text-xs text-gray-500 mr-4">
+                  Debug: Estado={ventaInfo.estado}, Método={ventaInfo.metodoPago}
+                </div>
+              )}
+              
+              {/* Botón para recalcular saldos - Solo para ventas con intereses */}
+              {ventaInfo?.tasaInteres && ventaInfo.tasaInteres > 0 && (
                 <Button 
                   onClick={recalcularSaldos} 
                   variant="outline" 
@@ -628,8 +644,38 @@ export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalPro
                 >
                   {recalculandoSaldos ? 'Recalculando...' : 'Recalcular Saldos de Capital'}
                 </Button>
-              </div>
-            )}
+              )}
+              
+              {/* Botón de reprogramación - Para ventas con cuotas */}
+              {cuotas.length > 0 && (
+                <Button
+                  onClick={async () => {
+                    try {
+                      console.log('🔍 Cargando datos de venta para reprogramación:', ventaId)
+                      const response = await fetch(`/api/ventas/${ventaId}`)
+                      if (!response.ok) throw new Error('Error al cargar datos de venta')
+                      
+                      const ventaData = await response.json()
+                      setVentaData(ventaData)
+                      setShowReprogramarModal(true)
+                    } catch (error) {
+                      console.error('Error al cargar venta:', error)
+                      toast({
+                        title: 'Error',
+                        description: 'No se pudo cargar los datos de la venta',
+                        variant: 'destructive'
+                      })
+                    }
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                >
+                  <FiEdit2 className="h-3 w-3 mr-1" />
+                  Reprogramar Cuotas
+                </Button>
+              )}
+            </div>
 
             {/* Sección para calcular amortización solo si la venta tiene intereses configurados pero no calculados */}
             {cuotas.length > 0 && 
@@ -1113,6 +1159,19 @@ export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalPro
               </div>
             </div>
           </div>
+        )}
+
+        {/* Modal de Reprogramación de Cuotas */}
+        {ventaData && (
+          <ReprogramarCuotasModal
+            isOpen={showReprogramarModal}
+            onClose={() => setShowReprogramarModal(false)}
+            venta={ventaData}
+            onReprogramacionSuccess={() => {
+              fetchCuotas() // Recargar las cuotas
+              setShowReprogramarModal(false)
+            }}
+          />
         )}
       </DialogContent>
     </Dialog>

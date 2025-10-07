@@ -149,17 +149,17 @@ export async function POST(
               }
             },
             pabellon: {
-              include: {
-                                                        proyecto: {
+                  include: {
+                    proyecto: {
                       include: {
                         empresaDesarrolladora: {
-                  include: {
-                    representanteLegal: true
-                  }
-                },
-                    caracteristicas: {
-                      where: { activa: true },
-                      orderBy: { orden: 'asc' }
+                          include: {
+                            representanteLegal: true
+                          }
+                        },
+                        caracteristicas: {
+                          where: { activa: true },
+                          orderBy: { orden: 'asc' }
                     }
                   }
                 }
@@ -255,10 +255,10 @@ export async function POST(
       const buffer = await Packer.toBuffer(doc)
       
       // Crear directorio si no existe
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'contratos')
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true })
-      }
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'contratos')
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true })
+    }
 
       // Generar nombre de archivo
       const timestamp = format(new Date(), 'yyyy-MM-dd_HH-mm-ss')
@@ -294,33 +294,33 @@ export async function POST(
       const filePath = path.join(uploadsDir, fileName)
 
       // Generar PDF con Puppeteer
-      const browser = await puppeteer.launch({
-        headless: true,
+    const browser = await puppeteer.launch({ 
+      headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox']
-      })
-      
-      const page = await browser.newPage()
+    })
+    
+    const page = await browser.newPage()
       await page.setContent(html, { waitUntil: 'networkidle0' })
-      
+    
                 await page.pdf({
             path: filePath,
-            format: 'A4',
-            margin: {
-              top: '20mm',
+      format: 'A4',
+      margin: {
+        top: '20mm',
               right: '25mm',
-              bottom: '20mm',
+        bottom: '20mm',
               left: '25mm'
-            },
-            printBackground: true
-          })
+      },
+      printBackground: true
+    })
 
-      await browser.close()
-      
+    await browser.close()
+
       console.log('🔍 Debug - PDF generado:', fileName)
 
-      return NextResponse.json({
-        success: true,
-        message: 'PDF generado correctamente',
+    return NextResponse.json({
+      success: true,
+      message: 'PDF generado correctamente',
         pdfUrl: `/uploads/contratos/${fileName}`,
         fileName: fileName
       })
@@ -358,9 +358,9 @@ function determinarGenero(cliente: any): 'masculino' | 'femenino' {
     return nombresFemeninos.some(nombreFem => nombreLower.includes(nombreFem)) ? 'femenino' : 'masculino'
   }
   
-  return 'masculino'
-}
-
+      return 'masculino'
+    }
+    
 // Función para generar texto de compradores
 function generarTextoCompradores(clientesPrincipales: any[], esMultipleCompradores: boolean): string {
   if (clientesPrincipales.length === 0) return 'PLACEHOLDER_COMPRADOR'
@@ -401,9 +401,9 @@ function generarTablaCuotas(venta: any): string {
           <th>Fecha de Pago</th>
           <th>Monto</th>
           <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody>
+          </tr>
+        </thead>
+        <tbody>
   `
 
   venta.cuotas.forEach((cuota: any) => {
@@ -423,9 +423,9 @@ function generarTablaCuotas(venta: any): string {
   })
 
   tablaHTML += `
-      </tbody>
-    </table>
-  `
+        </tbody>
+      </table>
+    `
 
   return tablaHTML
 }
@@ -487,39 +487,39 @@ function generateContractHTML(contrato: any): string {
     <!DOCTYPE html>
     <html lang="es">
     <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Contrato de Compra Venta</title>
-      <style>
-        body {
-          font-family: 'Times New Roman', serif;
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Contrato de Compra Venta</title>
+        <style>
+            body {
+                font-family: 'Times New Roman', serif;
           line-height: 1.6;
           margin: 0;
           padding: 40px 60px;
           color: #333;
         }
         
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
+            .header {
+                text-align: center;
+                margin-bottom: 30px;
+            }
         
-        .title {
-          font-size: 18pt;
-          font-weight: bold;
-          margin-bottom: 10px;
+            .title {
+                font-size: 18pt;
+                font-weight: bold;
+                margin-bottom: 10px;
           color: #000;
         }
         
         .clause-number {
-          font-weight: bold;
+                font-weight: bold;
           color: #000;
-          font-size: 14pt;
+                font-size: 14pt;
         }
         
         .highlight {
-          font-weight: bold;
-        }
+                font-weight: bold;
+            }
         
         .cuotas-table {
           width: 100%;
@@ -538,7 +538,7 @@ function generateContractHTML(contrato: any): string {
         .cuotas-table th {
           background-color: #f5f5f5;
           color: #000;
-          font-weight: bold;
+                font-weight: bold;
           border: 1px solid #000;
         }
         
@@ -559,7 +559,7 @@ function generateContractHTML(contrato: any): string {
         
         .signature-section {
           margin-top: 40px;
-          text-align: center;
+                text-align: center;
         }
         
         .signature-line {
@@ -575,7 +575,7 @@ function generateContractHTML(contrato: any): string {
         }
         
         .signature-name {
-          font-weight: bold;
+                font-weight: bold;
           margin-bottom: 5px;
         }
         
@@ -593,7 +593,7 @@ function generateContractHTML(contrato: any): string {
         }
         
         p {
-          margin: 10px 0;
+                margin: 10px 0;
           text-align: justify;
         }
         
@@ -603,15 +603,15 @@ function generateContractHTML(contrato: any): string {
         
         .section p {
           margin: 15px 0;
-        }
-      </style>
+            }
+        </style>
     </head>
     <body>
-      <div class="header">
-        <div class="title">CONTRATO DE COMPRA VENTA</div>
-      </div>
+        <div class="header">
+            <div class="title">CONTRATO DE COMPRA VENTA</div>
+        </div>
 
-      <div class="section">
+        <div class="section">
         <p>
           Conste por el presente contrato de compra y venta de ${contrato.ventaLote ? 'lote de terreno' : 'unidad de cementerio'}, que celebran de una parte; 
           <span class="highlight">${safeText(empresa?.nombre || 'PLACEHOLDER_NOMBRE_EMPRESA')}</span>, 
@@ -638,9 +638,9 @@ function generateContractHTML(contrato: any): string {
           <span class="clause-number">"${generoRepresentante === 'femenino' ? 'LA VENDEDORA' : 'EL VENDEDOR'}"</span> 
           y de la otra parte ${textoCompradores}, y suscriben el presente contrato en los términos y condiciones siguientes:
         </p>
-      </div>
+        </div>
 
-      <div class="section">
+        <div class="section">
         <p class="clause-number">PRIMERA</p>
         <p>
           <span class="clause-number">"${generoRepresentante === 'femenino' ? 'LA VENDEDORA' : 'EL VENDEDOR'}"</span> 
@@ -653,15 +653,15 @@ function generateContractHTML(contrato: any): string {
           y departamento de 
           <span class="highlight">${proyecto?.departamento || 'PLACEHOLDER_DEPARTAMENTO_PROYECTO'}</span>.
         </p>
-      </div>
+        </div>
 
-      <div class="section">
+        <div class="section">
         <p class="clause-number">SEGUNDA</p>
         <p>
           <span class="clause-number">"${generoRepresentante === 'femenino' ? 'LA VENDEDORA' : 'EL VENDEDOR'}"</span> 
           declara el propósito de desarrollar el proyecto con la finalidad de independización de lotes. El proyecto contará dentro de su conformación con las siguientes características:
         </p>
-        ${proyecto?.caracteristicas && proyecto.caracteristicas.length > 0 
+                    ${proyecto?.caracteristicas && proyecto.caracteristicas.length > 0 
           ? proyecto.caracteristicas.map((car: any) => 
               `<p>● <span class="highlight">${safeText(car.nombre)}</span></p>`
             ).join('')
@@ -672,9 +672,9 @@ function generateContractHTML(contrato: any): string {
             <p>● <span class="highlight">Título de propiedad para cada lote independizado</span></p>
           `
         }
-      </div>
+        </div>
 
-      <div class="section">
+        <div class="section">
         <p class="clause-number">TERCERA</p>
         <p>
           Por el presente documento 
@@ -685,97 +685,97 @@ function generateContractHTML(contrato: any): string {
         <p>
           <strong>Lote N° ${safeText(producto.numero)} de la manzana "${producto.manzana?.codigo || 'PLACEHOLDER_CODIGO_MANZANA'}" tiene un área de ${producto.area || 'PLACEHOLDER_AREA'} m²</strong>
         </p>
-      </div>
+        </div>
 
-      <div class="section">
+        <div class="section">
         <p class="clause-number">CUARTA</p>
         <p>
-          Las partes, de común acuerdo han establecido como precio del lote de terreno mencionado en la cláusula que precede, en la suma de S/. ${formatNumber(venta.precioVenta)} (${formatNumber(venta.precioVenta)} soles).
+                Las partes, de común acuerdo han establecido como precio del lote de terreno mencionado en la cláusula que precede, en la suma de S/. ${formatNumber(venta.precioVenta)} (${formatNumber(venta.precioVenta)} soles).
         </p>
-        ${venta.montoInicial && venta.montoInicial > 0 ? `
+            ${venta.montoInicial && venta.montoInicial > 0 ? `
           <p>
             El pago de la cuota inicial de S/. ${formatNumber(venta.montoInicial)} (${formatNumber(venta.montoInicial)} soles) se hizo mediante depósito en la cuenta corriente de 
             <span class="clause-number">"${generoRepresentante === 'femenino' ? 'LA VENDEDORA' : 'EL VENDEDOR'}"</span> 
             en el banco ${bankInfo.banco} del Perú con el NRO. de cuenta N° ${bankInfo.numeroCuenta}
             ${venta.numeroOperacion ? ` con número de operación bancaria N° <span class="highlight">${venta.numeroOperacion}</span>` : ''}.
           </p>
-        ` : ''}
-        ${venta.tipoVenta === 'CUOTAS' ? `
+            ` : ''}
+            ${venta.tipoVenta === 'CUOTAS' ? `
           <p>
-            El saldo de S/. ${formatNumber(venta.precioVenta - (venta.montoInicial || 0))} (${formatNumber(venta.precioVenta - (venta.montoInicial || 0))} soles) se cancelará en ${venta.cuotas?.length || 0} cuotas, según el siguiente cronograma:
+                El saldo de S/. ${formatNumber(venta.precioVenta - (venta.montoInicial || 0))} (${formatNumber(venta.precioVenta - (venta.montoInicial || 0))} soles) se cancelará en ${venta.cuotas?.length || 0} cuotas, según el siguiente cronograma:
           </p>
           ${generarTablaCuotas(venta)}
         ` : `
           <p>
             El pago total de S/. ${formatNumber(venta.precioVenta)} (${formatNumber(venta.precioVenta)} soles) se realizó mediante depósito en la cuenta corriente de <span class="clause-number">"${generoRepresentante === 'femenino' ? 'LA VENDEDORA' : 'EL VENDEDOR'}"</span> en el banco ${bankInfo.banco} del Perú con el NRO. de cuenta N° ${bankInfo.numeroCuenta}${venta.numeroOperacion ? ` con número de operación bancaria N° <span class="highlight">${venta.numeroOperacion}</span>` : ''}.
           </p>
-        `}
-      </div>
+            `}
+        </div>
 
-      <div class="section">
+        <div class="section">
         <p class="clause-number">QUINTA</p>
         <p>
           Las partidas del registro de la propiedad inmueble se abrirán como consecuencia de la independización de las unidades inmobiliarias. En consecuencia, al producirse la independización y obtenida las partidas registrales independientes, 
           <span class="clause-number">"${generoRepresentante === 'femenino' ? 'LA VENDEDORA' : 'EL VENDEDOR'}"</span> 
           se compromete a firmar la escritura pública definitiva de compra y venta a favor de ${esMultipleCompradores2 ? '"LOS COMPRADORES"' : '"EL COMPRADOR"'} ante notario público.
         </p>
-      </div>
+                </div>
 
-      <div class="section">
+        <div class="section">
         <p class="clause-number">SEXTA</p>
         <p>
           La venta del terreno comprende todos los usos, costumbres, servidumbres, servicios, aires y en general todo cuanto de hecho o por derecho le corresponda o pudiera corresponder sin reserva ni limitación alguna. A la firma de la presente se le suministra la posesión inmediata a ${esMultipleCompradores2 ? '"LOS COMPRADORES"' : '"EL COMPRADOR"'}.
         </p>
-      </div>
+        </div>
 
-      <div class="section">
+        <div class="section">
         <p class="clause-number">SÉPTIMA</p>
         <p>
           ${esMultipleCompradores2 ? '"LOS COMPRADORES"' : '"EL COMPRADOR"'} se compromete al cumplimiento del reglamento interno de 
           <span class="highlight">"${safeText(proyecto.nombre)}"</span> 
           el que será aprobado por la junta de propietarios. Para contribuir al ordenamiento y mejora del entorno de la lotización.
         </p>
-      </div>
+        </div>
 
-      <div class="section">
+        <div class="section">
         <p class="clause-number">OCTAVA</p>
         <p>
           La fecha prevista para la independización de las unidades inmobiliarias materia del presente contrato, se prorrogará automáticamente cuando medien causas no imputables a las partes que impidan el cumplimiento cabal de esta prestación. No obstante, el compromiso es hacerlo en el plazo de 
           <span class="highlight">${proyecto?.plazoIndependizacion || 'PLACEHOLDER_PLAZO_INDEPENDIZACION'}</span> 
           meses a partir de la suscripción del presente contrato.
         </p>
-      </div>
+        </div>
 
-      <div class="section">
+        <div class="section">
         <p class="clause-number">NOVENA</p>
         <p>
           ${esMultipleCompradores2 ? '"LOS COMPRADORES"' : '"EL COMPRADOR"'} declara que es condición esencial en su manifestación de voluntad la celebración del presente contrato y posterior contrato definitivo de compraventa, la adquisición del bien inmueble indicado en el numeral de la presente cláusula.
         </p>
-      </div>
+        </div>
 
       ${venta.tipoVenta === 'CUOTAS' ? `
-      <div class="section">
+        <div class="section">
         <p class="clause-number">DÉCIMA</p>
         <p>
           En caso de que ${esMultipleCompradores2 ? 'LOS COMPRADORES' : 'EL COMPRADOR'} incumpla con el pago de tres (3) o más cuotas consecutivas, o manifieste por escrito su decisión de desistir de la compra, ${generoRepresentante === 'femenino' ? 'LA VENDEDORA' : 'EL VENDEDOR'} podrá dar por terminado el presente contrato unilateralmente, sin obligación de devolver las sumas de dinero ya pagadas por ${esMultipleCompradores2 ? 'LOS COMPRADORES' : 'EL COMPRADOR'}. Estas sumas se considerarán como compensación por los gastos administrativos, gestión de venta y daños derivados de la rescisión, los cuales son asumidos exclusivamente por ${generoRepresentante === 'femenino' ? 'LA VENDEDORA' : 'EL VENDEDOR'}.
         </p>
-      </div>
+            </div>
       ` : ''}
 
-      <div class="section">
+        <div class="section">
         <p class="clause-number">${venta.tipoVenta === 'CUOTAS' ? 'DÉCIMO PRIMERO' : 'DÉCIMA'}</p>
         <p>
           Para todos los efectos de este contrato, los otorgantes se someten a la jurisdicción de los jueces y tribunales de la provincia de 
           <span class="highlight">${proyecto?.provincia || 'PLACEHOLDER_PROVINCIA_PROYECTO'}</span>.
         </p>
-      </div>
+        </div>
 
-      <div class="section">
+        <div class="section">
         <p class="clause-number">${venta.tipoVenta === 'CUOTAS' ? 'DÉCIMO SEGUNDO' : 'UNDÉCIMA'}</p>
         <p>
-          En todo lo no previsto por las partes en el presente contrato, ambas partes se someten a lo establecido por las normas del código civil y demás del sistema jurídico que resulten aplicables.
+                En todo lo no previsto por las partes en el presente contrato, ambas partes se someten a lo establecido por las normas del código civil y demás del sistema jurídico que resulten aplicables.
         </p>
-      </div>
+        </div>
 
       <div class="signature-section">
         <p>En señal de conformidad y aceptación de las cláusulas del presente contrato, ambas partes firmamos.</p>
@@ -791,8 +791,8 @@ function generateContractHTML(contrato: any): string {
             <div class="signature-name">${generoRepresentante === 'femenino' ? 'LA VENDEDORA' : 'EL VENDEDOR'}</div>
             <div class="signature-details">
               <strong>${safeText(empresa?.nombre)}</strong><br>
-              Representante Legal<br>
-              ${generoRepresentante === 'femenino' ? 'Sra.' : 'Sr.'} ${safeText(representanteLegal?.nombre)}<br>
+                Representante Legal<br>
+                ${generoRepresentante === 'femenino' ? 'Sra.' : 'Sr.'} ${safeText(representanteLegal?.nombre)}<br>
               DNI: ${representanteLegal?.dni || 'N/A'}
             </div>
           </div>
@@ -803,19 +803,19 @@ function generateContractHTML(contrato: any): string {
             <div class="signature-name">${esMultipleCompradores2 ? 'LOS COMPRADORES' : 'EL COMPRADOR'}</div>
             <div class="signature-details">
               ${clientesPrincipales.map((c: any) => {
-                const genero = determinarGenero(c?.nombre || '')
-                const tratamiento = genero === 'femenino' ? 'Sra.' : 'Sr.'
+                  const genero = determinarGenero(c?.nombre || '')
+                  const tratamiento = genero === 'femenino' ? 'Sra.' : 'Sr.'
                 return `${tratamiento} ${safeText(c.nombre)} ${safeText(c.apellido)}<br>DNI: ${c.dni || 'N/A'}`
               }).join('<br><br>')}
             </div>
-          </div>
+        </div>
         </div>
       </div>
 
       <div class="footer">
         <p>Documento generado automáticamente por el sistema de gestión inmobiliaria</p>
         <p>Fecha de generación: ${formatDate(new Date())}</p>
-      </div>
+        </div>
     </body>
     </html>
   `

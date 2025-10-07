@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { prisma } from '@/lib/prisma'
@@ -13,9 +13,8 @@ const SALES_ROLES: Rol[] = [
   'GERENTE_GENERAL'
 ]
 
-// GET /api/ventas/[id] - Obtener venta específica
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -31,10 +30,19 @@ export async function GET(
       return NextResponse.json({ error: 'No tienes permisos para ver ventas' }, { status: 403 })
     }
 
-    // Buscar la venta en ambas tablas
+    const ventaId = params.id
+
+    // Buscar venta de lote
     let ventaLote = await prisma.ventaLote.findUnique({
-      where: { id: params.id },
+      where: { id: ventaId },
       include: {
+        cliente: {
+          include: {
+            direcciones: true
+          }
+        },
+        vendedor: true,
+        aprobador: true,
         lote: {
           include: {
             manzana: {
@@ -44,92 +52,59 @@ export async function GET(
             }
           }
         },
-        cliente: true,
-        vendedor: {
-          select: {
-            id: true,
-            nombre: true,
-            email: true
-          }
-        },
-        aprobador: {
-          select: {
-            id: true,
-            nombre: true,
-            email: true
-          }
+        cuotas: {
+          orderBy: { numeroCuota: 'asc' }
         }
       }
     })
 
-    let ventaUnidadCementerio = await prisma.ventaUnidadCementerio.findUnique({
-      where: { id: params.id },
-      include: {
-        unidadCementerio: {
-          include: {
-            pabellon: {
-              include: {
-                proyecto: true
+    // Si no es venta de lote, buscar venta de unidad de cementerio
+    if (!ventaLote) {
+      const ventaUnidad = await prisma.ventaUnidadCementerio.findUnique({
+        where: { id: ventaId },
+        include: {
+          cliente: {
+            include: {
+              direcciones: true
+            }
+          },
+          vendedor: true,
+          aprobador: true,
+          unidadCementerio: {
+            include: {
+              pabellon: {
+                include: {
+                  proyecto: true
+                }
               }
             }
-          }
-        },
-        cliente: true,
-        vendedor: {
-          select: {
-            id: true,
-            nombre: true,
-            email: true
-          }
-        },
-        aprobador: {
-          select: {
-            id: true,
-            nombre: true,
-            email: true
+          },
+          cuotas: {
+            orderBy: { numeroCuota: 'asc' }
           }
         }
-      }
-    })
-
-    if (!ventaLote && !ventaUnidadCementerio) {
-      return NextResponse.json(
-        { error: 'Venta no encontrada' },
-        { status: 404 }
-      )
-    }
-
-    // Verificar permisos según el rol
-    if (userRole === 'SALES_REP') {
-      // Sales Rep solo puede ver sus propias ventas
-      if (ventaLote && ventaLote.vendedorId !== session.user.id) {
-        return NextResponse.json(
-          { error: 'No tienes permisos para ver esta venta' },
-          { status: 403 }
-        )
-      }
-      if (ventaUnidadCementerio && ventaUnidadCementerio.vendedorId !== session.user.id) {
-        return NextResponse.json(
-          { error: 'No tienes permisos para ver esta venta' },
-          { status: 403 }
-        )
-      }
-    }
-
-    // Retornar la venta encontrada
-    if (ventaLote) {
-      return NextResponse.json({
-        ...ventaLote,
-        tipoVenta: 'LOTE',
-        unidad: ventaLote.lote
       })
-    } else {
-      return NextResponse.json({
-        ...ventaUnidadCementerio,
-        tipoVenta: 'UNIDAD_CEMENTERIO',
-        unidad: ventaUnidadCementerio!.unidadCementerio
-      })
+
+      if (!ventaUnidad) {
+        return NextResponse.json({ error: 'Venta no encontrada' }, { status: 404 })
+      }
+
+      // Agregar tipo de venta para identificar
+      const ventaConTipo = {
+        ...ventaUnidad,
+        tipoVenta: 'UNIDAD_CEMENTERIO'
+      }
+
+      return NextResponse.json(ventaConTipo)
     }
+
+    // Agregar tipo de venta para identificar
+    const ventaConTipo = {
+      ...ventaLote,
+      tipoVenta: 'LOTE'
+    }
+
+    return NextResponse.json(ventaConTipo)
 
   } catch (error) {
     console.error('Error al obtener venta:', error)

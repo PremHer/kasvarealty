@@ -1,4 +1,4 @@
-# Kasva Realty - Sistema de Gestión Inmobiliaria
+﻿# Kasva Realty - Sistema de Gestión Inmobiliaria
 
 Sistema integral de gestión para desarrollos inmobiliarios, construido con Next.js 14, Prisma y Tailwind CSS.
 
@@ -69,6 +69,55 @@ prisma/
 2. Las rutas protegidas verifican la sesión
 3. Los datos de usuario se almacenan en la base de datos
 
+## Diagramas de Flujo
+
+### Gestión de Proyectos
+```mermaid
+flowchart TD
+    A[Usuario autenticado] --> B[Dashboard de proyectos]
+    B -->|Carga inicial| C[GET /api/projects/:id]
+    C --> D[Prisma.proyecto.findUnique]
+    D --> B
+    B -->|Abrir edición| E[Modal EditProject]
+    E -->|Guardar cambios| F[PUT /api/projects/:id]
+    F --> G[Prisma.proyecto.update]
+    G --> H[Invalida caches locales]
+    H --> B
+```
+
+### Ciclo de Ventas
+```mermaid
+flowchart TD
+    A[ProjectVentas Component] --> B[Fetch ventas]
+    B --> C[GET /api/ventas?proyectoId]
+    C --> D[Prisma.ventaLote & ventaUnidadCementerio]
+    D --> A
+    A -->|Nueva venta| E[VentaModal]
+    E -->|Confirmar| F[POST /api/ventas]
+    F --> G[Validaciones & Prisma transaction]
+    G --> H[Respuesta con venta creada]
+    H --> A
+    A -->|Gestionar cuotas| I[CuotasModal]
+    I -->|Actualizar cuota| J[PATCH /api/cuotas/:id/pagos]
+    J --> K[Prisma.cuota + registros de pago]
+    K --> A
+```
+
+### Gestión de Cobros / Recibos
+```mermaid
+flowchart TD
+    A[Dashboard Recibos] --> B[GET /api/recibos]
+    B --> C[Prisma.reciboPago.findMany]
+    C --> A
+    A -->|Generar PDF| D[POST /api/recibos/:id/generate-pdf]
+    D --> E[Puppeteer + plantilla recibo]
+    E --> F[Respuesta con enlace/archivo]
+    F --> A
+    A -->|Registrar pago| G[Formulario Recibo]
+    G -->|Guardar| H[POST /api/recibos]
+    H --> I[Prisma + actualiza saldos]
+    I --> A
+```
 ## Tecnologías Principales
 
 - **Frontend**:

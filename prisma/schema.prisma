@@ -60,7 +60,7 @@ model Usuario {
   provincia                              String?
   sexo                                   Sexo?
   estadoCivil                            EstadoCivil?
-  profesion                             String?
+  profesion                              String?
   auditoriaCreadaPor                     Auditoria[]             @relation("AuditoriaCreadaPor")
   auditoria                              Auditoria[]
   notificacionesCreadaPor                Notificacion[]          @relation("NotificacionCreadaPor")
@@ -76,12 +76,16 @@ model Usuario {
   contratosActualizadoPor                Contrato[]              @relation("ContratoActualizadoPor")
   cuotasCreadoPor                        Cuota[]                 @relation("CuotaCreadoPor")
   cuotasActualizadoPor                   Cuota[]                 @relation("CuotaActualizadoPor")
+  descuentosCreadoPor                    DescuentoCuota[]        @relation("DescuentoCreadoPor")
+  descuentosActualizadoPor               DescuentoCuota[]        @relation("DescuentoActualizadoPor")
   documentos                             Documento[]
   empresasRepresentante                  EmpresaDesarrolladora[] @relation("RepresentanteLegal")
   lotesCreadoPor                         Lote[]                  @relation("LoteCreadoPor")
   lotesActualizadoPor                    Lote[]                  @relation("LoteActualizadoPor")
   manzanasCreadoPor                      Manzana[]               @relation("ManzanaCreadoPor")
   manzanasActualizadoPor                 Manzana[]               @relation("ManzanaActualizadoPor")
+  modificacionesCreadoPor                ModificacionCuota[]     @relation("ModificacionCreadoPor")
+  modificacionesActualizadoPor           ModificacionCuota[]     @relation("ModificacionActualizadoPor")
   pabellonesCreadoPor                    Pabellon[]              @relation("PabellonCreadoPor")
   pabellonesActualizadoPor               Pabellon[]              @relation("PabellonActualizadoPor")
   pagosComisionesCreadoPor               PagoComision[]          @relation("PagoComisionCreadoPor")
@@ -97,6 +101,8 @@ model Usuario {
   recibosPagoCreadoPor                   ReciboPago[]            @relation("ReciboPagoCreadoPor")
   recibosPagoActualizadoPor              ReciboPago[]            @relation("ReciboPagoActualizadoPor")
   recibosPagoVendedor                    ReciboPago[]            @relation("ReciboPagoVendedor")
+  reprogramacionesCreadoPor              ReprogramacionCuotas[]  @relation("ReprogramacionCreadoPor")
+  reprogramacionesActualizadoPor         ReprogramacionCuotas[]  @relation("ReprogramacionActualizadoPor")
   reservasCreadoPor                      Reserva[]               @relation("ReservaCreadoPor")
   reservasActualizadoPor                 Reserva[]               @relation("ReservaActualizadoPor")
   reservasVendedor                       Reserva[]               @relation("ReservaVendedor")
@@ -113,7 +119,7 @@ model Usuario {
   ventasUnidadesCementerioVendedor       VentaUnidadCementerio[] @relation("VentaUnidadCementerioVendedor")
   empresasGerenteGeneral                 EmpresaDesarrolladora[] @relation("GerenteGeneralEmpresas")
   proyectosMiembro                       Proyecto[]              @relation("ProjectMembers")
-  
+
   @@index([email])
   @@index([rol])
   @@index([empresaDesarrolladoraId])
@@ -122,7 +128,7 @@ model Usuario {
 }
 
 model Proyecto {
-  id                       String                  @id @default(cuid())
+  id                       String                   @id @default(cuid())
   nombre                   String
   tipo                     TipoProyecto
   descripcion              String
@@ -130,7 +136,7 @@ model Proyecto {
   empresaDesarrolladoraId  String
   fechaInicio              DateTime
   fechaFin                 DateTime?
-  estado                   EstadoProyecto          @default(DRAFT)
+  estado                   EstadoProyecto           @default(DRAFT)
   gerenteId                String?
   creadoPorId              String
   aprobadoPorId            String?
@@ -139,39 +145,36 @@ model Proyecto {
   areaTotal                Float?
   areaUtil                 Float?
   cantidadUnidades         Int?
-  createdAt                DateTime                @default(now())
-  updatedAt                DateTime                @updatedAt
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
   departamento             String?
   distrito                 String?
-  inversionActual          Float?                  @map("inversion_actual")
-  inversionInicial         Float?                  @map("inversion_inicial")
-  inversionTotal           Float?                  @map("inversion_total")
+  inversionActual          Float?                   @map("inversion_actual")
+  inversionInicial         Float?                   @map("inversion_inicial")
+  inversionTotal           Float?                   @map("inversion_total")
   latitud                  Float?
   longitud                 Float?
-  precioTerreno            Float?                  @map("precio_terreno")
+  precioTerreno            Float?                   @map("precio_terreno")
   provincia                String?
-  
-  // Campos del predio matriz
-  extensionTotal           Float?                  // Extensión total del predio matriz en hectáreas
-  unidadCatastral          String?                 // Unidad catastral del predio matriz
-  partidaRegistral         String?                 // Partida registral del predio matriz
-  plazoIndependizacion     Int?                    // Plazo para independización en meses
-  
+  extensionTotal           Float?
+  partidaRegistral         String?
+  plazoIndependizacion     Int?
+  unidadCatastral          String?
   actividades              Actividad[]
+  caracteristicas          CaracteristicaProyecto[] @relation("ProyectoCaracteristicas")
   comentarios              Comentario[]
   documentos               Documento[]
   manzanas                 Manzana[]
   pabellones               Pabellon[]
-  aprobadoPor              Usuario?                @relation("ProjectApprover", fields: [aprobadoPorId], references: [id])
-  creadoPor                Usuario                 @relation("ProjectCreator", fields: [creadoPorId], references: [id])
-  empresaDesarrolladora    EmpresaDesarrolladora   @relation(fields: [empresaDesarrolladoraId], references: [id])
-  gerente                  Usuario?                @relation("ProjectManager", fields: [gerenteId], references: [id], onUpdate: NoAction)
+  aprobadoPor              Usuario?                 @relation("ProjectApprover", fields: [aprobadoPorId], references: [id])
+  creadoPor                Usuario                  @relation("ProjectCreator", fields: [creadoPorId], references: [id])
+  empresaDesarrolladora    EmpresaDesarrolladora    @relation(fields: [empresaDesarrolladoraId], references: [id])
+  gerente                  Usuario?                 @relation("ProjectManager", fields: [gerenteId], references: [id], onUpdate: NoAction)
   reservas                 Reserva[]
   unidades                 UnidadInmobiliaria[]
   ventasLotes              VentaLote[]
   ventasUnidadesCementerio VentaUnidadCementerio[]
-  miembros                 Usuario[]               @relation("ProjectMembers")
-  caracteristicas          CaracteristicaProyecto[] @relation("ProyectoCaracteristicas")
+  miembros                 Usuario[]                @relation("ProjectMembers")
 
   @@index([latitud, longitud])
   @@index([empresaDesarrolladoraId])
@@ -185,16 +188,15 @@ model Proyecto {
 
 model CaracteristicaProyecto {
   id          String   @id @default(cuid())
-  nombre      String   // Ej: "Habilitación para alumbrado público"
-  descripcion String?  // Descripción opcional de la característica
-  activa      Boolean  @default(true) // Si la característica está activa
-  orden       Int      @default(0) // Orden de aparición en el contrato
+  nombre      String
+  descripcion String?
+  activa      Boolean  @default(true)
+  orden       Int      @default(0)
   proyectoId  String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
   proyecto    Proyecto @relation("ProyectoCaracteristicas", fields: [proyectoId], references: [id], onDelete: Cascade)
-  
+
   @@index([proyectoId])
   @@index([orden])
   @@map("caracteristicas_proyecto")
@@ -237,18 +239,18 @@ model Venta {
 }
 
 model Direccion {
-  id         String        @id @default(cuid())
-  tipo       TipoDireccion
-  pais       String
-  distrito   String
-  provincia  String
+  id           String        @id @default(cuid())
+  tipo         TipoDireccion
+  pais         String
+  direccion    String
+  referencia   String?
+  clienteId    String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   departamento String
-  direccion  String
-  referencia String?
-  clienteId  String
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  cliente    Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  distrito     String
+  provincia    String
+  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
   @@index([clienteId])
   @@map("direcciones")
@@ -373,7 +375,6 @@ model Lote {
   codigo                String
   numero                String
   area                  Float
-  perimetro             Float?      // Perímetro total del lote en metros
   precio                Float?
   estado                EstadoLote  @default(DISPONIBLE)
   latitud               Float?
@@ -396,6 +397,7 @@ model Lote {
   updatedAt             DateTime    @updatedAt
   createdBy             String?
   updatedBy             String?
+  perimetro             Float?
   creadoPorUsuario      Usuario?    @relation("LoteCreadoPor", fields: [createdBy], references: [id])
   manzana               Manzana     @relation(fields: [manzanaId], references: [id], onDelete: Cascade)
   actualizadoPorUsuario Usuario?    @relation("LoteActualizadoPor", fields: [updatedBy], references: [id])
@@ -411,14 +413,14 @@ model Lote {
 }
 
 model VentaLote {
-  id                    String              @id @default(cuid())
+  id                    String                 @id @default(cuid())
   loteId                String
   clienteId             String
   fechaVenta            DateTime
   precioVenta           Float
-  estado                EstadoVentaLote     @default(PENDIENTE)
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
+  estado                EstadoVentaLote        @default(PENDIENTE)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
   createdBy             String?
   updatedBy             String?
   aprobadorId           String?
@@ -428,45 +430,46 @@ model VentaLote {
   observaciones         String?
   proyectoId            String
   vendedorId            String
-  comisionVendedor      Float?              @default(0)
+  comisionVendedor      Float?                 @default(0)
   condicionesEspeciales String?
   documentosRequeridos  String?
-  estadoDocumentacion   EstadoDocumentacion @default(PENDIENTE)
+  estadoDocumentacion   EstadoDocumentacion    @default(PENDIENTE)
   fechaEntrega          DateTime?
   fechaPrimeraCuota     DateTime?
   formaPago             FormaPago?
-  frecuenciaCuota       FrecuenciaCuota?    @default(MENSUAL)
+  frecuenciaCuota       FrecuenciaCuota?       @default(MENSUAL)
   montoCuota            Float?
-  montoDescuento        Float               @default(0)
-  montoInicial          Float?              @default(0)
+  montoDescuento        Float                  @default(0)
+  montoInicial          Float?                 @default(0)
   motivoDescuento       String?
-  numeroCuotas          Int?                @default(1)
-  porcentajeComision    Float?              @default(0)
+  numeroCuotas          Int?                   @default(1)
+  porcentajeComision    Float?                 @default(0)
   precioOriginal        Float
-  saldoPendiente        Float?              @default(0)
-  tipoVenta             TipoVenta           @default(CONTADO)
-  montoCapital          Float?              @default(0)
-  montoIntereses        Float?              @default(0)
-  saldoCapital          Float?              @default(0)
-  tasaInteres           Float?              @default(0)
-  tasaMora              Float?              @default(0)
-  modeloAmortizacion    ModeloAmortizacion? @default(FRANCES)
-  numeroOperacion       String?             // Número de operación bancaria para el pago inicial
+  saldoPendiente        Float?                 @default(0)
+  tipoVenta             TipoVenta              @default(CONTADO)
+  montoCapital          Float?                 @default(0)
+  montoIntereses        Float?                 @default(0)
+  saldoCapital          Float?                 @default(0)
+  tasaInteres           Float?                 @default(0)
+  tasaMora              Float?                 @default(0)
+  numeroOperacion       String?
+  modeloAmortizacion    ModeloAmortizacion?    @default(FRANCES)
   cancelaciones         CancelacionVenta[]
   comprobantesPago      ComprobantePago[]
   contratos             Contrato[]
   cuotas                Cuota[]
   pagosComisiones       PagoComision[]
   recibosPago           ReciboPago[]
+  reprogramaciones      ReprogramacionCuotas[]
   reservas              Reserva[]
-  aprobador             Usuario?            @relation("VentaLoteAprobador", fields: [aprobadorId], references: [id])
-  cliente               Cliente             @relation(fields: [clienteId], references: [id])
-  creadoPorUsuario      Usuario?            @relation("VentaLoteCreadoPor", fields: [createdBy], references: [id])
-  lote                  Lote                @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  manzana               Manzana             @relation(fields: [manzanaId], references: [id])
-  proyecto              Proyecto            @relation(fields: [proyectoId], references: [id])
-  actualizadoPorUsuario Usuario?            @relation("VentaLoteActualizadoPor", fields: [updatedBy], references: [id])
-  vendedor              Usuario             @relation("VentaLoteVendedor", fields: [vendedorId], references: [id])
+  aprobador             Usuario?               @relation("VentaLoteAprobador", fields: [aprobadorId], references: [id])
+  cliente               Cliente                @relation(fields: [clienteId], references: [id])
+  creadoPorUsuario      Usuario?               @relation("VentaLoteCreadoPor", fields: [createdBy], references: [id])
+  lote                  Lote                   @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  manzana               Manzana                @relation(fields: [manzanaId], references: [id])
+  proyecto              Proyecto               @relation(fields: [proyectoId], references: [id])
+  actualizadoPorUsuario Usuario?               @relation("VentaLoteActualizadoPor", fields: [updatedBy], references: [id])
+  vendedor              Usuario                @relation("VentaLoteVendedor", fields: [vendedorId], references: [id])
   clientes              VentaLoteCliente[]
 
   @@index([loteId])
@@ -491,7 +494,7 @@ model VentaLoteCliente {
   createdAt   DateTime  @default(now())
   cliente     Cliente   @relation("VentaLoteCliente", fields: [clienteId], references: [id], onDelete: Cascade)
   ventaLote   VentaLote @relation(fields: [ventaLoteId], references: [id], onDelete: Cascade)
-  
+
   @@unique([ventaLoteId, clienteId])
   @@index([ventaLoteId])
   @@index([clienteId])
@@ -538,13 +541,14 @@ model VentaUnidadCementerio {
   saldoCapital          Float?                         @default(0)
   tasaInteres           Float?                         @default(0)
   tasaMora              Float?                         @default(0)
+  numeroOperacion       String?
   modeloAmortizacion    ModeloAmortizacion?            @default(FRANCES)
-  numeroOperacion       String?                        // Número de operación bancaria para el pago inicial
   cancelaciones         CancelacionVenta[]
   comprobantesPago      ComprobantePago[]
   contratos             Contrato[]
   cuotas                Cuota[]
   pagosComisiones       PagoComision[]
+  reprogramaciones      ReprogramacionCuotas[]
   aprobador             Usuario?                       @relation("VentaUnidadCementerioAprobador", fields: [aprobadorId], references: [id])
   cliente               Cliente                        @relation(fields: [clienteId], references: [id])
   creadoPorUsuario      Usuario?                       @relation("VentaUnidadCementerioCreadoPor", fields: [createdBy], references: [id])
@@ -577,7 +581,7 @@ model VentaUnidadCementerioCliente {
   createdAt               DateTime              @default(now())
   cliente                 Cliente               @relation("VentaUnidadCementerioCliente", fields: [clienteId], references: [id], onDelete: Cascade)
   ventaUnidadCementerio   VentaUnidadCementerio @relation(fields: [ventaUnidadCementerioId], references: [id], onDelete: Cascade)
-  
+
   @@unique([ventaUnidadCementerioId, clienteId])
   @@index([ventaUnidadCementerioId])
   @@index([clienteId])
@@ -751,6 +755,8 @@ model Cuota {
   actualizadoPorUsuario   Usuario?               @relation("CuotaActualizadoPor", fields: [updatedBy], references: [id])
   ventaLote               VentaLote?             @relation(fields: [ventaLoteId], references: [id], onDelete: Cascade)
   ventaUnidadCementerio   VentaUnidadCementerio? @relation(fields: [ventaUnidadCementerioId], references: [id], onDelete: Cascade)
+  descuentos              DescuentoCuota[]
+  modificaciones          ModificacionCuota[]
   pagos                   PagoCuota[]
   recibosPago             ReciboPago[]
 
@@ -1029,6 +1035,86 @@ model ReciboPago {
   @@index([createdBy])
   @@index([updatedBy])
   @@map("recibos_pago")
+}
+
+model ReprogramacionCuotas {
+  id                      String                 @id @default(cuid())
+  ventaLoteId             String?
+  ventaUnidadCementerioId String?
+  motivo                  String
+  cambiosPlan             Json                   @default("{}")
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  createdBy               String?
+  updatedBy               String?
+  descuentos              DescuentoCuota[]
+  modificaciones          ModificacionCuota[]
+  creadoPorUsuario        Usuario?               @relation("ReprogramacionCreadoPor", fields: [createdBy], references: [id])
+  actualizadoPorUsuario   Usuario?               @relation("ReprogramacionActualizadoPor", fields: [updatedBy], references: [id])
+  ventaLote               VentaLote?             @relation(fields: [ventaLoteId], references: [id], onDelete: Cascade)
+  ventaUnidadCementerio   VentaUnidadCementerio? @relation(fields: [ventaUnidadCementerioId], references: [id], onDelete: Cascade)
+
+  @@index([ventaLoteId])
+  @@index([ventaUnidadCementerioId])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@index([createdAt])
+  @@map("reprogramaciones_cuotas")
+}
+
+model DescuentoCuota {
+  id                    String               @id @default(cuid())
+  cuotaId               String
+  reprogramacionId      String
+  montoDescuento        Float
+  motivo                String
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  creadoPorUsuario      Usuario?             @relation("DescuentoCreadoPor", fields: [createdBy], references: [id])
+  cuota                 Cuota                @relation(fields: [cuotaId], references: [id], onDelete: Cascade)
+  reprogramacion        ReprogramacionCuotas @relation(fields: [reprogramacionId], references: [id], onDelete: Cascade)
+  actualizadoPorUsuario Usuario?             @relation("DescuentoActualizadoPor", fields: [updatedBy], references: [id])
+
+  @@index([cuotaId])
+  @@index([reprogramacionId])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("descuentos_cuotas")
+}
+
+model ModificacionCuota {
+  id                       String               @id @default(cuid())
+  cuotaId                  String
+  reprogramacionId         String
+  montoAnterior            Float
+  montoNuevo               Float
+  fechaVencimientoAnterior DateTime
+  fechaVencimientoNueva    DateTime
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  createdBy                String?
+  updatedBy                String?
+  creadoPorUsuario         Usuario?             @relation("ModificacionCreadoPor", fields: [createdBy], references: [id])
+  cuota                    Cuota                @relation(fields: [cuotaId], references: [id], onDelete: Cascade)
+  reprogramacion           ReprogramacionCuotas @relation(fields: [reprogramacionId], references: [id], onDelete: Cascade)
+  actualizadoPorUsuario    Usuario?             @relation("ModificacionActualizadoPor", fields: [updatedBy], references: [id])
+
+  @@index([cuotaId])
+  @@index([reprogramacionId])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@map("modificaciones_cuotas")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
 }
 
 enum Rol {
