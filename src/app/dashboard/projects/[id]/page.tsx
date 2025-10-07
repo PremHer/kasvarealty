@@ -1,6 +1,8 @@
-'use client'
+﻿'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Project } from '@/types/project'
 import { FiArrowLeft, FiMapPin, FiCalendar, FiDollarSign, FiHome, FiEdit2, FiUser, FiCheckCircle, FiAlertCircle, FiUserPlus, FiXCircle, FiClock, FiInfo, FiUsers, FiPlus, FiGrid, FiCreditCard, FiFileText, FiMap } from 'react-icons/fi'
@@ -34,7 +36,6 @@ const MapPicker = dynamic(() => import('@/components/MapPicker'), {
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
   const [project, setProject] = useState<Project | null>(null)
-  const [loading, setLoading] = useState(true)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [units, setUnits] = useState<UnidadInmobiliaria[]>([])
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false)
@@ -43,9 +44,71 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const router = useRouter()
   const { toast } = useToast()
   const { data: session } = useSession()
+  const projectQuery = useQuery<Project | null>({
+    queryKey: ['project', params.id],
+    enabled: Boolean(params.id),
+    queryFn: async (): Promise<Project | null> => {
+      const response = await fetch(`/api/projects/${params.id}`)
+      if (response.status === 404) {
+        return null
+      }
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({} as any))
+        const message = (payload as any)?.error || 'Error al cargar el proyecto'
+        throw new Error(message)
+      }
+      return response.json()
+    }
+  })
 
-  const canEditProject = (project: Project) => {
-    if (!session?.user) return false
+  useEffect(() => {
+    if (projectQuery.data !== undefined) {
+      setProject(projectQuery.data)
+    }
+  }, [projectQuery.data])
+
+  useEffect(() => {
+    if (projectQuery.isError) {
+      console.error('Error al cargar el proyecto:', projectQuery.error)
+      toast({
+        title: 'Error',
+        description: 'No se pudo cargar el proyecto',
+        variant: 'destructive'
+      })
+    }
+  }, [projectQuery.isError])
+
+  const unitsQuery = useQuery<UnidadInmobiliaria[]>({
+    queryKey: ['project', params.id, 'units'],
+    enabled: Boolean(project),
+    queryFn: async (): Promise<UnidadInmobiliaria[]> => {
+      const response = await fetch(`/api/projects/${params.id}/units`)
+      if (!response.ok) {
+        throw new Error('Error al cargar las unidades')
+      }
+      return response.json()
+    }
+  })
+
+  useEffect(() => {
+    if (unitsQuery.data) {
+      setUnits(unitsQuery.data)
+    }
+  }, [unitsQuery.data])
+
+  useEffect(() => {
+    if (unitsQuery.isError) {
+      console.error('Error al cargar las unidades:', unitsQuery.error)
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar las unidades',
+        variant: 'destructive'
+      })
+    }
+  }, [unitsQuery.isError])
+
+  const canEditProject = (project: Project | null) => {
+    if (!session?.user || !project) return false
     const userRole = session.user.role
     const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'GERENTE_GENERAL'].includes(userRole)
     const isProjectManager = userRole === 'PROJECT_MANAGER'
@@ -53,54 +116,6 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
     return isAdmin || (isProjectManager && isProjectGerente)
   }
-
-  useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        const response = await fetch(`/api/projects/${params.id}`)
-        if (!response.ok) {
-          throw new Error('Error al cargar el proyecto')
-        }
-        const data = await response.json()
-        setProject(data)
-      } catch (error) {
-        console.error('Error:', error)
-        toast({
-          title: 'Error',
-          description: 'No se pudo cargar el proyecto',
-          variant: 'destructive'
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchProject()
-  }, [params.id, toast])
-
-  useEffect(() => {
-    const fetchUnits = async () => {
-      try {
-        const response = await fetch(`/api/projects/${params.id}/units`)
-        if (!response.ok) {
-          throw new Error('Error al cargar las unidades')
-        }
-        const data = await response.json()
-        setUnits(data)
-      } catch (error) {
-        console.error('Error:', error)
-        toast({
-          title: 'Error',
-          description: 'No se pudieron cargar las unidades',
-          variant: 'destructive'
-        })
-      }
-    }
-
-    if (project) {
-      fetchUnits()
-    }
-  }, [project, params.id, toast])
 
   const handleProjectUpdated = (updatedProject: Project) => {
     setProject(updatedProject)
@@ -268,7 +283,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     }
   }
 
-  const isProjectPending = (project: Project) => {
+  const isProjectPending = (project: Project | null) => {
+    if (!project) return false
     return project.status === 'PENDING_APPROVAL' || project.status === 'PENDING_ASSIGNMENT'
   }
 
@@ -287,7 +303,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     setStatsRefreshTrigger(prev => prev + 1);
   }, []);
 
-  if (loading) {
+	if (projectQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -295,7 +311,21 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     )
   }
 
-  if (!project) {
+	if (projectQuery.isError) {
+		return (
+			<div className="flex flex-col items-center justify-center min-h-screen">
+				<h2 className="text-2xl font-bold text-gray-900 mb-4">Ocurrió un error al cargar el proyecto</h2>
+				<button
+					onClick={() => router.back()}
+					className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+				>
+					Volver
+				</button>
+			</div>
+		)
+	}
+
+	if (projectQuery.isSuccess && !project) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Proyecto no encontrado</h2>
@@ -308,6 +338,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       </div>
     )
   }
+
+	// Salvaguarda para TypeScript: a partir de aquí `project` es requerido
+	if (!project) {
+		return null
+	}
+
+	const p = project as Project
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -330,7 +367,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             </div>
           )}
         </div>
-        {project && canEditProject(project) && (
+          {canEditProject(p) && (
           <button
             onClick={() => setIsEditModalOpen(true)}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
@@ -351,7 +388,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <FiGrid className="w-4 h-4" />
             Características
           </TabsTrigger>
-          {!isProjectPending(project) && (
+          {!isProjectPending(p) && (
             <>
               <TabsTrigger value="units" className="flex items-center gap-2">
                 <FiHome className="w-4 h-4" />
@@ -382,7 +419,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         </TabsList>
 
         <TabsContent value="details">
-          {isProjectPending(project) && (
+          {isProjectPending(p) && (
             <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <div className="flex items-start">
                 <FiAlertCircle className="w-5 h-5 text-amber-600 mt-0.5 mr-3" />
@@ -597,18 +634,18 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xl font-semibold text-blue-700">
-                    {project.type === 'LOTIZACION' ? 'Manzanas y Lotes' : 
-                     project.type === 'CEMENTERIO' ? 'Pabellones y Unidades' : 
+                    {p.type === 'LOTIZACION' ? 'Manzanas y Lotes' : 
+                     p.type === 'CEMENTERIO' ? 'Pabellones y Unidades' : 
                      'Unidades Inmobiliarias'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {project.type === 'LOTIZACION' ? (
+                  {p.type === 'LOTIZACION' ? (
                     <div className="space-y-6">
                       <ManzanasStats proyectoId={params.id} refreshTrigger={statsRefreshTrigger} />
                       <ManzanasList proyectoId={params.id} onManzanasChange={handleManzanasChange} />
                     </div>
-                  ) : project.type === 'CEMENTERIO' ? (
+                  ) : p.type === 'CEMENTERIO' ? (
                     <div className="space-y-6">
                       <PabellonesStats proyectoId={params.id} refreshTrigger={statsRefreshTrigger} />
                       <PabellonesList proyectoId={params.id} onPabellonesChange={handlePabellonesChange} />
@@ -620,7 +657,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                         Gestión de Unidades en Desarrollo
                       </h3>
                       <p className="text-gray-500 max-w-md mx-auto">
-                        La gestión de unidades para proyectos de tipo "{getProjectTypeLabel(project.type)}" 
+                        La gestión de unidades para proyectos de tipo "{getProjectTypeLabel(p.type)}" 
                         está en desarrollo. Próximamente estará disponible.
                       </p>
                       <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-md mx-auto">
@@ -642,7 +679,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <TabsContent value="sales">
               <ProjectVentas 
                 proyectoId={params.id} 
-                tipoProyecto={project.type} 
+                tipoProyecto={p.type} 
               />
             </TabsContent>
 
@@ -654,7 +691,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 <CardContent>
                   <ProjectComisiones 
                     proyectoId={params.id} 
-                    tipoProyecto={project.type} 
+                    tipoProyecto={p.type} 
                   />
                 </CardContent>
               </Card>

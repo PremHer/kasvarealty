@@ -107,13 +107,13 @@ export default function VentaModal({
     documentosRequeridos: '',
     condicionesEspeciales: '',
     observaciones: '',
-          // NUEVO: Campos de amortización
-      aplicarIntereses: false,
+    // NUEVO: Campos de amortización
+    aplicarIntereses: false,
       modeloAmortizacion: 'FRANCES' as 'FRANCES' | 'ALEMAN' | 'JAPONES',
-      tasaInteresAnual: '',
-      montoIntereses: '',
-      montoCapital: '',
-      saldoCapital: '',
+    tasaInteresAnual: '',
+    montoIntereses: '',
+    montoCapital: '',
+    saldoCapital: '',
     // Campos para selección de unidad
     manzanaId: '',
     vendedorId: '',
@@ -1851,27 +1851,27 @@ export default function VentaModal({
         case 'FRANCES':
           // Modelo Francés: Cuota fija
           const cuotaFija = saldoPendiente * (tasaInteresPorPeriodo * Math.pow(1 + tasaInteresPorPeriodo, numeroCuotas)) / (Math.pow(1 + tasaInteresPorPeriodo, numeroCuotas) - 1)
-          
-          for (let i = 1; i <= numeroCuotas; i++) {
-            let fechaVencimiento = new Date(fechaPrimeraCuota)
-            
-            switch (formData.frecuenciaCuota) {
-              case 'MENSUAL':
-                fechaVencimiento.setMonth(fechaVencimiento.getMonth() + (i - 1))
-                break
-              case 'BIMESTRAL':
-                fechaVencimiento.setMonth(fechaVencimiento.getMonth() + ((i - 1) * 2))
-                break
-              case 'TRIMESTRAL':
-                fechaVencimiento.setMonth(fechaVencimiento.getMonth() + ((i - 1) * 3))
-                break
-              case 'SEMESTRAL':
-                fechaVencimiento.setMonth(fechaVencimiento.getMonth() + ((i - 1) * 6))
-                break
-              case 'ANUAL':
-                fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + (i - 1))
-                break
-            }
+
+    for (let i = 1; i <= numeroCuotas; i++) {
+      let fechaVencimiento = new Date(fechaPrimeraCuota)
+      
+      switch (formData.frecuenciaCuota) {
+        case 'MENSUAL':
+          fechaVencimiento.setMonth(fechaVencimiento.getMonth() + (i - 1))
+          break
+        case 'BIMESTRAL':
+          fechaVencimiento.setMonth(fechaVencimiento.getMonth() + ((i - 1) * 2))
+          break
+        case 'TRIMESTRAL':
+          fechaVencimiento.setMonth(fechaVencimiento.getMonth() + ((i - 1) * 3))
+          break
+        case 'SEMESTRAL':
+          fechaVencimiento.setMonth(fechaVencimiento.getMonth() + ((i - 1) * 6))
+          break
+        case 'ANUAL':
+          fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + (i - 1))
+          break
+      }
 
             const montoInteres = saldoAnterior * tasaInteresPorPeriodo
             const montoCapital = cuotaFija - montoInteres
@@ -1922,19 +1922,19 @@ export default function VentaModal({
             const montoTotal = capitalFijo + montoInteres
             const saldoPosterior = saldoAnterior - capitalFijo
 
-            cuotas.push({
-              numeroCuota: i,
-              fechaVencimiento,
-              monto: montoTotal,
+      cuotas.push({
+        numeroCuota: i,
+        fechaVencimiento,
+        monto: montoTotal,
               montoCapital: capitalFijo,
-              montoInteres,
-              saldoCapitalAnterior: saldoAnterior,
-              saldoCapitalPosterior: saldoPosterior,
-              estado: 'PENDIENTE',
-              montoPagado: 0
-            })
+        montoInteres,
+        saldoCapitalAnterior: saldoAnterior,
+        saldoCapitalPosterior: saldoPosterior,
+        estado: 'PENDIENTE',
+        montoPagado: 0
+      })
 
-            saldoAnterior = saldoPosterior
+      saldoAnterior = saldoPosterior
           }
           break
 

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { LoteFormData } from '@/types/lote';
 import { ManzanaService } from '@/lib/services/manzanaService';
+import { GeometriaService } from '@/lib/services/geometriaService';
 
 // Función para calcular el área del lote
 function calcularAreaLote(
@@ -71,6 +72,7 @@ export async function GET(
     const manzanaId = searchParams.get('manzanaId');
     const search = searchParams.get('search');
     const estado = searchParams.get('estado');
+    const incluirGeometria = searchParams.get('incluirGeometria') === 'true';
 
     if (!proyectoId) {
       return new NextResponse('ID de proyecto no proporcionado', { status: 400 });
@@ -140,6 +142,25 @@ export async function GET(
       ]
     });
 
+    // Si se solicita incluir geometría, obtener los datos geométricos de PostGIS
+    if (incluirGeometria) {
+      const lotesConGeometria = await GeometriaService.obtenerLotesConGeometria(proyectoId);
+      
+      // Combinar los datos de Prisma con los datos geométricos
+      const lotesCombinados = lotes.map(lote => {
+        const geometria = lotesConGeometria.find(g => g.id === lote.id);
+        return {
+          ...lote,
+          geometria: geometria?.geometria || null,
+          centro: geometria?.centro || null,
+          perimetro: geometria?.perimetro || null,
+          areaGeometrica: geometria?.areaGeometrica || null
+        };
+      });
+
+      return NextResponse.json(lotesCombinados);
+    }
+
     return NextResponse.json(lotes);
   } catch (error) {
     console.error('Error al obtener lotes:', error);
@@ -175,7 +196,7 @@ export async function POST(
 
     const { proyectoId } = params;
     const body = await request.json();
-    const { manzanaId, ...loteData } = body;
+    const { manzanaId, geometria, ...loteData } = body;
 
     if (!manzanaId) {
       return new NextResponse('ID de manzana no proporcionado', { status: 400 });
@@ -293,6 +314,16 @@ export async function POST(
         }
       }
     });
+
+    // Si se proporcionó geometría, guardarla en PostGIS
+    if (geometria) {
+      try {
+        await GeometriaService.actualizarGeometriaLote(lote.id, geometria);
+      } catch (geometriaError) {
+        console.error('Error al guardar geometría del lote:', geometriaError);
+        // No fallamos la creación del lote si hay error en la geometría
+      }
+    }
 
     // Actualizar estadísticas de la manzana
     await ManzanaService.actualizarEstadisticasManzana(manzanaId);
