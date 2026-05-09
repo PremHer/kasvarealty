@@ -9,6 +9,7 @@ interface GenerarReciboData {
   montoPagado: number
   formaPago: FormaPago
   metodoPago?: string
+  numeroOperacion?: string
   concepto: string
   fechaPago?: Date
   observaciones?: string
@@ -62,6 +63,7 @@ export async function generarReciboAutomatico(data: GenerarReciboData) {
         montoPagado: data.montoPagado,
         formaPago: data.formaPago,
         metodoPago: data.metodoPago,
+        numeroOperacion: data.numeroOperacion,
         concepto: data.concepto,
         fechaPago: data.fechaPago || new Date(),
         observaciones: data.observaciones,
@@ -103,6 +105,7 @@ export async function generarReciboVentaContado(
   empresaDesarrolladoraId: string,
   createdBy: string,
   metodoPago?: string,
+  numeroOperacion?: string,
   observaciones?: string,
   comprobantePagoId?: string
 ) {
@@ -138,6 +141,7 @@ export async function generarReciboVentaContado(
       montoPagado,
       formaPago,
       metodoPago,
+      numeroOperacion,
       concepto,
       observaciones,
       comprobantePagoId,
@@ -158,6 +162,7 @@ export async function generarReciboCuota(
   empresaDesarrolladoraId: string,
   createdBy: string,
   metodoPago?: string,
+  numeroOperacion?: string,
   observaciones?: string,
   comprobantePagoId?: string
 ) {
@@ -202,6 +207,7 @@ export async function generarReciboCuota(
       montoPagado,
       formaPago,
       metodoPago,
+      numeroOperacion,
       concepto,
       observaciones,
       comprobantePagoId,
@@ -222,6 +228,7 @@ export async function generarReciboPagoInicial(
   empresaDesarrolladoraId: string,
   createdBy: string,
   metodoPago?: string,
+  numeroOperacion?: string,
   observaciones?: string,
   comprobantePagoId?: string
 ) {
@@ -257,6 +264,7 @@ export async function generarReciboPagoInicial(
       montoPagado,
       formaPago,
       metodoPago,
+      numeroOperacion,
       concepto,
       observaciones,
       comprobantePagoId,

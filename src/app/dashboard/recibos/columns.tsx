@@ -44,6 +44,7 @@ interface ReciboPagoWithRelations {
   montoPagado: number
   formaPago: FormaPago
   metodoPago?: string
+  numeroOperacion?: string
   concepto: string
   fechaPago: Date
   observaciones?: string
@@ -127,6 +128,7 @@ export const columns = ({ onDownload, onView }: ColumnsProps): ColumnDef<ReciboP
     cell: ({ row }) => {
       const formaPago = row.getValue('formaPago') as FormaPago
       const metodoPago = row.original.metodoPago
+      const numeroOperacion = row.original.numeroOperacion
       
       const getBadgeVariant = (forma: FormaPago) => {
         switch (forma) {
@@ -151,6 +153,11 @@ export const columns = ({ onDownload, onView }: ColumnsProps): ColumnDef<ReciboP
           {metodoPago && (
             <div className="text-muted-foreground text-xs mt-1">
               {metodoPago}
+            </div>
+          )}
+          {numeroOperacion && (
+            <div className="text-blue-600 font-medium text-xs mt-1">
+              Op: {numeroOperacion}
             </div>
           )}
         </div>

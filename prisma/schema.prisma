@@ -221,15 +221,15 @@ model UnidadInmobiliaria {
 
 model Venta {
   id                   String             @id @default(cuid())
-  unidadInmobiliariaId String
+  unidadInmobiliariaId String?
   clienteId            String
   fechaVenta           DateTime
   precioVenta          Float
-  estado               EstadoVenta
+  estado               EstadoVenta        @default(PENDIENTE)
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
   cliente              Cliente            @relation(fields: [clienteId], references: [id])
-  unidadInmobiliaria   UnidadInmobiliaria @relation(fields: [unidadInmobiliariaId], references: [id])
+  unidadInmobiliaria   UnidadInmobiliaria? @relation(fields: [unidadInmobiliariaId], references: [id])
 
   @@index([clienteId])
   @@index([unidadInmobiliariaId])
@@ -975,7 +975,7 @@ model Reserva {
   loteId                String?
   unidadCementerioId    String?
   clienteId             String
-  vendedorId            String
+  vendedorId            String?
   montoReserva          Decimal           @db.Decimal(10, 2)
   fechaReserva          DateTime          @default(now())
   fechaVencimiento      DateTime
@@ -992,7 +992,7 @@ model Reserva {
   proyecto              Proyecto          @relation(fields: [proyectoId], references: [id])
   unidadCementerio      UnidadCementerio? @relation(fields: [unidadCementerioId], references: [id])
   actualizadoPorUsuario Usuario?          @relation("ReservaActualizadoPor", fields: [updatedBy], references: [id])
-  vendedor              Usuario           @relation("ReservaVendedor", fields: [vendedorId], references: [id])
+  vendedor              Usuario?          @relation("ReservaVendedor", fields: [vendedorId], references: [id])
   venta                 VentaLote?        @relation(fields: [ventaId], references: [id])
 
   @@map("reservas")
@@ -1009,6 +1009,7 @@ model ReciboPago {
   montoPagado             Decimal               @db.Decimal(10, 2)
   formaPago               FormaPago
   metodoPago              String?
+  numeroOperacion         String?
   concepto                String
   fechaPago               DateTime              @default(now())
   observaciones           String?

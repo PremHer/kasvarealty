@@ -71,6 +71,7 @@ export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalPro
     monto: '',
     fechaPago: new Date().toISOString().split('T')[0],
     formaPago: '',
+    numeroOperacion: '',
     observaciones: '',
     comprobantes: [] as File[]
   })
@@ -81,6 +82,7 @@ export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalPro
       monto: '',
       fechaPago: new Date().toISOString().split('T')[0],
       formaPago: '',
+      numeroOperacion: '',
       observaciones: '',
       comprobantes: []
     })
@@ -266,6 +268,7 @@ export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalPro
       formDataToSend.append('monto', montoPagoRedondeado.toString())
       formDataToSend.append('fechaPago', pagoFormData.fechaPago)
       formDataToSend.append('formaPago', pagoFormData.formaPago)
+      formDataToSend.append('numeroOperacion', pagoFormData.numeroOperacion)
       formDataToSend.append('observaciones', pagoFormData.observaciones)
 
       // Agregar comprobantes si existen
@@ -298,6 +301,7 @@ export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalPro
           monto: '',
           fechaPago: new Date().toISOString().split('T')[0],
           formaPago: '',
+          numeroOperacion: '',
           observaciones: '',
           comprobantes: []
         })
@@ -966,6 +970,17 @@ export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalPro
                                       </div>
 
                                       <div>
+                                        <Label htmlFor="numeroOperacion" className="text-xs font-medium">N° Operación</Label>
+                                        <Input
+                                          type="text"
+                                          value={pagoFormData.numeroOperacion}
+                                          onChange={(e) => setPagoFormData(prev => ({ ...prev, numeroOperacion: e.target.value }))}
+                                          placeholder="Ej. OP-123456"
+                                          className="h-8 text-sm"
+                                        />
+                                      </div>
+
+                                      <div>
                                         <Label htmlFor="comprobantes" className="text-xs font-medium">Comprobantes</Label>
                                         <Input
                                           type="file"
@@ -1021,6 +1036,7 @@ export default function CuotasModal({ isOpen, onClose, ventaId }: CuotasModalPro
                                               monto: '',
                                               fechaPago: new Date().toISOString().split('T')[0],
                                               formaPago: '',
+                                              numeroOperacion: '',
                                               observaciones: '',
                                               comprobantes: []
                                             })

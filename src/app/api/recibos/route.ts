@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         { cliente: { razonSocial: { contains: search, mode: 'insensitive' } } },
         { vendedor: { nombre: { contains: search, mode: 'insensitive' } } },
         { concepto: { contains: search, mode: 'insensitive' } },
+        { numeroOperacion: { contains: search, mode: 'insensitive' } },
       ]
     }
 
@@ -163,6 +164,7 @@ export async function POST(request: NextRequest) {
         montoPagado: data.montoPagado,
         formaPago: data.formaPago,
         metodoPago: data.metodoPago,
+        numeroOperacion: data.numeroOperacion,
         concepto: data.concepto,
         fechaPago: data.fechaPago ? new Date(data.fechaPago) : new Date(),
         observaciones: data.observaciones,

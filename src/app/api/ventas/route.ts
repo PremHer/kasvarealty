@@ -1247,6 +1247,7 @@ export async function POST(request: Request) {
             usuario.empresaDesarrolladoraId, // empresaDesarrolladoraId
             session.user.id, // createdBy
             metodoPago, // metodoPago (opcional)
+            numeroOperacion || undefined, // numeroOperacion (opcional)
             `Pago de venta al contado - ${tipoUnidad === 'LOTE' ? 'Lote' : 'Unidad'} ${unidadId}`, // observaciones
             undefined // comprobantePagoId (opcional)
           )
@@ -1262,6 +1263,7 @@ export async function POST(request: Request) {
             usuario.empresaDesarrolladoraId, // empresaDesarrolladoraId
             session.user.id, // createdBy
             metodoPago, // metodoPago (opcional)
+            numeroOperacion || undefined, // numeroOperacion (opcional)
             `Pago inicial - ${tipoUnidad === 'LOTE' ? 'Lote' : 'Unidad'} ${unidadId}`, // observaciones
             undefined // comprobantePagoId (opcional)
           )
